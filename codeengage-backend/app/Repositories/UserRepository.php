@@ -245,4 +245,80 @@ class UserRepository
     {
         return \App\Models\Achievement::findByUser($this->db, $userId, $limit);
     }
+
+    public function findByPasswordResetToken(string $token): ?User
+    {
+        $sql = "SELECT * FROM users WHERE password_reset_token = :token AND password_reset_expires > NOW() AND deleted_at IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':token' => $token]);
+        $data = $stmt->fetch();
+        
+        return $data ? User::fromData($this->db, $data) : null;
+    }
+
+    public function getUserRoles(int $userId): array
+    {
+        $sql = "
+            SELECT r.name, r.description 
+            FROM roles r 
+            JOIN user_roles ur ON r.id = ur.role_id 
+            WHERE ur.user_id = :user_id
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $userId]);
+        
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getUserPermissions(int $userId): array
+    {
+        $sql = "
+            SELECT DISTINCT p.name 
+            FROM permissions p 
+            JOIN role_permissions rp ON p.id = rp.permission_id 
+            JOIN user_roles ur ON rp.role_id = ur.role_id 
+            WHERE ur.user_id = :user_id
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $userId]);
+        
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getRecentLoginAttempts(string $ipAddress, int $timeWindowSeconds = 300): array
+    {
+        $sql = "
+            SELECT * FROM login_attempts 
+            WHERE ip_address = :ip_address 
+            AND attempt_time >= DATE_SUB(NOW(), INTERVAL :seconds SECOND)
+            ORDER BY attempt_time DESC
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':ip_address' => $ipAddress,
+            ':seconds' => $timeWindowSeconds
+        ]);
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function recordLoginAttempt(array $attemptData): bool
+    {
+        $sql = "
+            INSERT INTO login_attempts (
+                user_id, ip_address, user_agent, success, attempt_time
+            ) VALUES (
+                :user_id, :ip_address, :user_agent, :success, :attempt_time
+            )
+        ";
+        
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':user_id' => $attemptData['user_id'] ?? null,
+            ':ip_address' => $attemptData['ip_address'],
+            ':user_agent' => $attemptData['user_agent'] ?? null,
+            ':success' => $attemptData['success'] ?? false,
+            ':attempt_time' => $attemptData['attempt_time'] ?? date('Y-m-d H:i:s')
+        ]);
+    }
 }

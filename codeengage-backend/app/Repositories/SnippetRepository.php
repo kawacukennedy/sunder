@@ -408,4 +408,127 @@ class SnippetRepository
 
         return $clause;
     }
+
+    public function softDelete(int $id): bool
+    {
+        $sql = "UPDATE snippets SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function isStarredByUser(int $snippetId, int $userId): bool
+    {
+        $sql = "
+            SELECT 1 FROM snippet_stars 
+            WHERE snippet_id = :snippet_id AND user_id = :user_id
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':snippet_id' => $snippetId,
+            ':user_id' => $userId
+        ]);
+        
+        return $stmt->fetch() !== false;
+    }
+
+    public function starSnippet(int $snippetId, int $userId): bool
+    {
+        $sql = "
+            INSERT IGNORE INTO snippet_stars (snippet_id, user_id, created_at)
+            VALUES (:snippet_id, :user_id, CURRENT_TIMESTAMP)
+        ";
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute([
+            ':snippet_id' => $snippetId,
+            ':user_id' => $userId
+        ]);
+
+        if ($result && $stmt->rowCount() > 0) {
+            $this->incrementStarCount($snippetId);
+        }
+
+        return $result;
+    }
+
+    public function unstarSnippet(int $snippetId, int $userId): bool
+    {
+        $sql = "
+            DELETE FROM snippet_stars 
+            WHERE snippet_id = :snippet_id AND user_id = :user_id
+        ";
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute([
+            ':snippet_id' => $snippetId,
+            ':user_id' => $userId
+        ]);
+
+        if ($result && $stmt->rowCount() > 0) {
+            $this->decrementStarCount($snippetId);
+        }
+
+        return $result;
+    }
+
+    private function decrementStarCount(int $id): bool
+    {
+        $sql = "UPDATE snippets SET star_count = GREATEST(0, star_count - 1) WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function search(array $filters = [], int $limit = 20, int $offset = 0): array
+    {
+        return $this->findMany($filters, $limit, $offset);
+    }
+
+    public function findByAuthor(int $authorId, array $filters = [], int $limit = 20, int $offset = 0): array
+    {
+        $filters['author_id'] = $authorId;
+        return $this->findMany($filters, $limit, $offset);
+    }
+
+    public function findStarredByUser(int $userId, int $limit = 20, int $offset = 0): array
+    {
+        $sql = "
+            SELECT s.* FROM snippets s
+            JOIN snippet_stars ss ON s.id = ss.snippet_id
+            WHERE ss.user_id = :user_id AND s.deleted_at IS NULL
+            ORDER BY ss.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':limit' => $limit,
+            ':offset' => $offset
+        ]);
+
+        $snippets = [];
+        while ($data = $stmt->fetch()) {
+            $snippets[] = Snippet::fromData($this->db, $data);
+        }
+
+        return $snippets;
+    }
+
+    public function attachTag(int $snippetId, int $tagId): bool
+    {
+        $sql = "
+            INSERT IGNORE INTO snippet_tags (snippet_id, tag_id, created_at)
+            VALUES (:snippet_id, :tag_id, CURRENT_TIMESTAMP)
+        ";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':snippet_id' => $snippetId,
+            ':tag_id' => $tagId
+        ]);
+    }
+
+    public function detachAllTags(int $snippetId): bool
+    {
+        $sql = "DELETE FROM snippet_tags WHERE snippet_id = :snippet_id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':snippet_id' => $snippetId]);
+    }
 }
