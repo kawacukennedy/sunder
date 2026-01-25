@@ -3,7 +3,10 @@
 namespace App\Controllers\Api;
 
 use PDO;
+use App\Services\AuthService;
 use App\Repositories\UserRepository;
+use App\Repositories\AuditRepository;
+use App\Helpers\SecurityHelper;
 use App\Helpers\ApiResponse;
 use App\Helpers\ValidationHelper;
 use App\Exceptions\ValidationException;
@@ -13,12 +16,18 @@ use App\Exceptions\NotFoundException;
 class AuthController
 {
     private PDO $db;
+    private AuthService $authService;
     private UserRepository $userRepository;
 
     public function __construct(PDO $db)
     {
         $this->db = $db;
         $this->userRepository = new UserRepository($db);
+        $this->authService = new AuthService(
+            $this->userRepository,
+            new AuditRepository($db),
+            new SecurityHelper()
+        );
     }
 
     public function login(string $method, array $params): void
@@ -33,43 +42,31 @@ class AuthController
         }
 
         try {
-            ValidationHelper::validateRequired($input, ['email', 'password']);
-            ValidationHelper::validateEmail($input['email']);
-
-            // Rate limiting check
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-            if (!$this->checkLoginAttempts($ip)) {
-                ApiResponse::error('Too many login attempts. Please try again later.', 429);
-            }
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            
+            $userArray = $this->authService->login(
+                $input['email'],
+                $input['password'],
+                $ip,
+                $userAgent
+            );
 
-            $user = $this->userRepository->findByEmail($input['email']);
-            if (!$user || !$user->verifyPassword($input['password'])) {
-                $this->recordLoginAttempt($ip, null, false);
-                ApiResponse::error('Invalid email or password', 401);
-            }
-
-            // Successful login
-            $this->recordLoginAttempt($ip, $user->getId(), true);
-            $this->userRepository->updateLastActive($user->getId());
-
-            // Create session
-            session_start();
-            session_regenerate_id(true);
-            $_SESSION['user_id'] = $user->getId();
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-            // Generate JWT token for API
+            // Get user model for JWT generation
+            $user = $this->userRepository->findById($userArray['id']);
             $token = $this->generateJwtToken($user);
 
             ApiResponse::success([
-                'user' => $user->toArray(),
+                'user' => $user,
                 'token' => $token,
                 'session_id' => session_id(),
-                'csrf_token' => $_SESSION['csrf_token']
+                'csrf_token' => $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32))
             ], 'Login successful');
 
         } catch (ValidationException $e) {
             ApiResponse::error($e->getMessage(), 422, $e->getErrors());
+        } catch (UnauthorizedException $e) {
+            ApiResponse::error($e->getMessage(), 401);
         } catch (\Exception $e) {
             ApiResponse::error('Login failed');
         }
@@ -87,32 +84,17 @@ class AuthController
         }
 
         try {
-            ValidationHelper::validateRequired($input, ['username', 'email', 'password']);
-            ValidationHelper::validateEmail($input['email']);
-            ValidationHelper::validatePassword($input['password']);
-            ValidationHelper::validateLength($input['username'], 3, 50, 'username');
+            $userArray = $this->authService->register($input);
 
-            // Check rate limiting for registration
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-            if (!$this->checkRegistrationAttempts($ip)) {
-                ApiResponse::error('Too many registration attempts. Please try again later.', 429);
-            }
-
-            $user = $this->userRepository->create($input);
-
-            // Auto-login after registration
-            session_start();
-            session_regenerate_id(true);
-            $_SESSION['user_id'] = $user->getId();
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
+            // Get user model for JWT generation
+            $user = $this->userRepository->findById($userArray['id']);
             $token = $this->generateJwtToken($user);
 
             ApiResponse::success([
-                'user' => $user->toArray(),
+                'user' => $userArray,
                 'token' => $token,
                 'session_id' => session_id(),
-                'csrf_token' => $_SESSION['csrf_token']
+                'csrf_token' => $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32))
             ], 'Registration successful');
 
         } catch (ValidationException $e) {
