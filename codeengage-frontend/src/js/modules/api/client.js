@@ -10,7 +10,7 @@ export class ApiClient {
      * @param {object} options - Configuration options
      */
     constructor(options = {}) {
-        this.baseUrl = options.baseUrl || '/api';
+        this.baseUrl = options.baseUrl || 'http://localhost:8000/api';
         this.timeout = options.timeout || 30000;
         this.headers = {
             'Content-Type': 'application/json',
