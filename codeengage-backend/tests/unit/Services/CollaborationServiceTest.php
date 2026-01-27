@@ -13,15 +13,9 @@ use PDO;
 
 class CollaborationServiceTest extends TestCase
 {
-    private CollaborationService $collaborationService;
-    private $mockDb;
-
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->mockDb = $this->createMockPDO();
-        $this->collaborationService = new CollaborationService($this->mockDb);
     }
 
     /**
