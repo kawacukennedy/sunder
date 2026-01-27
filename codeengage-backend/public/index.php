@@ -5,7 +5,14 @@ header_remove('X-Powered-By');
 
 // Set default headers
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+// Handle CORS
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Max-Age: 86400');
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
@@ -13,6 +20,11 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-W
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
+}
+
+// Start Session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
 // Error handling
@@ -100,13 +112,35 @@ $uriParts = explode('/', trim($uri, '/'));
 
 // Route to appropriate controller
 try {
-    // Special routing for snippets
+    // Controller name mapping (plural to singular)
+    $controllerMap = [
+        'users' => 'User',
+        'snippets' => 'Snippet',
+        'auth' => 'Auth',
+        'admin' => 'Admin',
+        'health' => 'Health',
+        'analysis' => 'Analysis',
+        'collaboration' => 'Collaboration',
+        'export' => 'Export'
+    ];
+
+    // Special routing for snippets (default)
     if (empty($uriParts[0]) || $uriParts[0] === 'snippets') {
         $controllerName = 'Snippet';
         $action = $uriParts[1] ?? 'index';
         $params = array_slice($uriParts, 2);
-    } else {
-        $controllerName = !empty($uriParts[0]) ? ucfirst($uriParts[0]) : 'Auth';
+    } 
+    // Special routing for /users/me/* - handle "me" as action, subpath as method
+    elseif ($uriParts[0] === 'users' && isset($uriParts[1]) && $uriParts[1] === 'me') {
+        $controllerName = 'User';
+        // /users/me -> show, /users/me/snippets -> snippets, /users/me/activity -> activity, etc.
+        $action = isset($uriParts[2]) ? $uriParts[2] : 'me';
+        $params = array_slice($uriParts, 3);
+    }
+    else {
+        // Use mapping or capitalize first letter
+        $rawController = strtolower($uriParts[0] ?? 'auth');
+        $controllerName = $controllerMap[$rawController] ?? ucfirst($rawController);
         $action = $uriParts[1] ?? 'index';
         $params = array_slice($uriParts, 2);
     }
