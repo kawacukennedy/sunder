@@ -85,3 +85,7 @@ typings/
 Thumbs.db
 **/.DS_Store
 **/.DS_Store
+
+# PHPUnit
+.phpunit.cache/
+phpunit.phar
