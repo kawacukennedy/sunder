@@ -1,0 +1,610 @@
+/**
+ * Admin Page Module
+ * 
+ * Handles admin dashboard with user management, system stats, and moderation.
+ */
+
+export class Admin {
+    constructor(app) {
+        this.app = app;
+        this.data = {
+            stats: null,
+            users: [],
+            snippets: [],
+            reports: [],
+            auditLogs: []
+        };
+        this.currentSection = 'overview';
+    }
+
+    /**
+     * Initialize the admin page
+     */
+    async init() {
+        // Check admin access
+        if (!this.checkAdminAccess()) {
+            this.app.showError('Access denied. Admin privileges required.');
+            window.location.href = '/dashboard';
+            return;
+        }
+
+        await this.loadAdminData();
+        this.render();
+        this.setupEventListeners();
+    }
+
+    /**
+     * Check if current user has admin access
+     */
+    checkAdminAccess() {
+        const user = this.app.currentUser;
+        return user && (user.role === 'admin' || user.role === 'super_admin');
+    }
+
+    /**
+     * Load admin dashboard data
+     */
+    async loadAdminData() {
+        try {
+            const [statsRes, usersRes, reportsRes, logsRes] = await Promise.all([
+                this.app.apiClient.get('/admin/stats'),
+                this.app.apiClient.get('/admin/users?limit=20'),
+                this.app.apiClient.get('/admin/reports?status=pending'),
+                this.app.apiClient.get('/admin/audit-logs?limit=50')
+            ]);
+
+            this.data.stats = statsRes.data;
+            this.data.users = usersRes.data?.users || [];
+            this.data.reports = reportsRes.data?.reports || [];
+            this.data.auditLogs = logsRes.data?.logs || [];
+        } catch (error) {
+            console.error('Failed to load admin data:', error);
+            this.app.showError('Failed to load admin data');
+        }
+    }
+
+    /**
+     * Render the admin page
+     */
+    render() {
+        const container = document.getElementById('app');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="admin-container">
+                <aside class="admin-sidebar">
+                    <h2><i class="icon-shield"></i> Admin Panel</h2>
+                    <nav class="admin-nav">
+                        <button class="nav-btn active" data-section="overview">
+                            <i class="icon-dashboard"></i> Overview
+                        </button>
+                        <button class="nav-btn" data-section="users">
+                            <i class="icon-users"></i> Users
+                        </button>
+                        <button class="nav-btn" data-section="snippets">
+                            <i class="icon-code"></i> Snippets
+                        </button>
+                        <button class="nav-btn" data-section="reports">
+                            <i class="icon-flag"></i> Reports
+                            ${this.data.reports.length ? `<span class="badge">${this.data.reports.length}</span>` : ''}
+                        </button>
+                        <button class="nav-btn" data-section="audit">
+                            <i class="icon-log"></i> Audit Log
+                        </button>
+                        <button class="nav-btn" data-section="settings">
+                            <i class="icon-settings"></i> Settings
+                        </button>
+                    </nav>
+                </aside>
+                
+                <main class="admin-main">
+                    <div id="admin-content">
+                        ${this.renderSection(this.currentSection)}
+                    </div>
+                </main>
+            </div>
+        `;
+    }
+
+    /**
+     * Render specific section content
+     */
+    renderSection(section) {
+        switch (section) {
+            case 'overview': return this.renderOverview();
+            case 'users': return this.renderUsersSection();
+            case 'snippets': return this.renderSnippetsSection();
+            case 'reports': return this.renderReportsSection();
+            case 'audit': return this.renderAuditSection();
+            case 'settings': return this.renderSettingsSection();
+            default: return this.renderOverview();
+        }
+    }
+
+    /**
+     * Render overview dashboard
+     */
+    renderOverview() {
+        const stats = this.data.stats || {};
+
+        return `
+            <h1>Dashboard Overview</h1>
+            
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <i class="icon-users"></i>
+                    <div class="stat-info">
+                        <span class="stat-value">${stats.total_users || 0}</span>
+                        <span class="stat-label">Total Users</span>
+                    </div>
+                    <span class="stat-change positive">+${stats.new_users_today || 0} today</span>
+                </div>
+                
+                <div class="stat-card">
+                    <i class="icon-code"></i>
+                    <div class="stat-info">
+                        <span class="stat-value">${stats.total_snippets || 0}</span>
+                        <span class="stat-label">Total Snippets</span>
+                    </div>
+                    <span class="stat-change positive">+${stats.new_snippets_today || 0} today</span>
+                </div>
+                
+                <div class="stat-card">
+                    <i class="icon-views"></i>
+                    <div class="stat-info">
+                        <span class="stat-value">${this.formatNumber(stats.total_views || 0)}</span>
+                        <span class="stat-label">Total Views</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <i class="icon-activity"></i>
+                    <div class="stat-info">
+                        <span class="stat-value">${stats.active_users_24h || 0}</span>
+                        <span class="stat-label">Active Users (24h)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <h3>Recent Activity</h3>
+                    ${this.renderRecentActivity()}
+                </div>
+                
+                <div class="admin-card">
+                    <h3>Pending Reports</h3>
+                    ${this.renderPendingReports()}
+                </div>
+            </div>
+            
+            <div class="admin-card">
+                <h3>System Health</h3>
+                ${this.renderSystemHealth(stats.system || {})}
+            </div>
+        `;
+    }
+
+    /**
+     * Render recent activity
+     */
+    renderRecentActivity() {
+        const logs = this.data.auditLogs.slice(0, 10);
+
+        if (!logs.length) {
+            return '<p class="empty-state">No recent activity</p>';
+        }
+
+        return `
+            <ul class="activity-list">
+                ${logs.map(log => `
+                    <li class="activity-item">
+                        <span class="activity-action ${log.action_type}">${this.escapeHtml(log.action_type)}</span>
+                        <span class="activity-details">${this.escapeHtml(log.description)}</span>
+                        <span class="activity-time">${this.formatTimeAgo(log.created_at)}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    }
+
+    /**
+     * Render pending reports
+     */
+    renderPendingReports() {
+        if (!this.data.reports.length) {
+            return '<p class="empty-state">No pending reports</p>';
+        }
+
+        return `
+            <ul class="reports-list">
+                ${this.data.reports.slice(0, 5).map(report => `
+                    <li class="report-item">
+                        <span class="report-type">${this.escapeHtml(report.type)}</span>
+                        <span class="report-reason">${this.escapeHtml(report.reason)}</span>
+                        <button class="btn btn-sm" data-action="review-report" data-id="${report.id}">Review</button>
+                    </li>
+                `).join('')}
+            </ul>
+            ${this.data.reports.length > 5 ? `<a href="#" class="view-all" data-section="reports">View all reports</a>` : ''}
+        `;
+    }
+
+    /**
+     * Render system health
+     */
+    renderSystemHealth(system) {
+        return `
+            <div class="health-grid">
+                <div class="health-item ${system.database_status === 'healthy' ? 'good' : 'bad'}">
+                    <span class="health-label">Database</span>
+                    <span class="health-status">${system.database_status || 'Unknown'}</span>
+                </div>
+                <div class="health-item ${system.cache_status === 'healthy' ? 'good' : 'bad'}">
+                    <span class="health-label">Cache</span>
+                    <span class="health-status">${system.cache_status || 'Unknown'}</span>
+                </div>
+                <div class="health-item">
+                    <span class="health-label">Disk Usage</span>
+                    <span class="health-status">${system.disk_usage || 'N/A'}</span>
+                </div>
+                <div class="health-item">
+                    <span class="health-label">Memory</span>
+                    <span class="health-status">${system.memory_usage || 'N/A'}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render users management section
+     */
+    renderUsersSection() {
+        return `
+            <h1>User Management</h1>
+            
+            <div class="admin-toolbar">
+                <input type="search" id="user-search" placeholder="Search users..." />
+                <select id="user-filter">
+                    <option value="">All Users</option>
+                    <option value="admin">Admins</option>
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                </select>
+            </div>
+            
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.data.users.map(user => `
+                        <tr data-user-id="${user.id}">
+                            <td>
+                                <div class="user-cell">
+                                    <img src="${this.escapeHtml(user.avatar_url || '')}" alt="" class="avatar-sm" />
+                                    <span>${this.escapeHtml(user.username)}</span>
+                                </div>
+                            </td>
+                            <td>${this.escapeHtml(user.email)}</td>
+                            <td><span class="role-badge ${user.role}">${user.role}</span></td>
+                            <td>${this.formatDate(user.created_at)}</td>
+                            <td>
+                                <span class="status-badge ${user.deleted_at ? 'suspended' : 'active'}">
+                                    ${user.deleted_at ? 'Suspended' : 'Active'}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="btn btn-sm" data-action="view-user" data-id="${user.id}">View</button>
+                                    <button class="btn btn-sm btn-warning" data-action="edit-user" data-id="${user.id}">Edit</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    /**
+     * Render snippets management section
+     */
+    renderSnippetsSection() {
+        return `
+            <h1>Snippet Management</h1>
+            
+            <div class="admin-toolbar">
+                <input type="search" id="snippet-search" placeholder="Search snippets..." />
+                <select id="snippet-filter">
+                    <option value="">All Snippets</option>
+                    <option value="reported">Reported</option>
+                    <option value="flagged">Flagged</option>
+                </select>
+            </div>
+            
+            <div class="snippets-list" id="admin-snippets-list">
+                <p class="empty-state">Use the search to find snippets</p>
+            </div>
+        `;
+    }
+
+    /**
+     * Render reports section
+     */
+    renderReportsSection() {
+        return `
+            <h1>Content Reports</h1>
+            
+            <div class="reports-tabs">
+                <button class="tab-btn active" data-filter="pending">Pending</button>
+                <button class="tab-btn" data-filter="resolved">Resolved</button>
+                <button class="tab-btn" data-filter="dismissed">Dismissed</button>
+            </div>
+            
+            <div class="reports-list" id="reports-container">
+                ${this.data.reports.length ? this.data.reports.map(report => `
+                    <div class="report-card" data-report-id="${report.id}">
+                        <div class="report-header">
+                            <span class="report-type ${report.type}">${this.escapeHtml(report.type)}</span>
+                            <span class="report-date">${this.formatDate(report.created_at)}</span>
+                        </div>
+                        <div class="report-content">
+                            <p><strong>Reported Item:</strong> ${this.escapeHtml(report.target_type)} #${report.target_id}</p>
+                            <p><strong>Reason:</strong> ${this.escapeHtml(report.reason)}</p>
+                            <p><strong>Details:</strong> ${this.escapeHtml(report.details || 'No additional details')}</p>
+                        </div>
+                        <div class="report-actions">
+                            <button class="btn btn-danger" data-action="action-report" data-id="${report.id}" data-type="delete">Delete Content</button>
+                            <button class="btn btn-warning" data-action="action-report" data-id="${report.id}" data-type="warn">Warn User</button>
+                            <button class="btn btn-secondary" data-action="action-report" data-id="${report.id}" data-type="dismiss">Dismiss</button>
+                        </div>
+                    </div>
+                `).join('') : '<p class="empty-state">No pending reports</p>'}
+            </div>
+        `;
+    }
+
+    /**
+     * Render audit log section
+     */
+    renderAuditSection() {
+        return `
+            <h1>Audit Log</h1>
+            
+            <div class="admin-toolbar">
+                <input type="date" id="audit-date-from" />
+                <input type="date" id="audit-date-to" />
+                <select id="audit-action-filter">
+                    <option value="">All Actions</option>
+                    <option value="create">Create</option>
+                    <option value="update">Update</option>
+                    <option value="delete">Delete</option>
+                    <option value="login">Login</option>
+                </select>
+                <button class="btn" id="export-audit">Export</button>
+            </div>
+            
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.data.auditLogs.map(log => `
+                        <tr>
+                            <td>${this.formatDateTime(log.created_at)}</td>
+                            <td>${this.escapeHtml(log.user?.username || 'System')}</td>
+                            <td><span class="action-badge ${log.action_type}">${log.action_type}</span></td>
+                            <td>${this.escapeHtml(log.description)}</td>
+                            <td>${this.escapeHtml(log.ip_address || 'N/A')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    /**
+     * Render settings section
+     */
+    renderSettingsSection() {
+        return `
+            <h1>System Settings</h1>
+            
+            <form id="admin-settings-form" class="settings-form">
+                <section class="settings-section">
+                    <h3>General</h3>
+                    
+                    <div class="form-group">
+                        <label for="site_name">Site Name</label>
+                        <input type="text" id="site_name" name="site_name" value="CodeEngage" />
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" name="maintenance_mode" />
+                            Maintenance Mode
+                        </label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" name="registration_enabled" checked />
+                            Allow New Registrations
+                        </label>
+                    </div>
+                </section>
+                
+                <section class="settings-section">
+                    <h3>Limits</h3>
+                    
+                    <div class="form-group">
+                        <label for="max_snippet_size">Max Snippet Size (KB)</label>
+                        <input type="number" id="max_snippet_size" name="max_snippet_size" value="1024" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="rate_limit">API Rate Limit (requests/hour)</label>
+                        <input type="number" id="rate_limit" name="rate_limit" value="1000" />
+                    </div>
+                </section>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        `;
+    }
+
+    /**
+     * Setup event listeners
+     */
+    setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.admin-nav .nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const section = e.currentTarget.dataset.section;
+                this.switchSection(section);
+            });
+        });
+
+        // Delegate action buttons
+        document.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (action) {
+                this.handleAction(action, e.target.dataset);
+            }
+        });
+    }
+
+    /**
+     * Switch admin section
+     */
+    switchSection(section) {
+        this.currentSection = section;
+
+        // Update nav buttons
+        document.querySelectorAll('.admin-nav .nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.section === section);
+        });
+
+        // Render new section
+        const content = document.getElementById('admin-content');
+        if (content) {
+            content.innerHTML = this.renderSection(section);
+        }
+    }
+
+    /**
+     * Handle action buttons
+     */
+    async handleAction(action, data) {
+        switch (action) {
+            case 'view-user':
+                window.location.href = `/admin/user/${data.id}`;
+                break;
+            case 'edit-user':
+                this.openUserEditModal(data.id);
+                break;
+            case 'review-report':
+                this.openReportModal(data.id);
+                break;
+            case 'action-report':
+                await this.processReport(data.id, data.type);
+                break;
+            default:
+                console.log('Unknown action:', action);
+        }
+    }
+
+    /**
+     * Process a report action
+     */
+    async processReport(reportId, actionType) {
+        try {
+            await this.app.apiClient.post(`/admin/reports/${reportId}/action`, { action: actionType });
+            this.app.showSuccess(`Report ${actionType} successfully`);
+            await this.loadAdminData();
+            this.switchSection('reports');
+        } catch (error) {
+            console.error('Failed to process report:', error);
+            this.app.showError('Failed to process report');
+        }
+    }
+
+    /**
+     * Format large numbers
+     */
+    formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    }
+
+    /**
+     * Format date
+     */
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString();
+    }
+
+    /**
+     * Format date time
+     */
+    formatDateTime(dateString) {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleString();
+    }
+
+    /**
+     * Format time ago
+     */
+    formatTimeAgo(dateString) {
+        if (!dateString) return 'N/A';
+        const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    /**
+     * Escape HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Placeholder methods for modals
+     */
+    openUserEditModal(userId) {
+        console.log('Opening edit modal for user:', userId);
+        // Would implement modal opening logic
+    }
+
+    openReportModal(reportId) {
+        console.log('Opening report modal:', reportId);
+        // Would implement modal opening logic
+    }
+}
+
+export default Admin;
