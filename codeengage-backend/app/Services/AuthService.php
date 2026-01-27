@@ -37,11 +37,11 @@ class AuthService
         $this->validateRegistrationData($userData);
 
         if ($this->userRepository->findByEmail($userData['email'])) {
-            throw new ValidationException('Email already exists');
+            throw new ValidationException(['email' => 'Email already exists']);
         }
 
         if ($this->userRepository->findByUsername($userData['username'])) {
-            throw new ValidationException('Username already exists');
+            throw new ValidationException(['username' => 'Username already exists']);
         }
 
         $userData['password_hash'] = password_hash(
@@ -55,17 +55,17 @@ class AuthService
         $user = $this->userRepository->create($userData);
 
         $this->auditRepository->log(
-            $user['id'],
+            $user->getId(),
             'user.register',
             'user',
-            $user['id'],
+            $user->getId(),
             null,
-            ['email' => $user['email'], 'username' => $user['username']]
+            ['email' => $user->getEmail(), 'username' => $user->getUsername()]
         );
 
         $this->createUserSession($user);
 
-        return $this->sanitizeUser($user);
+        return $this->sanitizeUser($user->toArray());
     }
 
     public function login(string $email, string $password, string $ipAddress, string $userAgent): array
@@ -80,31 +80,31 @@ class AuthService
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        if (!password_verify($password, $user['password_hash'])) {
-            $this->recordLoginAttempt($user['id'], $ipAddress, $userAgent, false);
+        if (!$user->verifyPassword($password)) {
+            $this->recordLoginAttempt($user->getId(), $ipAddress, $userAgent, false);
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        if (password_needs_rehash($user['password_hash'], PASSWORD_ARGON2ID)) {
+        if (password_needs_rehash($user->getPasswordHash(), PASSWORD_ARGON2ID)) {
             $newHash = password_hash($password, PASSWORD_ARGON2ID, ['cost' => 12]);
-            $this->userRepository->update($user['id'], ['password_hash' => $newHash]);
+            $this->userRepository->update($user->getId(), ['password_hash' => $newHash]);
         }
 
-        $this->recordLoginAttempt($user['id'], $ipAddress, $userAgent, true);
-        $this->userRepository->update($user['id'], ['last_active_at' => date('Y-m-d H:i:s')]);
+        $this->recordLoginAttempt($user->getId(), $ipAddress, $userAgent, true);
+        $this->userRepository->update($user->getId(), ['last_active_at' => date('Y-m-d H:i:s')]);
 
         $this->createUserSession($user);
 
         $this->auditRepository->log(
-            $user['id'],
+            $user->getId(),
             'user.login',
             'user',
-            $user['id'],
+            $user->getId(),
             null,
             ['ip_address' => $ipAddress]
         );
 
-        return $this->sanitizeUser($user);
+        return $this->sanitizeUser($user->toArray());
     }
 
     public function logout(int $userId): void
@@ -179,52 +179,64 @@ class AuthService
     private function validateRegistrationData(array $data): void
     {
         if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new ValidationException('Valid email is required');
+            throw new ValidationException(['email' => 'Valid email is required']);
         }
 
         if (empty($data['username']) || strlen($data['username']) < 3) {
-            throw new ValidationException('Username must be at least 3 characters long');
+            throw new ValidationException(['username' => 'Username must be at least 3 characters long']);
         }
 
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $data['username'])) {
-            throw new ValidationException('Username can only contain letters, numbers, and underscores');
+            throw new ValidationException(['username' => 'Username can only contain letters, numbers, and underscores']);
         }
 
         $this->validatePassword($data['password'] ?? '');
 
         if (isset($data['display_name']) && strlen($data['display_name']) > 100) {
-            throw new ValidationException('Display name cannot exceed 100 characters');
+            throw new ValidationException(['display_name' => 'Display name cannot exceed 100 characters']);
         }
     }
 
     private function validatePassword(string $password): void
     {
         if (strlen($password) < $this->config['password_min_length']) {
-            throw new ValidationException("Password must be at least {$this->config['password_min_length']} characters long");
+            throw new ValidationException(['password' => "Password must be at least {$this->config['password_min_length']} characters long"]);
         }
 
         if (!preg_match('/[A-Z]/', $password)) {
-            throw new ValidationException('Password must contain at least one uppercase letter');
+            throw new ValidationException(['password' => 'Password must contain at least one uppercase letter']);
         }
 
         if (!preg_match('/[a-z]/', $password)) {
-            throw new ValidationException('Password must contain at least one lowercase letter');
+            throw new ValidationException(['password' => 'Password must contain at least one lowercase letter']);
         }
 
         if (!preg_match('/[0-9]/', $password)) {
-            throw new ValidationException('Password must contain at least one number');
+            throw new ValidationException(['password' => 'Password must contain at least one number']);
         }
     }
 
-    private function createUserSession(array $user): void
+    private function createUserSession(\App\Models\User $user): void
     {
         session_regenerate_id(true);
         
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['email'] = $user['email'];
-        $_SESSION['roles'] = $this->userRepository->getUserRoles($user['id']);
-        $_SESSION['permissions'] = $this->userRepository->getUserPermissions($user['id']);
+        $_SESSION['user_id'] = $user->getId();
+        $_SESSION['username'] = $user->getUsername();
+        $_SESSION['email'] = $user->getEmail();
+        
+        // Gracefully handle missing roles/permissions tables
+        try {
+            $_SESSION['roles'] = $this->userRepository->getUserRoles($user->getId());
+        } catch (\Throwable $e) {
+            $_SESSION['roles'] = [];
+        }
+        
+        try {
+            $_SESSION['permissions'] = $this->userRepository->getUserPermissions($user->getId());
+        } catch (\Throwable $e) {
+            $_SESSION['permissions'] = [];
+        }
+        
         $_SESSION['last_activity'] = time();
         $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? '';
 
