@@ -34,27 +34,33 @@ class UserRepository
 
     public function create(array $data): User
     {
-        ValidationHelper::validateRequired($data, ['username', 'email', 'password']);
+        $user = new User($this->db);
+        $user->setUsername($data['username']);
+        $user->setEmail($data['email']);
+        $user->setDisplayName($data['display_name'] ?? $data['username']);
+        $user->setBio($data['bio'] ?? null);
+        $user->setPreferences($data['preferences'] ?? ['theme' => 'dark', 'editor_mode' => 'default']);
+
+        ValidationHelper::validateRequired($data, ['username', 'email']);
         ValidationHelper::validateEmail($data['email']);
         ValidationHelper::validateLength($data['username'], 3, 50, 'username');
-        ValidationHelper::validatePassword($data['password']);
 
-        // Check if username or email already exists
+        // Check availability
         if ($this->findByUsername($data['username'])) {
             throw new ValidationException(['username' => 'Username already exists']);
         }
-
         if ($this->findByEmail($data['email'])) {
             throw new ValidationException(['email' => 'Email already exists']);
         }
 
-        $user = new User($this->db);
-        $user->setUsername($data['username']);
-        $user->setEmail($data['email']);
-        $user->setPassword($data['password']);
-        $user->setDisplayName($data['display_name'] ?? $data['username']);
-        $user->setBio($data['bio'] ?? null);
-        $user->setPreferences($data['preferences'] ?? ['theme' => 'dark', 'editor_mode' => 'default']);
+        // Handle Password
+        if (isset($data['password_hash'])) {
+            $user->setPasswordHash($data['password_hash']);
+        } else {
+            ValidationHelper::validateRequired($data, ['password']);
+            ValidationHelper::validatePassword($data['password']);
+            $user->setPassword($data['password']);
+        }
 
         if (!$user->save()) {
             throw new \Exception('Failed to create user');
@@ -351,46 +357,6 @@ return $stmt->fetchAll(PDO::FETCH_ASSOC);
         ]);
     }
 
-    public function getTotalAchievementPoints(): int
-    {
-        $sql = "SELECT SUM(achievement_points) FROM users WHERE deleted_at IS NULL";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute();
-        
-        return (int) $stmt->fetchColumn();
-    }
-
-    public function getActiveUsersCount(int $days): int
-    {
-        $sql = "
-            SELECT COUNT(DISTINCT id) 
-            FROM users 
-            WHERE last_active_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
-            AND deleted_at IS NULL
-        ";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':days' => $days]);
-        
-        return (int) $stmt->fetchColumn();
-    }
-
-    public function getRecentLoginAttempts(string $ipAddress, int $timeWindowSeconds = 300): array
-    {
-        $sql = "
-            SELECT * FROM login_attempts 
-            WHERE ip_address = :ip_address 
-            AND attempt_time >= DATE_SUB(NOW(), INTERVAL :seconds SECOND)
-            ORDER BY attempt_time DESC
-        ";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':ip_address' => $ipAddress,
-            ':seconds' => $timeWindowSeconds
-        ]);
-        
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
     public function searchByDisplayName(string $query, int $limit = 10): array
     {
         $sql = "
@@ -448,5 +414,87 @@ return $stmt->fetchAll(PDO::FETCH_ASSOC);
         $data = $stmt->fetch();
         
         return $data ? User::fromData($this->db, $data)->toArray() : null;
+    }
+
+    /**
+     * Get starred snippets for a user
+     */
+    public function getStarredSnippets(int $userId, int $limit = 20, int $offset = 0): array
+    {
+        try {
+            // Check if snippet_stars table exists first
+            $checkTable = $this->db->query("SHOW TABLES LIKE 'snippet_stars'");
+            if ($checkTable->rowCount() === 0) {
+                return [];
+            }
+
+            $sql = "
+                SELECT s.* FROM snippets s
+                JOIN snippet_stars ss ON s.id = ss.snippet_id
+                WHERE ss.user_id = :user_id
+                AND s.deleted_at IS NULL
+                ORDER BY ss.created_at DESC
+                LIMIT :limit OFFSET :offset
+            ";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $snippets = [];
+            while ($row = $stmt->fetch()) {
+                $snippets[] = \App\Models\Snippet::fromData($this->db, $row);
+            }
+            
+            return $snippets;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get recent activity for a user
+     */
+    public function getRecentActivity(int $userId, int $limit = 20): array
+    {
+        try {
+            // Check if audit_logs table exists first
+            $checkTable = $this->db->query("SHOW TABLES LIKE 'audit_logs'");
+            if ($checkTable->rowCount() === 0) {
+                return [];
+            }
+
+            $sql = "
+                SELECT 
+                    action_type as type,
+                    entity_type,
+                    entity_id,
+                    CASE 
+                        WHEN action_type = 'snippet_created' THEN 'Created a new snippet'
+                        WHEN action_type = 'snippet_updated' THEN 'Updated a snippet'
+                        WHEN action_type = 'snippet_deleted' THEN 'Deleted a snippet'
+                        WHEN action_type = 'snippet_starred' THEN 'Starred a snippet'
+                        WHEN action_type = 'login' THEN 'Logged in'
+                        WHEN action_type = 'register' THEN 'Created account'
+                        ELSE action_type
+                    END as description,
+                    created_at
+                FROM audit_logs
+                WHERE actor_id = :user_id
+                ORDER BY created_at DESC
+                LIMIT :limit
+            ";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }
