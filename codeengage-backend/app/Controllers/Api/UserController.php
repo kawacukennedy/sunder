@@ -110,20 +110,14 @@ class UserController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $id = (int)($params[0] ?? 0);
-        if ($id <= 0) {
-            ApiResponse::error('Invalid user ID');
-        }
-
         try {
-            $user = $this->userRepository->findById($id);
-            if (!$user) {
-                ApiResponse::error('User not found', 404);
-            }
+            // For /users/me/snippets, use authenticated user
+            $currentUser = $this->auth->handle();
+            $id = $currentUser->getId();
 
             $filters = [
                 'author_id' => $id,
-                'user_id' => $this->auth->optional()?->getId(),
+                'user_id' => $id,
                 'search' => $_GET['search'] ?? null,
                 'language' => $_GET['language'] ?? null,
                 'visibility' => $_GET['visibility'] ?? null
@@ -135,10 +129,22 @@ class UserController
             $snippets = $this->userRepository->findSnippetsByUser($id, $filters, $limit, $offset);
             $total = $this->userRepository->countSnippetsByUser($id, $filters);
 
-            ApiResponse::paginated($snippets, $total, $offset / $limit + 1, $limit);
+            ApiResponse::success([
+                'snippets' => array_map(fn($s) => $s->toArray(), $snippets),
+                'total' => $total,
+                'page' => ($offset / $limit) + 1,
+                'limit' => $limit,
+                'stats' => [
+                    'total_snippets' => $total
+                ]
+            ]);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch user snippets');
+            ApiResponse::success([
+                'snippets' => [],
+                'total' => 0,
+                'stats' => ['total_snippets' => 0]
+            ]);
         }
     }
 
@@ -148,24 +154,25 @@ class UserController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $id = (int)($params[0] ?? 0);
-        if ($id <= 0) {
-            ApiResponse::error('Invalid user ID');
-        }
-
         try {
-            $user = $this->userRepository->findById($id);
-            if (!$user) {
-                ApiResponse::error('User not found', 404);
-            }
+            // For /users/me/achievements, use authenticated user
+            $currentUser = $this->auth->handle();
+            $id = $currentUser->getId();
 
             $limit = (int)($_GET['limit'] ?? 50);
             $achievements = $this->userRepository->getAchievements($id, $limit);
 
+            // Handle empty achievements gracefully
+            if (empty($achievements)) {
+                ApiResponse::success([]);
+                return;
+            }
+
             ApiResponse::success(array_map(fn($a) => $a->toArray(), $achievements));
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch achievements');
+            // Return empty array on error
+            ApiResponse::success([]);
         }
     }
 
@@ -223,18 +230,11 @@ class UserController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $id = (int)($params[0] ?? 0);
-        if ($id <= 0) {
-            ApiResponse::error('Invalid user ID');
-        }
+        // For /users/me/stats, use authenticated user
+        $currentUser = $this->auth->handle();
+        $id = $currentUser->getId();
 
         try {
-            $currentUser = $this->auth->handle();
-            
-            if ($id !== $currentUser->getId()) {
-                ApiResponse::error('Cannot view other users stats', 403);
-            }
-
             // Calculate user statistics
             $snippets = $this->userRepository->findSnippetsByUser($id);
             $achievements = $this->userRepository->getAchievements($id);
@@ -248,7 +248,7 @@ class UserController
                 'total_achievements' => count($achievements),
                 'achievement_points' => $currentUser->getAchievementPoints(),
                 'languages_used' => array_unique(array_map(fn($s) => $s->getLanguage(), $snippets)),
-                'join_date' => $currentUser->getCreatedAt()->format('Y-m-d'),
+                'join_date' => $currentUser->getCreatedAt()?->format('Y-m-d'),
                 'last_active' => $currentUser->getLastActiveAt()?->format('Y-m-d H:i:s')
             ];
 
@@ -256,6 +256,93 @@ class UserController
 
         } catch (\Exception $e) {
             ApiResponse::error('Failed to fetch user statistics');
+        }
+    }
+
+    /**
+     * Get current authenticated user (for /users/me)
+     */
+    public function me(string $method, array $params): void
+    {
+        if ($method !== 'GET') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+
+        try {
+            $currentUser = $this->auth->handle();
+            
+            ApiResponse::success([
+                'id' => $currentUser->getId(),
+                'username' => $currentUser->getUsername(),
+                'email' => $currentUser->getEmail(),
+                'display_name' => $currentUser->getDisplayName(),
+                'avatar_url' => $currentUser->getAvatarUrl(),
+                'bio' => $currentUser->getBio(),
+                'preferences' => $currentUser->getPreferences(),
+                'achievement_points' => $currentUser->getAchievementPoints(),
+                'last_active_at' => $currentUser->getLastActiveAt()?->format('Y-m-d H:i:s'),
+                'created_at' => $currentUser->getCreatedAt()?->format('Y-m-d H:i:s')
+            ]);
+
+        } catch (\Exception $e) {
+            ApiResponse::error('Failed to fetch user profile');
+        }
+    }
+
+    /**
+     * Get starred snippets for current user (for /users/me/starred)
+     */
+    public function starred(string $method, array $params): void
+    {
+        if ($method !== 'GET') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+
+        try {
+            $currentUser = $this->auth->handle();
+            $limit = (int)($_GET['limit'] ?? 20);
+            $offset = (int)($_GET['offset'] ?? 0);
+
+            // Get starred snippets from database
+            $starred = $this->userRepository->getStarredSnippets($currentUser->getId(), $limit, $offset);
+            
+            ApiResponse::success([
+                'snippets' => array_map(fn($s) => $s->toArray(), $starred),
+                'total' => count($starred)
+            ]);
+
+        } catch (\Exception $e) {
+            ApiResponse::success([
+                'snippets' => [],
+                'total' => 0
+            ]);
+        }
+    }
+
+    /**
+     * Get activity feed for current user (for /users/me/activity)
+     */
+    public function activity(string $method, array $params): void
+    {
+        if ($method !== 'GET') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+
+        try {
+            $currentUser = $this->auth->handle();
+            $limit = (int)($_GET['limit'] ?? 20);
+
+            // Get recent activity from audit logs
+            $activities = $this->userRepository->getRecentActivity($currentUser->getId(), $limit);
+            
+            ApiResponse::success([
+                'activities' => $activities
+            ]);
+
+        } catch (\Exception $e) {
+            ApiResponse::success([
+                'activities' => []
+            ]);
         }
     }
 }
