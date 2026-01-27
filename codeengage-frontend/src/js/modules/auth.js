@@ -4,7 +4,7 @@
  * Manages user authentication state, login, and registration.
  */
 
-import { setLocal, getLocal, removeLocal } from '../utils/storage.js';
+import { setLocal, getLocal, removeLocal } from './utils/storage.js';
 
 export class Auth {
     constructor(app) {
@@ -73,18 +73,19 @@ export class Auth {
         try {
             const response = await this.app.apiClient.post('/auth/register', userData);
 
-            if (response.data.token) {
-                this.setSession(response.data.token, response.data.user);
+            // Handle double-wrapped response: client wraps in .data, backend also wraps in .data
+            const responseData = response.data?.data || response.data;
+
+            if (responseData?.token) {
+                this.setSession(responseData.token, responseData.user);
                 return { success: true };
             }
 
             return { success: false, message: 'Registration successful but no token received' };
         } catch (error) {
             console.error('Registration failed:', error);
-            return {
-                success: false,
-                message: error.data?.message || 'Registration failed. Please try again.'
-            };
+            // Re-throw to let caller handle and display specific validation errors
+            throw error;
         }
     }
 
