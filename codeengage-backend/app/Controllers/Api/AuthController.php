@@ -100,7 +100,7 @@ class AuthController
         } catch (ValidationException $e) {
             ApiResponse::error($e->getMessage(), 422, $e->getErrors());
         } catch (\Exception $e) {
-            ApiResponse::error('Registration failed');
+            ApiResponse::error('Registration failed: ' . $e->getMessage());
         }
     }
 
@@ -267,7 +267,7 @@ class AuthController
 
     private function generateJwtToken(\App\Models\User $user): string
     {
-        $config = require __DIR__ . '/../../config/auth.php';
+        $config = require __DIR__ . '/../../../config/auth.php';
         $secret = $config['jwt']['secret'];
         $algorithm = $config['jwt']['algorithm'];
         $ttl = $config['jwt']['ttl'];
@@ -295,7 +295,7 @@ class AuthController
 
     private function validateJwtToken(string $token): ?array
     {
-        $config = require __DIR__ . '/../../config/auth.php';
+        $config = require __DIR__ . '/../../../config/auth.php';
         $secret = $config['jwt']['secret'];
 
         $parts = explode('.', $token);
