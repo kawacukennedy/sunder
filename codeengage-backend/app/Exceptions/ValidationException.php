@@ -9,7 +9,7 @@ class ValidationException extends ApiException
     public function __construct(array $errors, string $message = 'Validation failed')
     {
         $this->errors = $errors;
-        parent::__construct($message, 422, ['errors' => $errors]);
+        parent::__construct($message, 422, $errors);
     }
 
     public function getErrors(): array
