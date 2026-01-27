@@ -149,58 +149,6 @@ class AuthService
         return $user ? $this->sanitizeUser($user) : null;
     }
 
-    public function requestPasswordReset(string $email): void
-    {
-        $user = $this->userRepository->findByEmail($email);
-        if (!$user) {
-            return;
-        }
-
-        $token = $this->securityHelper->generateSecureToken(32);
-        $expires = date('Y-m-d H:i:s', time() + 3600);
-
-        $this->userRepository->update($user['id'], [
-            'password_reset_token' => $token,
-            'password_reset_expires' => $expires
-        ]);
-
-        $this->auditRepository->log(
-            $user['id'],
-            'user.password_reset_request',
-            'user',
-            $user['id'],
-            null,
-            ['email' => $email]
-        );
-    }
-
-    public function resetPassword(string $token, string $newPassword): void
-    {
-        $user = $this->userRepository->findByPasswordResetToken($token);
-        if (!$user || strtotime($user['password_reset_expires']) < time()) {
-            throw new ValidationException('Invalid or expired reset token');
-        }
-
-        $this->validatePassword($newPassword);
-
-        $passwordHash = password_hash($newPassword, PASSWORD_ARGON2ID, ['cost' => 12]);
-
-        $this->userRepository->update($user['id'], [
-            'password_hash' => $passwordHash,
-            'password_reset_token' => null,
-            'password_reset_expires' => null
-        ]);
-
-        $this->auditRepository->log(
-            $user['id'],
-            'user.password_reset',
-            'user',
-            $user['id'],
-            null,
-            null
-        );
-    }
-
     public function changePassword(int $userId, string $currentPassword, string $newPassword): void
     {
         $user = $this->userRepository->findById($userId);

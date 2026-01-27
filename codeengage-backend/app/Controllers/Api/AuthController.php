@@ -179,14 +179,14 @@ class AuthController
             if (!$user) {
                 // Always return success to prevent email enumeration
                 ApiResponse::success(null, 'If the email exists, a reset link has been sent');
+                return;
             }
 
             // Generate reset token
             $resetToken = bin2hex(random_bytes(32));
-            $resetExpiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
-            // Store reset token (you'd want a dedicated table for this)
-            $this->storePasswordResetToken($user->getId(), $resetToken, $resetExpiry);
+            // Store reset token
+            $this->storePasswordResetToken($user->getEmail(), $resetToken);
 
             // Send email (implementation depends on your email service)
             $this->sendPasswordResetEmail($user->getEmail(), $resetToken);
@@ -213,12 +213,12 @@ class AuthController
             ValidationHelper::validateRequired($input, ['token', 'password']);
             ValidationHelper::validatePassword($input['password']);
 
-            $resetData = $this->validatePasswordResetToken($input['token']);
-            if (!$resetData) {
+            $email = $this->validatePasswordResetToken($input['token']);
+            if (!$email) {
                 ApiResponse::error('Invalid or expired reset token', 400);
             }
 
-            $user = $this->userRepository->findById($resetData['user_id']);
+            $user = $this->userRepository->findByEmail($email);
             if (!$user) {
                 ApiResponse::error('Invalid reset token', 400);
             }
@@ -227,7 +227,7 @@ class AuthController
             $this->userRepository->update($user->getId(), ['password' => $input['password']]);
             
             // Clear reset token
-            $this->clearPasswordResetToken($resetData['user_id']);
+            $this->clearPasswordResetToken($email);
 
             ApiResponse::success(null, 'Password reset successful');
 
@@ -363,28 +363,20 @@ class AuthController
         ]);
     }
 
-    private function storePasswordResetToken(int $userId, string $token, string $expiry): void
+    private function storePasswordResetToken(string $email, string $token): void
     {
-        // This would typically use a separate password_resets table
-        // For now, we'll use the audit_logs table
-        $sql = "INSERT INTO audit_logs (action_type, entity_type, entity_id, new_values, ip_address) 
-                VALUES ('password_reset', 'user', :user_id, :new_values, :ip)";
-        
+        $sql = "INSERT INTO password_resets (email, token) VALUES (:email, :token)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            ':user_id' => $userId,
-            ':new_values' => json_encode(['token' => $token, 'expiry' => $expiry]),
-            ':ip' => $_SERVER['REMOTE_ADDR'] ?? ''
+            ':email' => $email,
+            ':token' => $token
         ]);
     }
 
-    private function validatePasswordResetToken(string $token): ?array
+    private function validatePasswordResetToken(string $token): ?string
     {
-        $sql = "SELECT * FROM audit_logs 
-                WHERE action_type = 'password_reset' 
-                AND JSON_EXTRACT(new_values, '$.token') = :token
-                AND JSON_EXTRACT(new_values, '$.expiry') > NOW()
-                ORDER BY created_at DESC LIMIT 1";
+        $sql = "SELECT email FROM password_resets 
+                WHERE token = :token AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':token' => $token]);
@@ -394,21 +386,14 @@ class AuthController
             return null;
         }
 
-        $newValues = json_decode($result['new_values'], true);
-        return [
-            'user_id' => $result['entity_id'],
-            'token' => $newValues['token'],
-            'expiry' => $newValues['expiry']
-        ];
+        return $result['email'];
     }
 
-    private function clearPasswordResetToken(int $userId): void
+    private function clearPasswordResetToken(string $email): void
     {
-        $sql = "DELETE FROM audit_logs 
-                WHERE action_type = 'password_reset' AND entity_id = :user_id";
-        
+        $sql = "DELETE FROM password_resets WHERE email = :email";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':user_id' => $userId]);
+        $stmt->execute([':email' => $email]);
     }
 
     private function sendPasswordResetEmail(string $email, string $token): void

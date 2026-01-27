@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Repositories\SnippetRepository;
 use App\Repositories\CollaborationRepository;
 use App\Repositories\AuditRepository;
+use App\Repositories\UserRepository;
+use App\Repositories\RoleRepository;
 use App\Helpers\SecurityHelper;
 use App\Exceptions\ValidationException;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\UnauthorizedException;
+use App\Middleware\RoleMiddleware;
+use App\Models\Snippet;
+use App\Models\User;
+use App\Models\CollaborationSession;
 
 class CollaborationService
 {
@@ -16,6 +22,8 @@ class CollaborationService
     private CollaborationRepository $collaborationRepository;
     private AuditRepository $auditRepository;
     private SecurityHelper $securityHelper;
+    private UserRepository $userRepository;
+    private RoleMiddleware $roleMiddleware;
     private array $config;
 
     public function __construct(
@@ -23,12 +31,16 @@ class CollaborationService
         CollaborationRepository $collaborationRepository,
         AuditRepository $auditRepository,
         SecurityHelper $securityHelper,
+        UserRepository $userRepository,
+        RoleRepository $roleRepository,
         array $config = []
     ) {
         $this->snippetRepository = $snippetRepository;
         $this->collaborationRepository = $collaborationRepository;
         $this->auditRepository = $auditRepository;
         $this->securityHelper = $securityHelper;
+        $this->userRepository = $userRepository;
+        $this->roleMiddleware = new RoleMiddleware($userRepository, $roleRepository);
         $this->config = array_merge([
             'session_timeout' => 86400, // 24 hours
             'max_participants' => 10,
@@ -40,39 +52,46 @@ class CollaborationService
     {
         $snippet = $this->snippetRepository->findById($snippetId);
         if (!$snippet) {
-            throw new NotFoundException('Snippet');
+            throw new NotFoundException('Snippet not found');
         }
 
-        if ($snippet->getVisibility() === 'private' && $snippet->getAuthorId() !== $userId) {
-            throw new UnauthorizedException('Cannot collaborate on private snippet');
+        $user = $this->userRepository->findById($userId);
+        if (!$user) {
+            throw new UnauthorizedException('User not found');
         }
 
-        $existingSession = $this->collaborationRepository->findBySnippet($snippetId);
-        if ($existingSession) {
-            if ($this->canJoinSession($existingSession, $userId)) {
-                return $this->joinSession($existingSession['session_token'], $userId);
+        // Check if user can collaborate on this snippet based on RBAC
+        if (!$this->canCollaborate($snippet, $user)) {
+            throw new UnauthorizedException('Cannot create collaboration session for this snippet');
+        }
+
+        $existingSessionData = $this->collaborationRepository->findBySnippet($snippetId);
+        if ($existingSessionData) {
+            $existingSession = CollaborationSession::fromData($this->db, $existingSessionData);
+            // If session exists, try to join it instead of creating a new one
+            if ($this->canJoinSession($existingSession->toArray(), $userId)) {
+                return $this->joinSession($existingSession->getSessionToken(), $userId);
             }
             throw new ValidationException('Collaboration session already exists and cannot be joined');
         }
 
         $sessionToken = $this->generateSessionToken();
-        $participants = [['user_id' => $userId, 'joined_at' => time()]];
         
-        $sessionData = [
-            'snippet_id' => $snippetId,
-            'session_token' => $sessionToken,
-            'participants' => json_encode($participants),
-            'cursor_positions' => json_encode([]),
-            'last_activity' => date('Y-m-d H:i:s')
-        ];
+        $session = new CollaborationSession($this->db);
+        $session->setSnippetId($snippetId);
+        $session->setSessionToken($sessionToken);
+        $session->addParticipant($userId);
+        $session->setLastActivity(new \DateTime());
 
-        $session = $this->collaborationRepository->create($sessionData);
+        if (!$session->save()) {
+            throw new \Exception('Failed to create collaboration session');
+        }
 
         $this->auditRepository->log(
             $userId,
             'collaboration.session_create',
             'collaboration_session',
-            $session['id'],
+            $session->getId(),
             null,
             [
                 'snippet_id' => $snippetId,
@@ -80,276 +99,219 @@ class CollaborationService
             ]
         );
 
-        return $this->formatSession($session);
+        return $session->toArray();
     }
 
     public function joinSession(string $sessionToken, int $userId): array
     {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
+        $session = CollaborationSession::findByToken($this->db, $sessionToken);
         if (!$session) {
-            throw new NotFoundException('Collaboration session');
+            throw new NotFoundException('Collaboration session not found');
         }
 
-        if ($this->isSessionExpired($session)) {
+        if (!$session->isActive()) {
             throw new ValidationException('Session has expired');
         }
-
-        $participants = json_decode($session['participants'], true) ?: [];
         
-        // Check if user is already a participant
-        foreach ($participants as $participant) {
-            if ($participant['user_id'] === $userId) {
-                return $this->formatSession($session);
-            }
+        $user = $this->userRepository->findById($userId);
+        if (!$user) {
+            throw new UnauthorizedException('User not found');
         }
 
-        if (count($participants) >= $this->config['max_participants']) {
+        $snippet = $this->snippetRepository->findById($session->getSnippetId());
+        if (!$snippet) {
+            throw new NotFoundException('Snippet not found');
+        }
+
+        if (!$this->canCollaborate($snippet, $user)) {
+            throw new UnauthorizedException('Cannot join this collaboration session');
+        }
+
+        // If already a participant, just return current session info
+        if (in_array($userId, $session->getParticipants())) {
+            return $session->toArray();
+        }
+
+        if (count($session->getParticipants()) >= $this->config['max_participants']) {
             throw new ValidationException('Session is full');
         }
 
-        $participants[] = ['user_id' => $userId, 'joined_at' => time()];
-        
-        $this->collaborationRepository->update($session['id'], [
-            'participants' => json_encode($participants),
-            'last_activity' => date('Y-m-d H:i:s')
-        ]);
+        $session->addParticipant($userId);
+        $session->setLastActivity(new \DateTime());
+        $session->save();
 
         $this->auditRepository->log(
             $userId,
             'collaboration.session_join',
             'collaboration_session',
-            $session['id'],
+            $session->getId(),
             null,
             ['session_token' => $sessionToken]
         );
 
-        return $this->formatSession($this->collaborationRepository->findById($session['id']));
+        return $session->toArray();
     }
 
-    public function leaveSession(string $sessionToken, int $userId): bool
+    public function pushUpdate(string $sessionToken, int $userId, array $input): void
     {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
+        $session = CollaborationSession::findByToken($this->db, $sessionToken);
         if (!$session) {
-            return false;
+            throw new NotFoundException('Collaboration session not found');
         }
 
-        $participants = json_decode($session['participants'], true) ?: [];
-        $updatedParticipants = array_filter($participants, function($participant) use ($userId) {
-            return $participant['user_id'] !== $userId;
-        });
-
-        if (empty($updatedParticipants)) {
-            // Delete session if no participants left
-            $this->collaborationRepository->delete($session['id']);
-        } else {
-            $this->collaborationRepository->update($session['id'], [
-                'participants' => json_encode(array_values($updatedParticipants)),
-                'last_activity' => date('Y-m-d H:i:s')
-            ]);
+        if (!$session->isActive()) {
+            throw new ValidationException('Session has expired');
         }
 
-        $this->auditRepository->log(
-            $userId,
-            'collaboration.session_leave',
-            'collaboration_session',
-            $session['id'],
-            null,
-            ['session_token' => $sessionToken]
-        );
-
-        return true;
-    }
-
-    public function updateCursor(string $sessionToken, int $userId, array $position): array
-    {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
-        if (!$session) {
-            throw new NotFoundException('Collaboration session');
+        if (!in_array($userId, $session->getParticipants())) {
+            throw new UnauthorizedException('User is not a participant in this session');
         }
 
-        if (!$this->isParticipant($session, $userId)) {
-            throw new UnauthorizedException('Not a participant in this session');
+        // Handle different update types
+        switch ($input['type'] ?? 'message') {
+            case 'cursor':
+                $this->handleCursorUpdate($session, $userId, $input['position'] ?? []);
+                break;
+            case 'text_change':
+                $this->handleTextChange($session, $userId, $input['change'] ?? []);
+                break;
+            case 'selection':
+                $this->handleSelectionChange($session, $userId, $input['selection'] ?? []);
+                break;
+            case 'message':
+                $this->handleChatMessage($session, $userId, $input['message'] ?? '');
+                break;
+            default:
+                // Log or ignore unknown update types
+                break;
         }
 
-        $cursorPositions = json_decode($session['cursor_positions'], true) ?: [];
-        $cursorPositions[$userId] = [
-            'line' => $position['line'] ?? 0,
-            'column' => $position['column'] ?? 0,
-            'updated_at' => time()
-        ];
-
-        $this->collaborationRepository->update($session['id'], [
-            'cursor_positions' => json_encode($cursorPositions),
-            'last_activity' => date('Y-m-d H:i:s')
-        ]);
-
-        return $cursorPositions;
-    }
-
-    public function getUpdates(string $sessionToken, int $userId, ?int $lastSeen = null): array
-    {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
-        if (!$session) {
-            throw new NotFoundException('Collaboration session');
-        }
-
-        if (!$this->isParticipant($session, $userId)) {
-            throw new UnauthorizedException('Not a participant in this session');
-        }
-
-        $updates = [
-            'session' => $this->formatSession($session),
-            'cursors' => json_decode($session['cursor_positions'], true) ?: [],
-            'participants' => json_decode($session['participants'], true) ?: []
-        ];
-
-        // Get recent snippet updates if lastSeen is provided
-        if ($lastSeen) {
-            $snippetUpdates = $this->getSnippetUpdates(
-                $session['snippet_id'],
-                $lastSeen
+        $session->setLastActivity(new \DateTime());
+        $session->save();
+        
+        // Audit log for text changes (more critical)
+        if (($input['type'] ?? '') === 'text_change') {
+            $this->auditRepository->log(
+                $userId,
+                'collaboration.text_change',
+                'collaboration_session',
+                $session->getId(),
+                null,
+                ['session_token' => $sessionToken, 'change_type' => $input['change']['type'] ?? 'unknown']
             );
-            $updates['snippet_updates'] = $snippetUpdates;
         }
-
-        return $updates;
     }
 
-    public function applyEdit(string $sessionToken, int $userId, array $edit): array
+    public function endSession(string $sessionToken, int $userId): void
     {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
+        $session = CollaborationSession::findByToken($this->db, $sessionToken);
         if (!$session) {
-            throw new NotFoundException('Collaboration session');
+            throw new NotFoundException('Collaboration session not found');
         }
 
-        if (!$this->isParticipant($session, $userId)) {
-            throw new UnauthorizedException('Not a participant in this session');
+        $snippet = $this->snippetRepository->findById($session->getSnippetId());
+        if (!$snippet) {
+            throw new NotFoundException('Snippet not found');
         }
 
-        // Apply three-way merge algorithm for concurrent edits
-        $conflictResolution = $this->resolveEditConflicts(
-            $session['snippet_id'],
-            $edit,
-            $userId
-        );
-
-        if ($conflictResolution['has_conflicts']) {
-            return [
-                'success' => false,
-                'conflicts' => $conflictResolution['conflicts'],
-                'message' => 'Edit conflicts detected'
-            ];
-        }
-
-        // Apply the edit to the snippet
-        $updatedSnippet = $this->applyEditToSnippet($session['snippet_id'], $edit, $userId);
-
-        $this->collaborationRepository->update($session['id'], [
-            'last_activity' => date('Y-m-d H:i:s')
-        ]);
-
-        $this->auditRepository->log(
-            $userId,
-            'collaboration.edit_apply',
-            'snippet',
-            $session['snippet_id'],
-            null,
-            [
-                'edit_type' => $edit['type'] ?? 'unknown',
-                'session_token' => $sessionToken
-            ]
-        );
-
-        return [
-            'success' => true,
-            'snippet' => $updatedSnippet,
-            'applied_at' => time()
-        ];
-    }
-
-    public function endSession(string $sessionToken, int $userId): bool
-    {
-        $session = $this->collaborationRepository->findByToken($sessionToken);
-        if (!$session) {
-            return false;
-        }
-
-        // Only session creator or snippet owner can end session
-        $snippet = $this->snippetRepository->findById($session['snippet_id']);
-        $participants = json_decode($session['participants'], true) ?: [];
-        $isCreator = $participants[0]['user_id'] === $userId;
+        // Only snippet owner or a participant can end the session
         $isOwner = $snippet->getAuthorId() === $userId;
+        $isParticipant = in_array($userId, $session->getParticipants());
 
-        if (!$isCreator && !$isOwner) {
-            throw new UnauthorizedException('Only session creator or snippet owner can end session');
+        if (!$isOwner && !$isParticipant) {
+            throw new UnauthorizedException('You do not have permission to end this session');
         }
 
-        $result = $this->collaborationRepository->delete($session['id']);
+        $session->removeParticipant($userId);
+        $session->setLastActivity(new \DateTime());
+        $session->save();
+
+        if (empty($session->getParticipants())) {
+            $session->delete();
+        }
 
         $this->auditRepository->log(
             $userId,
             'collaboration.session_end',
             'collaboration_session',
-            $session['id'],
-            $session,
-            null
+            $session->getId(),
+            null,
+            ['session_token' => $sessionToken]
         );
-
-        return $result;
     }
 
-    public function getActiveSessions(int $userId): array
+    public function getUpdates(string $sessionToken, int $userId, ?string $since = null): array
     {
-        $sessions = $this->collaborationRepository->findByParticipant($userId);
-        $activeSessions = [];
-
-        foreach ($sessions as $session) {
-            if (!$this->isSessionExpired($session)) {
-                $activeSessions[] = $this->formatSession($session);
-            }
+        $session = CollaborationSession::findByToken($this->db, $sessionToken);
+        if (!$session) {
+            throw new NotFoundException('Collaboration session not found');
         }
 
-        return $activeSessions;
-    }
+        if (!$session->isActive()) {
+            throw new ValidationException('Session has expired');
+        }
 
+        if (!in_array($userId, $session->getParticipants())) {
+            throw new UnauthorizedException('User is not a participant in this session');
+        }
+
+        $updates = [];
+        $timestamp = $since ? strtotime($since) : 0;
+
+        // Get cursor and selection updates
+        foreach ($session->getCursorPositions() as $participantId => $position) {
+            if (isset($position['updated_at']) && $position['updated_at'] > $timestamp) {
+                $updates[] = [
+                    'type' => 'cursor_or_selection',
+                    'user_id' => $participantId,
+                    'data' => $position,
+                    'timestamp' => $position['updated_at']
+                ];
+            }
+        }
+        
+        // Get chat messages and text changes from metadata
+        $updates = array_merge($updates, $this->getUpdatesFromSessionMetadata($session, $timestamp));
+
+        // Sort by timestamp
+        usort($updates, fn($a, $b) => $a['timestamp'] - $b['timestamp']);
+
+        return [
+            'session_token' => $session->getSessionToken(),
+            'participants' => $session->getParticipants(),
+            'cursor_positions' => $session->getCursorPositions(),
+            'last_activity' => $session->getLastActivity()->format('Y-m-d H:i:s'),
+            'updates' => $updates
+        ];
+    }
+    
     public function cleanupExpiredSessions(): int
     {
-        $expiredSessions = $this->collaborationRepository->findExpired(
-            $this->config['session_timeout']
-        );
-
-        $deletedCount = 0;
-        foreach ($expiredSessions as $session) {
-            if ($this->collaborationRepository->delete($session['id'])) {
-                $deletedCount++;
-            }
-        }
-
-        return $deletedCount;
+        return CollaborationSession::cleanupOld($this->db);
     }
 
-    private function canJoinSession(array $session, int $userId): bool
+    private function canCollaborate(Snippet $snippet, User $user): bool
     {
-        if ($this->isSessionExpired($session)) {
-            return false;
+        // Owner can always collaborate
+        if ($user->getId() === $snippet->getAuthorId()) {
+            return true;
         }
 
-        $participants = json_decode($session['participants'], true) ?: [];
-        if (count($participants) >= $this->config['max_participants']) {
-            return false;
+        // Admin override
+        if ($this->roleMiddleware->hasPermission($user->getId(), 'collaborate_any_snippet')) {
+            return true;
         }
 
-        return true;
-    }
-
-    private function isParticipant(array $session, int $userId): bool
-    {
-        $participants = json_decode($session['participants'], true) ?: [];
-        foreach ($participants as $participant) {
-            if ($participant['user_id'] === $userId) {
-                return true;
-            }
+        // Public snippets are generally collaborative
+        if ($snippet->getVisibility() === 'public') {
+            return true;
         }
+
+        // Organization snippets: check if user is member of the organization
+        if ($snippet->getVisibility() === 'organization' && $snippet->getOrganizationId()) {
+            return $this->userRepository->isMemberOfOrganization($user->getId(), $snippet->getOrganizationId());
+        }
+
         return false;
     }
 
@@ -359,22 +321,127 @@ class CollaborationService
         return (time() - $lastActivity) > $this->config['session_timeout'];
     }
 
+    private function canJoinSession(array $sessionData, int $userId): bool
+    {
+        $session = CollaborationSession::fromData($this->db, $sessionData);
+        if (!$session->isActive()) {
+            return false;
+        }
+
+        if (count($session->getParticipants()) >= $this->config['max_participants']) {
+            return false;
+        }
+
+        $snippet = $this->snippetRepository->findById($session->getSnippetId());
+        $user = $this->userRepository->findById($userId);
+
+        if (!$snippet || !$user) {
+            return false;
+        }
+
+        return $this->canCollaborate($snippet, $user);
+    }
+
+    private function isParticipant(array $session, int $userId): bool
+    {
+        return in_array($userId, json_decode($session['participants'], true) ?: []);
+    }
+
     private function generateSessionToken(): string
     {
         return $this->securityHelper->generateSecureToken(64);
     }
 
-    private function formatSession(array $session): array
+    private function handleCursorUpdate(CollaborationSession $session, int $userId, array $position): void
     {
-        return [
-            'id' => $session['id'],
-            'snippet_id' => $session['snippet_id'],
-            'session_token' => $session['session_token'],
-            'participants' => json_decode($session['participants'], true) ?: [],
-            'cursor_positions' => json_decode($session['cursor_positions'], true) ?: [],
-            'last_activity' => $session['last_activity'],
-            'created_at' => $session['created_at']
+        $cursorPositions = $session->getCursorPositions();
+        $cursorPositions[$userId] = [
+            'line' => $position['line'] ?? 0,
+            'ch' => $position['ch'] ?? 0,
+            'selection' => $position['selection'] ?? null,
+            'updated_at' => time()
         ];
+        $session->setCursorPositions($cursorPositions);
+    }
+
+    private function handleTextChange(CollaborationSession $session, int $userId, array $change): void
+    {
+        // Store text change in session metadata
+        // In a real implementation, you'd store this in a separate table for richer history and conflict resolution
+        $metadata = $session->getMetadata() ?? [];
+        if (!isset($metadata['text_changes'])) {
+            $metadata['text_changes'] = [];
+        }
+        
+        $metadata['text_changes'][] = [
+            'user_id' => $userId,
+            'change' => $change,
+            'timestamp' => time()
+        ];
+        
+        $session->setMetadata($metadata);
+    }
+
+    private function handleSelectionChange(CollaborationSession $session, int $userId, array $selection): void
+    {
+        $cursorPositions = $session->getCursorPositions();
+        if (!isset($cursorPositions[$userId])) {
+            $cursorPositions[$userId] = ['line' => 0, 'ch' => 0]; // Default if cursor not set
+        }
+        $cursorPositions[$userId]['selection'] = $selection;
+        $cursorPositions[$userId]['updated_at'] = time();
+        $session->setCursorPositions($cursorPositions);
+    }
+
+    private function handleChatMessage(CollaborationSession $session, int $userId, string $message): void
+    {
+        $metadata = $session->getMetadata() ?? [];
+        if (!isset($metadata['chat_messages'])) {
+            $metadata['chat_messages'] = [];
+        }
+        
+        $metadata['chat_messages'][] = [
+            'user_id' => $userId,
+            'message' => $message,
+            'timestamp' => time()
+        ];
+        
+        $session->setMetadata($metadata);
+    }
+
+    private function getUpdatesFromSessionMetadata(CollaborationSession $session, int $since): array
+    {
+        $updates = [];
+        $metadata = $session->getMetadata() ?? [];
+
+        // Get text changes
+        if (isset($metadata['text_changes'])) {
+            foreach ($metadata['text_changes'] as $change) {
+                if ($change['timestamp'] > $since) {
+                    $updates[] = [
+                        'type' => 'text_change',
+                        'user_id' => $change['user_id'],
+                        'data' => $change['change'],
+                        'timestamp' => $change['timestamp']
+                    ];
+                }
+            }
+        }
+
+        // Get chat messages
+        if (isset($metadata['chat_messages'])) {
+            foreach ($metadata['chat_messages'] as $message) {
+                if ($message['timestamp'] > $since) {
+                    $updates[] = [
+                        'type' => 'chat_message',
+                        'user_id' => $message['user_id'],
+                        'data' => $message['message'],
+                        'timestamp' => $message['timestamp']
+                    ];
+                }
+            }
+        }
+        return $updates;
     }
 
     private function resolveEditConflicts(int $snippetId, array $edit, int $userId): array
@@ -386,19 +453,20 @@ class CollaborationService
             return ['has_conflicts' => false, 'conflicts' => []];
         }
 
-        // Check for overlapping edits
-        $overlaps = $this->checkEditOverlaps($edit, $userId);
+        // Placeholder for real-time conflict detection and resolution logic
+        // This would involve comparing the incoming edit with recent changes from other collaborators
+        // and applying a merge strategy (e.g., Operational Transformation)
         
         return [
-            'has_conflicts' => !empty($overlaps),
-            'conflicts' => $overlaps
+            'has_conflicts' => false, // For now, assume no conflicts for simplicity
+            'conflicts' => []
         ];
     }
 
     private function checkEditOverlaps(array $edit, int $userId): array
     {
-        // Placeholder for overlap detection logic
-        // In production, this would check if other users edited the same range
+        // This method is part of the placeholder conflict resolution and would be implemented
+        // as part of a full three-way merge algorithm.
         return [];
     }
 
@@ -423,7 +491,7 @@ class CollaborationService
         }
 
         // Create new version with the edit
-        $this->snippetRepository->update($snippetId, [], $newCode, $userId);
+        $this->snippetRepository->update($snippetId, ['change_summary' => 'Collaborative edit'], $newCode, $userId);
         
         return $this->snippetRepository->findById($snippetId)->toArray();
     }
@@ -436,7 +504,17 @@ class CollaborationService
         $text = $edit['text'] ?? '';
 
         if (!isset($lines[$line])) {
-            return $code;
+            // Handle insertion beyond current lines (e.g., adding new lines at the end)
+            if ($line == count($lines)) {
+                $lines[] = $text;
+                return implode("\n", $lines);
+            }
+            // If line is much further, pad with empty lines (or throw error)
+            while (count($lines) < $line) {
+                $lines[] = '';
+            }
+            $lines[$line] = $text;
+            return implode("\n", $lines);
         }
 
         $currentLine = $lines[$line];

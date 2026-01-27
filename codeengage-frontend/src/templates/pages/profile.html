@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - CodeEngage</title>
+    <link rel="stylesheet" href="/src/css/main.css">
+    <link rel="stylesheet" href="/src/css/animations.css">
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <!-- Main Container -->
+    <div id="app-container" class="min-h-screen flex">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-gray-800 border-r border-gray-700 fixed h-full z-10 transform transition-transform duration-300 lg:translate-x-0 -translate-x-full">
+            <!-- Sidebar content will be loaded from sidebar.html -->
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 lg:ml-64">
+            <!-- Header -->
+            <header id="header" class="bg-gray-800 border-b border-gray-700 sticky top-0 z-20">
+                <!-- Header content will be loaded from header.html -->
+            </header>
+
+            <!-- Profile Content -->
+            <div class="container mx-auto px-4 py-6 max-w-6xl">
+                <!-- Profile Header -->
+                <section class="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
+                    <div class="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
+                        <!-- Avatar -->
+                        <div class="relative">
+                            <img id="avatar-preview" src="https://ui-avatars.com/api/?name=User&background=374151&color=f3f4f6&size=128" alt="Profile Avatar" class="w-32 h-32 rounded-full border-4 border-gray-700">
+                            <button id="avatar-upload-btn" class="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </button>
+                            <input type="file" id="avatar-input" accept="image/*" class="hidden">
+                        </div>
+
+                        <!-- Profile Info -->
+                        <div class="flex-1 text-center md:text-left">
+                            <h1 id="profile-display-name" class="text-3xl font-bold text-white mb-2">Loading...</h1>
+                            <p id="profile-username" class="text-gray-400 text-lg mb-4">@username</p>
+                            <p id="profile-bio" class="text-gray-300 mb-4">No bio yet...</p>
+                            
+                            <!-- Stats -->
+                            <div class="flex flex-wrap justify-center md:justify-start gap-6 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                                    </svg>
+                                    <span><span id="snippet-count">0</span> snippets</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                    </svg>
+                                    <span><span id="achievement-points">0</span> points</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                    <span><span id="achievement-count">0</span> achievements</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex flex-col space-y-2">
+                            <button id="edit-profile-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                Edit Profile
+                            </button>
+                            <button id="export-data-btn" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                                Export Data
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tab Navigation -->
+                <div class="bg-gray-800 rounded-xl border border-gray-700 mb-6">
+                    <nav class="flex flex-wrap border-b border-gray-700">
+                        <button class="profile-tab px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border-b-2 border-transparent hover:border-blue-500" data-tab="overview">
+                            Overview
+                        </button>
+                        <button class="profile-tab px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border-b-2 border-transparent hover:border-blue-500" data-tab="snippets">
+                            Snippets
+                        </button>
+                        <button class="profile-tab px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border-b-2 border-transparent hover:border-blue-500" data-tab="achievements">
+                            Achievements
+                        </button>
+                        <button class="profile-tab px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border-b-2 border-transparent hover:border-blue-500" data-tab="activity">
+                            Activity
+                        </button>
+                        <button class="profile-tab px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border-b-2 border-transparent hover:border-blue-500" data-tab="settings">
+                            Settings
+                        </button>
+                    </nav>
+
+                    <!-- Tab Content -->
+                    <div class="p-6">
+                        <!-- Overview Tab -->
+                        <div id="overview-tab" class="tab-content">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Recent Snippets -->
+                                <div class="bg-gray-700 rounded-lg p-4">
+                                    <h3 class="text-lg font-semibold text-white mb-4">Recent Snippets</h3>
+                                    <div id="recent-snippets" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">Loading recent snippets...</p>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Achievements -->
+                                <div class="bg-gray-700 rounded-lg p-4">
+                                    <h3 class="text-lg font-semibold text-white mb-4">Recent Achievements</h3>
+                                    <div id="recent-achievements" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">Loading recent achievements...</p>
+                                    </div>
+                                </div>
+
+                                <!-- Statistics -->
+                                <div class="bg-gray-700 rounded-lg p-4">
+                                    <h3 class="text-lg font-semibold text-white mb-4">Statistics</h3>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">Total Views</span>
+                                            <span id="total-views" class="text-white">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">Total Stars</span>
+                                            <span id="total-stars" class="text-white">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">Member Since</span>
+                                            <span id="member-since" class="text-white">-</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">Last Active</span>
+                                            <span id="last-active" class="text-white">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Snippets Tab -->
+                        <div id="snippets-tab" class="tab-content hidden">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-white">My Snippets</h3>
+                                <button id="create-snippet-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    Create New Snippet
+                                </button>
+                            </div>
+                            <div id="user-snippets" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <p class="text-gray-400 col-span-full text-center py-8">Loading snippets...</p>
+                            </div>
+                        </div>
+
+                        <!-- Achievements Tab -->
+                        <div id="achievements-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-white mb-4">Achievements & Badges</h3>
+                            <div id="achievements-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <p class="text-gray-400 col-span-full text-center py-8">Loading achievements...</p>
+                            </div>
+                        </div>
+
+                        <!-- Activity Tab -->
+                        <div id="activity-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+                            <div id="activity-timeline" class="space-y-4">
+                                <p class="text-gray-400 text-center py-8">Loading activity...</p>
+                            </div>
+                        </div>
+
+                        <!-- Settings Tab -->
+                        <div id="settings-tab" class="tab-content hidden">
+                            <h3 class="text-lg font-semibold text-white mb-4">Profile Settings</h3>
+                            <form id="settings-form" class="space-y-6 max-w-2xl">
+                                <!-- Display Name -->
+                                <div>
+                                    <label for="settings-display-name" class="block text-sm font-medium text-gray-300 mb-2">
+                                        Display Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="settings-display-name"
+                                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                                    >
+                                </div>
+
+                                <!-- Bio -->
+                                <div>
+                                    <label for="settings-bio" class="block text-sm font-medium text-gray-300 mb-2">
+                                        Bio
+                                    </label>
+                                    <textarea
+                                        id="settings-bio"
+                                        rows="4"
+                                        maxlength="500"
+                                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                                        placeholder="Tell us about yourself..."
+                                    ></textarea>
+                                    <p class="text-xs text-gray-400 mt-1">500 characters max</p>
+                                </div>
+
+                                <!-- Theme Preference -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                                        Theme Preference
+                                    </label>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="theme" value="dark" checked class="mr-2">
+                                            <span>Dark</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="theme" value="light" class="mr-2">
+                                            <span>Light</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="theme" value="auto" class="mr-2">
+                                            <span>Auto</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Email Settings -->
+                                <div>
+                                    <h4 class="text-md font-medium text-white mb-3">Email Notifications</h4>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="email-comments" class="mr-2">
+                                            <span>Comments on my snippets</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="email-mentions" class="mr-2">
+                                            <span>When someone mentions me</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="email-achievements" class="mr-2">
+                                            <span>New achievements unlocked</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Save Button -->
+                                <div class="flex justify-end">
+                                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                        Save Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6">
+            <h3 class="text-xl font-semibold text-white mb-4">Edit Profile</h3>
+            <form id="edit-profile-form" class="space-y-4">
+                <div>
+                    <label for="edit-display-name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Display Name
+                    </label>
+                    <input
+                        type="text"
+                        id="edit-display-name"
+                        required
+                        maxlength="100"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                    >
+                </div>
+                <div>
+                    <label for="edit-bio" class="block text-sm font-medium text-gray-300 mb-2">
+                        Bio
+                    </label>
+                    <textarea
+                        id="edit-bio"
+                        rows="3"
+                        maxlength="500"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                    ></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-edit" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script type="module" src="/src/js/pages/profile.js"></script>
+</body>
+</html>

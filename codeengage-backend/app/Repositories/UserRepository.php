@@ -416,6 +416,21 @@ return $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $users;
     }
 
+    public function isMemberOfOrganization(int $userId, int $organizationId): bool
+    {
+        $sql = "
+            SELECT 1 FROM organization_members
+            WHERE user_id = :user_id AND organization_id = :organization_id
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':organization_id' => $organizationId
+        ]);
+        
+        return $stmt->fetch() !== false;
+    }
+
     public function findByPasswordResetToken(string $token): ?array
     {
         $sql = "

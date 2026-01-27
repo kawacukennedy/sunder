@@ -5,21 +5,29 @@ namespace App\Controllers\Api;
 use PDO;
 use App\Repositories\SnippetRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\RoleRepository;
 use App\Helpers\ApiResponse;
 use App\Helpers\ValidationHelper;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
+use App\Models\Snippet;
+use App\Models\User;
 
 class SnippetController
 {
     private PDO $db;
     private SnippetRepository $snippetRepository;
     private AuthMiddleware $auth;
+    private RoleMiddleware $roleMiddleware;
+    private UserRepository $userRepository; // Added for isMemberOfOrganization
 
     public function __construct(PDO $db)
     {
         $this->db = $db;
+        $this->userRepository = new UserRepository($db); // Initialize UserRepository
         $this->snippetRepository = new SnippetRepository($db);
         $this->auth = new AuthMiddleware($db);
+        $this->roleMiddleware = new RoleMiddleware($this->userRepository, new RoleRepository($db));
     }
 
     public function index(string $method, array $params): void
@@ -29,6 +37,7 @@ class SnippetController
         }
 
         try {
+            $currentUser = $this->auth->optional();
             $filters = [
                 'search' => $_GET['search'] ?? null,
                 'language' => $_GET['language'] ?? null,
@@ -36,7 +45,7 @@ class SnippetController
                 'visibility' => $_GET['visibility'] ?? null,
                 'order_by' => $_GET['order_by'] ?? 'created_at',
                 'order' => $_GET['order'] ?? 'DESC',
-                'user_id' => $this->auth->optional()?->getId()
+                'user_id' => $currentUser?->getId()
             ];
 
             $limit = (int)($_GET['limit'] ?? 20);
@@ -44,11 +53,18 @@ class SnippetController
 
             $snippets = $this->snippetRepository->findMany($filters, $limit, $offset);
             $total = $this->snippetRepository->count($filters);
+            
+            $processedSnippets = array_map(function($snippet) use ($currentUser) {
+                $snippetArray = $snippet->toArray();
+                $snippetArray['is_starred'] = $currentUser ? $this->snippetRepository->isStarredByUser($snippet->getId(), $currentUser->getId()) : false;
+                return $snippetArray;
+            }, $snippets);
 
-            ApiResponse::paginated($snippets, $total, $offset / $limit + 1, $limit);
+
+            ApiResponse::paginated($processedSnippets, $total, $offset / $limit + 1, $limit);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch snippets');
+            ApiResponse::error('Failed to fetch snippets: ' . $e->getMessage());
         }
     }
 
@@ -69,13 +85,14 @@ class SnippetController
                 ApiResponse::error('Snippet not found', 404);
             }
 
+            $currentUser = $this->auth->optional();
+
             // Check visibility permissions
-            if (!$this->canViewSnippet($snippet)) {
+            if (!$this->canViewSnippet($snippet, $currentUser)) {
                 ApiResponse::error('Access denied', 403);
             }
 
             // Increment view count for non-owners
-            $currentUser = $this->auth->optional();
             if (!$currentUser || $currentUser->getId() !== $snippet->getAuthorId()) {
                 $this->snippetRepository->incrementViewCount($id);
             }
@@ -89,12 +106,13 @@ class SnippetController
                 'snippet' => $snippet->toArray(),
                 'versions' => array_map(fn($v) => $v->toArray(), $snippet->getVersions()),
                 'tags' => array_map(fn($t) => $t->toArray(), $snippet->getTags()),
-                'can_edit' => $currentUser ? $currentUser->getId() === $snippet->getAuthorId() : false,
-                'can_fork' => (bool)$currentUser
+                'can_edit' => $this->canEditSnippet($snippet, $currentUser),
+                'can_fork' => (bool)$currentUser,
+                'is_starred' => $currentUser ? $this->snippetRepository->isStarredByUser($snippet->getId(), $currentUser->getId()) : false,
             ]);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch snippet');
+            ApiResponse::error('Failed to fetch snippet: ' . $e->getMessage());
         }
     }
 
@@ -104,7 +122,7 @@ class SnippetController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $currentUser = $this->auth->handle();
+        $currentUser = $this->auth->handle(); // Requires authentication
         $input = json_decode(file_get_contents('php://input'), true);
         if (!$input) {
             ApiResponse::error('Invalid JSON input');
@@ -115,12 +133,23 @@ class SnippetController
             ValidationHelper::validateLength($input['title'], 1, 255, 'title');
             ValidationHelper::validateEnum($input['visibility'] ?? 'public', ['public', 'private', 'organization'], 'visibility');
 
+            // Check permission to create organization snippet
+            if (($input['visibility'] ?? 'public') === 'organization') {
+                if (!isset($input['organization_id'])) {
+                    ApiResponse::error('organization_id is required for organization visibility', 422);
+                }
+                if (!$this->userRepository->isMemberOfOrganization($currentUser->getId(), $input['organization_id'])) {
+                    ApiResponse::error('Not a member of the specified organization', 403);
+                }
+            }
+
             $snippetData = [
                 'title' => $input['title'],
                 'description' => $input['description'] ?? null,
                 'visibility' => $input['visibility'] ?? 'public',
                 'language' => $input['language'],
                 'author_id' => $currentUser->getId(),
+                'organization_id' => $input['organization_id'] ?? null,
                 'is_template' => $input['is_template'] ?? false,
                 'template_variables' => $input['template_variables'] ?? null,
                 'tags' => $input['tags'] ?? []
@@ -133,7 +162,7 @@ class SnippetController
         } catch (\App\Exceptions\ValidationException $e) {
             ApiResponse::error($e->getMessage(), 422, $e->getErrors());
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to create snippet');
+            ApiResponse::error('Failed to create snippet: ' . $e->getMessage());
         }
     }
 
@@ -143,7 +172,7 @@ class SnippetController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $currentUser = $this->auth->handle();
+        $currentUser = $this->auth->handle(); // Requires authentication
         $id = (int)($params[0] ?? 0);
         if ($id <= 0) {
             ApiResponse::error('Invalid snippet ID');
@@ -166,13 +195,25 @@ class SnippetController
             }
 
             $updateData = [];
-            $allowedFields = ['title', 'description', 'visibility', 'language', 'is_template', 'template_variables', 'tags'];
+            $allowedFields = ['title', 'description', 'visibility', 'language', 'is_template', 'template_variables', 'tags', 'organization_id'];
 
             foreach ($allowedFields as $field) {
                 if (isset($input[$field])) {
                     $updateData[$field] = $input[$field];
                 }
             }
+            
+            // If changing to organization visibility, check membership
+            if (isset($updateData['visibility']) && $updateData['visibility'] === 'organization') {
+                if (!isset($updateData['organization_id'])) {
+                    // Use existing organization_id if not provided in update
+                    $updateData['organization_id'] = $snippet->getOrganizationId();
+                }
+                if (!$this->userRepository->isMemberOfOrganization($currentUser->getId(), $updateData['organization_id'])) {
+                    ApiResponse::error('Not a member of the specified organization', 403);
+                }
+            }
+
 
             $updatedSnippet = $this->snippetRepository->update($id, $updateData, $input['code'] ?? null, $currentUser->getId());
 
@@ -181,7 +222,7 @@ class SnippetController
         } catch (\App\Exceptions\ValidationException $e) {
             ApiResponse::error($e->getMessage(), 422, $e->getErrors());
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to update snippet');
+            ApiResponse::error('Failed to update snippet: ' . $e->getMessage());
         }
     }
 
@@ -191,7 +232,7 @@ class SnippetController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $currentUser = $this->auth->handle();
+        $currentUser = $this->auth->handle(); // Requires authentication
         $id = (int)($params[0] ?? 0);
         if ($id <= 0) {
             ApiResponse::error('Invalid snippet ID');
@@ -213,7 +254,7 @@ class SnippetController
             ApiResponse::success(null, 'Snippet deleted successfully');
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to delete snippet');
+            ApiResponse::error('Failed to delete snippet: ' . $e->getMessage());
         }
     }
 
@@ -223,7 +264,7 @@ class SnippetController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $currentUser = $this->auth->handle();
+        $currentUser = $this->auth->handle(); // Requires authentication
         $id = (int)($params[0] ?? 0);
         if ($id <= 0) {
             ApiResponse::error('Invalid snippet ID');
@@ -238,9 +279,9 @@ class SnippetController
                 ApiResponse::error('Snippet not found', 404);
             }
 
-            // Check if user can view the original snippet
-            if (!$this->canViewSnippet($originalSnippet)) {
-                ApiResponse::error('Access denied', 403);
+            // Check if user can view the original snippet before forking
+            if (!$this->canViewSnippet($originalSnippet, $currentUser)) {
+                ApiResponse::error('Access denied: Cannot fork a snippet you cannot view', 403);
             }
 
             $fork = $this->snippetRepository->fork($id, $currentUser->getId(), $title);
@@ -248,7 +289,7 @@ class SnippetController
             ApiResponse::success($fork->toArray(), 'Snippet forked successfully');
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fork snippet');
+            ApiResponse::error('Failed to fork snippet: ' . $e->getMessage());
         }
     }
 
@@ -258,7 +299,7 @@ class SnippetController
             ApiResponse::error('Method not allowed', 405);
         }
 
-        $currentUser = $this->auth->handle();
+        $currentUser = $this->auth->handle(); // Requires authentication
         $id = (int)($params[0] ?? 0);
         if ($id <= 0) {
             ApiResponse::error('Invalid snippet ID');
@@ -269,14 +310,30 @@ class SnippetController
             if (!$snippet) {
                 ApiResponse::error('Snippet not found', 404);
             }
+            
+            // Check if user can view the snippet
+            if (!$this->canViewSnippet($snippet, $currentUser)) {
+                ApiResponse::error('Access denied: Cannot star a snippet you cannot view', 403);
+            }
 
-            // Toggle star (would need separate stars table)
-            $this->snippetRepository->incrementStarCount($id);
+            $isStarred = $this->snippetRepository->isStarredByUser($id, $currentUser->getId());
 
-            ApiResponse::success(null, 'Snippet starred successfully');
+            if ($isStarred) {
+                $this->snippetRepository->unstarSnippet($id, $currentUser->getId());
+                $message = 'Snippet unstarred successfully';
+            } else {
+                $this->snippetRepository->starSnippet($id, $currentUser->getId());
+                $message = 'Snippet starred successfully';
+            }
+
+            ApiResponse::success([
+                'snippet_id' => $id,
+                'is_starred' => !$isStarred,
+                'star_count' => $this->snippetRepository->findById($id)->getStarCount()
+            ], $message);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to star snippet');
+            ApiResponse::error('Failed to toggle star status: ' . $e->getMessage());
         }
     }
 
@@ -297,8 +354,10 @@ class SnippetController
                 ApiResponse::error('Snippet not found', 404);
             }
 
+            $currentUser = $this->auth->optional();
+
             // Check view permissions
-            if (!$this->canViewSnippet($snippet)) {
+            if (!$this->canViewSnippet($snippet, $currentUser)) {
                 ApiResponse::error('Access denied', 403);
             }
 
@@ -307,7 +366,7 @@ class SnippetController
             ApiResponse::success(array_map(fn($v) => $v->toArray(), $versions));
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch versions');
+            ApiResponse::error('Failed to fetch versions: ' . $e->getMessage());
         }
     }
 
@@ -328,8 +387,10 @@ class SnippetController
                 ApiResponse::error('Snippet not found', 404);
             }
 
+            $currentUser = $this->auth->optional();
+
             // Check view permissions
-            if (!$this->canViewSnippet($snippet)) {
+            if (!$this->canViewSnippet($snippet, $currentUser)) {
                 ApiResponse::error('Access denied', 403);
             }
 
@@ -350,47 +411,82 @@ class SnippetController
             ApiResponse::success($analyses);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch analyses');
+            ApiResponse::error('Failed to fetch analyses: ' . $e->getMessage());
         }
     }
 
-    private function canViewSnippet($snippet, $user = null): bool
+    private function canViewSnippet(Snippet $snippet, ?User $user = null): bool
     {
-        if (!$user) {
-            $user = $this->auth->optional();
-        }
-
-        if (!$user) {
-            return $snippet->getVisibility() === 'public';
-        }
-
-        // Owner can view their own snippets
-        if ($user->getId() === $snippet->getAuthorId()) {
-            return true;
-        }
-
-        // Public snippets are viewable by anyone
+        // Public snippets are always viewable
         if ($snippet->getVisibility() === 'public') {
             return true;
         }
 
-        // Organization snippets require membership check (simplified)
-        if ($snippet->getVisibility() === 'organization') {
-            return $user->getId() === $snippet->getAuthorId();
+        // Must be authenticated for private or organization snippets
+        if (!$user) {
+            return false;
+        }
+
+        // Owner can always view their own snippets
+        if ($user->getId() === $snippet->getAuthorId()) {
+            return true;
+        }
+
+        // Admin override
+        if ($this->roleMiddleware->hasPermission($user->getId(), 'view_any_snippet')) {
+            return true;
+        }
+
+        // Organization snippets: check if user is member of the organization
+        if ($snippet->getVisibility() === 'organization' && $snippet->getOrganizationId()) {
+            return $this->userRepository->isMemberOfOrganization($user->getId(), $snippet->getOrganizationId());
         }
 
         return false;
     }
 
-    private function canEditSnippet($snippet, $user): bool
+    private function canEditSnippet(Snippet $snippet, User $user): bool
     {
-        // Owner can edit their snippets
-        return $user->getId() === $snippet->getAuthorId();
+        // Owner can always edit their own snippets
+        if ($user->getId() === $snippet->getAuthorId()) {
+            return true;
+        }
+
+        // Admin override
+        if ($this->roleMiddleware->hasPermission($user->getId(), 'edit_any_snippet')) {
+            return true;
+        }
+
+        // Organization snippets: check if user has permission within the organization
+        if ($snippet->getVisibility() === 'organization' && $snippet->getOrganizationId()) {
+            // This would be more complex, involving organization member roles
+            // For now, assume if they can view, they can edit within organization
+            // Or, more accurately, check for a specific 'edit_organization_snippet' permission
+             return $this->roleMiddleware->hasPermission($user->getId(), 'edit_organization_snippet') &&
+                    $this->userRepository->isMemberOfOrganization($user->getId(), $snippet->getOrganizationId());
+        }
+
+        return false;
     }
 
-    private function canDeleteSnippet($snippet, $user): bool
+    private function canDeleteSnippet(Snippet $snippet, User $user): bool
     {
-        // Owner can delete their snippets
-        return $user->getId() === $snippet->getAuthorId();
+        // Owner can always delete their own snippets
+        if ($user->getId() === $snippet->getAuthorId()) {
+            return true;
+        }
+
+        // Admin override
+        if ($this->roleMiddleware->hasPermission($user->getId(), 'delete_any_snippet')) {
+            return true;
+        }
+        
+        // Organization snippets: check if user has permission within the organization
+        if ($snippet->getVisibility() === 'organization' && $snippet->getOrganizationId()) {
+             return $this->roleMiddleware->hasPermission($user->getId(), 'delete_organization_snippet') &&
+                    $this->userRepository->isMemberOfOrganization($user->getId(), $snippet->getOrganizationId());
+        }
+
+        return false;
     }
 }
