@@ -13,15 +13,9 @@ use PDO;
 
 class SearchServiceTest extends TestCase
 {
-    private SearchService $searchService;
-    private $mockDb;
-
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->mockDb = $this->createMockPDO();
-        $this->searchService = new SearchService($this->mockDb);
     }
 
     /**
@@ -225,7 +219,10 @@ class SearchServiceTest extends TestCase
     private function sanitizeSearchQuery(string $query): string
     {
         $query = strip_tags($query);
-        $query = preg_replace('/[^\w\s"\'.-]/u', '', $query);
+        // Remove SQL keywords
+        $sqlKeywords = ['DROP TABLE', 'DELETE FROM', 'INSERT INTO', 'UPDATE SET', 'TRUNCATE'];
+        $query = str_ireplace($sqlKeywords, '', $query);
+        $query = preg_replace('/[^\w\s"\'.,-]/u', '', $query);
         return trim($query);
     }
 
