@@ -16,15 +16,9 @@ use PDO;
 
 class SnippetServiceTest extends TestCase
 {
-    private SnippetService $snippetService;
-    private $mockDb;
-
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->mockDb = $this->createMockPDO();
-        $this->snippetService = new SnippetService($this->mockDb);
     }
 
     /**
