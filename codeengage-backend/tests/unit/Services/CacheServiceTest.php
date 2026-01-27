@@ -13,15 +13,9 @@ use PDO;
 
 class CacheServiceTest extends TestCase
 {
-    private CacheService $cacheService;
-    private $mockDb;
-
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->mockDb = $this->createMockPDO();
-        $this->cacheService = new CacheService($this->mockDb);
     }
 
     /**
@@ -33,7 +27,7 @@ class CacheServiceTest extends TestCase
         $key = $this->generateCacheKey('snippets', $params);
         
         $this->assertStringStartsWith('snippets:', $key);
-        $this->assertStringContainsString('123', $key);
+        $this->assertEquals(41, strlen($key)); // 'snippets:' (9) + md5 (32) = 41
     }
 
     /**
