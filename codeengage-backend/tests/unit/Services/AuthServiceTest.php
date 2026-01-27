@@ -15,20 +15,9 @@ use PDO;
 
 class AuthServiceTest extends TestCase
 {
-    private AuthService $authService;
-    private $mockDb;
-    private $mockUserRepo;
-    private $mockAuditRepo;
-
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->mockDb = $this->createMockPDO();
-        $this->mockUserRepo = $this->createMock(UserRepository::class);
-        $this->mockAuditRepo = $this->createMock(AuditRepository::class);
-        
-        $this->authService = new AuthService($this->mockDb);
     }
 
     /**
