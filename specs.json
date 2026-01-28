@@ -96,22 +96,28 @@
         },
         "assets": {
           "fonts": [
-            "Inter.woff2",
-            "FiraMono.woff2"
+            "Inter-Variable.woff2",
+            "JetBrainsMono-Variable.woff2",
+            "PlusJakartaSans-Bold.woff2"
           ],
           "icons": {
-            "heroicons": [
-              "solid/",
-              "outline/"
+            "phosphor-icons": [
+              "regular/",
+              "fill/",
+              "duotone/"
             ],
             "custom": [
               "badges/",
-              "achievements/"
+              "achievements/",
+              "tech-logos/"
             ]
           },
           "svg": [
             "logo.svg",
-            "background-patterns/"
+            "logo-animated.svg",
+            "background-aurora.svg",
+            "grid-pattern.svg",
+            "noise-texture.png"
           ]
         },
         "config": {
@@ -608,57 +614,60 @@
   },
   "frontend_pages_and_designs": {
     "dashboard_page": {
-      "layout": "Sidebar navigation + main content grid",
+      "layout": "Responsive Bento Grid layout",
       "sections": [
-        "Quick stats (snippets created, achievements, points)",
-        "Recent snippets table with search/filter",
-        "Collaboration invitations",
-        "Leaderboard preview",
-        "Quick create snippet button"
+        "Welcome Hero with daily coding streak visualization",
+        "Key Metrics Cards (Glassmorphism style)",
+        "Recent Snippets Carousel",
+        "Activity Heatmap (GitHub style)",
+        "Community Trends / Leaderboard Ticker"
       ],
-      "design": "Dark theme with card-based widgets, gradient accents",
+      "design": {
+        "theme": "Midnight Blue & Neon accents",
+        "style": "Glassmorphism with noise textures",
+        "typography": "Sans-serif headings, Monospace data values"
+      },
       "interactions": [
-        "Drag-and-drop snippet organization",
-        "Keyboard shortcuts overlay (?)",
-        "Real-time notification badges"
+        "Drag-and-drop widget customization",
+        "Hover glow effects",
+        "Skeleton loading states",
+        "Animated count-up for statistics"
       ]
     },
     "snippet_editor_page": {
-      "layout": "Three-column: file tree | editor | properties",
+      "layout": "Immersive IDE-like layout (Sidebar | Editor | Context Panel)",
       "editor_features": [
-        "CodeMirror 6 with syntax highlighting",
-        "Vim/Emacs keybindings toggle",
-        "Collaboration mode with presence indicators",
-        "Inline code analysis annotations",
-        "Template variable insertion",
-        "Split view for diff comparison"
+        "CodeMirror 6 Custom Theme (Dracula/Nord/Monokai)",
+        "Smooth cursor animations & caret blinking",
+        "Minimap scrollbar",
+        "Collapsible region folding",
+        "Live markdown preview split-pane"
       ],
-      "properties_panel": [
-        "Language selector",
-        "Tag management with autocomplete",
-        "Visibility settings",
-        "Template configuration",
-        "Analysis results display"
-      ],
-      "design": "Full-screen focus mode, minimal UI in focus mode"
+      "properties_panel": {
+        "style": "Floating glass panel or collapsible sidebar",
+        "elements": [
+          "Smart tag suggestion chips",
+          "Language icon selector",
+          "Visibility toggle switch with animation",
+          "Live collaboration avatars stack"
+        ]
+      },
+      "design": "Distraction-free focus mode, translucent UI elements"
     },
     "snippet_viewer_page": {
-      "layout": "Header + code display + side panel",
+      "layout": "Modern showcase layout (Hero header + Code Block + Metadata Rail)",
       "code_display": [
-        "Syntax highlighted with line numbers",
-        "Copy-to-clipboard button",
-        "Download options",
-        "Embed code generator",
-        "Run sandbox for executable code"
+        "Rich syntax highlighting with ligatures",
+        "Floating action bar (Copy, Download, Raw)",
+        "Line highlighting and permalinks",
+        "Embedded terminal-like output preview"
       ],
       "side_panel": [
-        "Version history timeline",
-        "Related snippets visualization",
-        "Comments and reviews",
-        "Usage statistics",
-        "Fork/Star buttons"
+        "Interactive version timeline slider",
+        "Comment threads with rich text support",
+        "Related snippets graph visualization"
       ],
-      "design": "Print-friendly formatting, adjustable font size/theme"
+      "design": "Clean, documentation-style readability, high contrast code blocks"
     },
     "collaboration_page": {
       "layout": "Editor + participant sidebar + chat panel",
@@ -696,15 +705,14 @@
       "design": "Data-heavy with charts and tables, export functionality"
     },
     "login_signup_pages": {
-      "layout": "Centered card design",
+      "layout": "Split screen (Product Showcase Art | Interactive Form)",
       "features": [
-        "Social login options (if configured)",
-        "Password strength meter",
-        "Email verification flow",
-        "Remember me functionality",
-        "Reset password workflow"
+        "Social login with particle effects",
+        "Password strength visualizer (progress bar)",
+        "Animated form field labels (Floating labels)",
+        "Success confetti animation"
       ],
-      "design": "Minimalist with brand colors, responsive"
+      "design": "Premium brand showcase, 3D illustrative elements"
     },
     "command_palette": {
       "trigger": "Ctrl+K or Cmd+K",
@@ -719,15 +727,31 @@
     },
     "mobile_responsive": {
       "breakpoints": [
-        "Mobile (< 640px): Single column, hamburger menu",
-        "Tablet (640px-1024px): Collapsible sidebar",
-        "Desktop (> 1024px): Full three-column layout"
+        "Mobile (< 640px): Bottom navigation bar app-like capability",
+        "Tablet (640px-1024px): Adaptive grid layouts",
+        "Desktop (> 1024px): Expanded multi-column views"
       ],
       "touch_interactions": [
-        "Swipe gestures for navigation",
-        "Touch-optimized code selection",
-        "Mobile keyboard adjustments"
+        "Swipe-to-action list items",
+        "Pull-to-refresh",
+        "Haptic feedback triggers (if supported)"
       ]
+    },
+    "design_system_tokens": {
+      "colors": {
+        "primary": "Violet/Indigo gradients",
+        "background": "Deep Space Black (#0B0F19)",
+        "surface": "Translucent Grey (#1F293780)",
+        "accent": "Cyberpunk Neon (#00F0FF, #7000FF)"
+      },
+      "shadows": {
+        "card": "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
+        "glow": "0 0 20px rgba(112, 0, 255, 0.5)"
+      },
+      "radius": {
+        "default": "1rem (rounded-2xl)",
+        "button": "0.75rem (rounded-xl)"
+      }
     }
   },
   "api_endpoints": {
@@ -773,7 +797,11 @@
   },
   "deployment_configuration": {
     "infinityfree_backend": {
-      "requirements": ["PHP 8.0+", "MySQL 5.7+", "HTTPS enabled"],
+      "requirements": [
+        "PHP 8.0+",
+        "MySQL 5.7+",
+        "HTTPS enabled"
+      ],
       "setup_steps": [
         "Upload backend files to InfinityFree hosting",
         "Create MySQL database via phpMyAdmin",
@@ -940,7 +968,12 @@
   },
   "development_workflow": {
     "local_development": {
-      "requirements": ["PHP 8.0+", "Node.js 16+", "MySQL 8.0", "Git"],
+      "requirements": [
+        "PHP 8.0+",
+        "Node.js 16+",
+        "MySQL 8.0",
+        "Git"
+      ],
       "setup": [
         "Clone repository",
         "Run composer install (backend)",
