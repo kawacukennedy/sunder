@@ -13,56 +13,111 @@ class Migration_006_create_tags_and_organizations_tables
 
     public function up(): bool
     {
-        $sql1 = "
-            CREATE TABLE IF NOT EXISTS tags (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(50) NOT NULL,
-                slug VARCHAR(50) UNIQUE NOT NULL,
-                description TEXT,
-                usage_count INT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_tags_slug (slug),
-                INDEX idx_tags_usage (usage_count DESC)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-        $sql2 = "
-            CREATE TABLE IF NOT EXISTS snippet_tags (
-                snippet_id INT NOT NULL,
-                tag_id INT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (snippet_id, tag_id),
-                FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE,
-                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-
-        $sql3 = "
-            CREATE TABLE IF NOT EXISTS organizations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                slug VARCHAR(100) UNIQUE NOT NULL,
-                description TEXT,
-                owner_id INT NOT NULL,
-                color_theme VARCHAR(50) DEFAULT 'blue',
-                settings JSON DEFAULT (JSON_OBJECT()),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-
-        $sql4 = "
-            CREATE TABLE IF NOT EXISTS organization_members (
-                organization_id INT NOT NULL,
-                user_id INT NOT NULL,
-                role ENUM('owner', 'admin', 'member', 'viewer') DEFAULT 'member',
-                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (organization_id, user_id),
-                FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
+        if ($driver === 'sqlite') {
+            $sql1 = "
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(50) NOT NULL,
+                    slug VARCHAR(50) UNIQUE NOT NULL,
+                    description TEXT,
+                    usage_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ";
+            $this->db->exec("CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug)");
+            $this->db->exec("CREATE INDEX IF NOT EXISTS idx_tags_usage ON tags(usage_count DESC)");
+    
+            $sql2 = "
+                CREATE TABLE IF NOT EXISTS snippet_tags (
+                    snippet_id INTEGER NOT NULL,
+                    tag_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (snippet_id, tag_id),
+                    FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                )
+            ";
+    
+            $sql3 = "
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(255) NOT NULL,
+                    slug VARCHAR(100) UNIQUE NOT NULL,
+                    description TEXT,
+                    owner_id INTEGER NOT NULL,
+                    color_theme VARCHAR(50) DEFAULT 'blue',
+                    settings TEXT, -- JSON
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            ";
+    
+            $sql4 = "
+                CREATE TABLE IF NOT EXISTS organization_members (
+                    organization_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    role TEXT DEFAULT 'member', -- ENUM
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (organization_id, user_id),
+                    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            ";
+        } else {
+            $sql1 = "
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(50) NOT NULL,
+                    slug VARCHAR(50) UNIQUE NOT NULL,
+                    description TEXT,
+                    usage_count INT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_tags_slug (slug),
+                    INDEX idx_tags_usage (usage_count DESC)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+    
+            $sql2 = "
+                CREATE TABLE IF NOT EXISTS snippet_tags (
+                    snippet_id INT NOT NULL,
+                    tag_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (snippet_id, tag_id),
+                    FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+    
+            $sql3 = "
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    slug VARCHAR(100) UNIQUE NOT NULL,
+                    description TEXT,
+                    owner_id INT NOT NULL,
+                    color_theme VARCHAR(50) DEFAULT 'blue',
+                    settings JSON DEFAULT (JSON_OBJECT()),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+    
+            $sql4 = "
+                CREATE TABLE IF NOT EXISTS organization_members (
+                    organization_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    role ENUM('owner', 'admin', 'member', 'viewer') DEFAULT 'member',
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (organization_id, user_id),
+                    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+        }
 
         return $this->db->exec($sql1) !== false &&
                $this->db->exec($sql2) !== false &&
