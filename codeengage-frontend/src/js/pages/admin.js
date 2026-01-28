@@ -596,14 +596,103 @@ export class Admin {
     /**
      * Placeholder methods for modals
      */
-    openUserEditModal(userId) {
-        console.log('Opening edit modal for user:', userId);
-        // Would implement modal opening logic
+    async openUserEditModal(userId) {
+        try {
+            const response = await this.app.apiClient.get(`/admin/users/${userId}`);
+            const user = response.data;
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-gray-700 shadow-2xl">
+                    <h3 class="text-xl font-bold text-white mb-4">Edit User: ${this.escapeHtml(user.username)}</h3>
+                    <form id="edit-user-form" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Role</label>
+                            <select name="role" class="w-full bg-gray-700 text-white rounded p-2 border border-gray-600">
+                                <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Status</label>
+                            <select name="status" class="w-full bg-gray-700 text-white rounded p-2 border border-gray-600">
+                                <option value="active" ${!user.deleted_at ? 'selected' : ''}>Active</option>
+                                <option value="suspended" ${user.deleted_at ? 'selected' : ''}>Suspended</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500" onclick="this.closest('.fixed').remove()">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            modal.querySelector('form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const updates = Object.fromEntries(formData.entries());
+
+                try {
+                    await this.app.apiClient.put(`/admin/users/${userId}`, updates);
+                    this.app.showSuccess('User updated');
+                    modal.remove();
+                    this.loadAdminData(); // Refresh list
+                    this.render(); // Re-render
+                } catch (err) {
+                    this.app.showError('Failed to update user');
+                }
+            });
+
+        } catch (error) {
+            this.app.showError('Failed to load user details');
+        }
     }
 
     openReportModal(reportId) {
-        console.log('Opening report modal:', reportId);
-        // Would implement modal opening logic
+        const report = this.data.reports.find(r => r.id == reportId);
+        if (!report) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-lg p-6 max-w-lg w-full border border-gray-700 shadow-2xl">
+                <h3 class="text-xl font-bold text-white mb-4">Review Report #${report.id}</h3>
+                <div class="space-y-3 mb-6">
+                    <p class="text-gray-300"><span class="text-gray-500">Type:</span> ${this.escapeHtml(report.type)}</p>
+                    <p class="text-gray-300"><span class="text-gray-500">Reason:</span> ${this.escapeHtml(report.reason)}</p>
+                    <div class="bg-gray-900 p-3 rounded">
+                        <p class="text-sm text-gray-400">${this.escapeHtml(report.details || 'No details')}</p>
+                    </div>
+                </div>
+                
+                <h4 class="font-medium text-white mb-2">Actions</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="flex items-center justify-center px-3 py-2 bg-red-900 text-red-100 rounded hover:bg-red-800" onclick="window.adminPage.dismissModalAndAction(${report.id}, 'delete')">
+                        🗑 Delete Content
+                    </button>
+                    <button class="flex items-center justify-center px-3 py-2 bg-yellow-900 text-yellow-100 rounded hover:bg-yellow-800" onclick="window.adminPage.dismissModalAndAction(${report.id}, 'warn')">
+                        ⚠️ Warn User
+                    </button>
+                    <button class="flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 col-span-2" onclick="window.adminPage.dismissModalAndAction(${report.id}, 'dismiss')">
+                        Dismiss Report
+                    </button>
+                </div>
+                 <button class="w-full mt-4 text-gray-500 hover:text-white" onclick="this.closest('.fixed').remove()">Close</button>
+            </div>
+        `;
+
+        // Expose helper to window for inline onclicks (simple pattern)
+        window.adminPage = this;
+        this.dismissModalAndAction = async (id, action) => {
+            modal.remove();
+            await this.processReport(id, action);
+        };
+
+        document.body.appendChild(modal);
     }
 }
 
