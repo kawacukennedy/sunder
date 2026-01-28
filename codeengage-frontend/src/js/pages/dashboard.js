@@ -58,75 +58,95 @@ export class Dashboard {
         const user = this.data.user || {};
 
         container.innerHTML = `
-            <div class="dashboard-page">
-                <header class="dashboard-header">
-                    <div class="welcome-section">
-                        <h1>Welcome back, ${this.escapeHtml(user.display_name || user.username || 'Developer')}!</h1>
-                        <p class="date">${this.formatDate(new Date())}</p>
+            <div class="min-h-screen bg-deep-space p-4 md:p-8">
+                <!-- Dashboard Header -->
+                <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 animate-fade-in">
+                    <div>
+                        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                            Welcome, <span class="text-white">${this.escapeHtml(user.display_name || user.username)}</span>
+                        </h1>
+                        <p class="text-gray-400 mt-1 flex items-center gap-2">
+                             <span class="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                             ${this.formatDate(new Date())}
+                        </p>
                     </div>
-                    <div class="quick-actions">
-                        <a href="/new" class="btn btn-primary">+ New Snippet</a>
-                        <a href="/snippets" class="btn btn-secondary">Browse Snippets</a>
+                    <div class="flex items-center gap-4 mt-4 md:mt-0">
+                        <div class="glass px-4 py-2 rounded-lg flex items-center gap-2 text-sm text-gray-300">
+                            <span class="text-yellow-400">⚡</span> ${this.data.stats?.total_snippets || 0} Snippets
+                        </div>
+                         <a href="/new" class="btn btn-primary rounded-xl shadow-neon hover:scale-105 transition-transform">
+                            <span class="text-lg mr-1">+</span> New Snippet
+                        </a>
                     </div>
                 </header>
                 
-                <div class="dashboard-stats">
-                    ${this.renderStats()}
-                </div>
-                
-                <div class="dashboard-grid">
-                    <section class="dashboard-section recent-snippets">
-                        <div class="section-header">
-                            <h2>Recent Snippets</h2>
-                            <a href="/profile?tab=snippets" class="view-all">View all →</a>
-                        </div>
-                        <div class="snippets-list">
-                            ${this.renderSnippetsList(this.data.recentSnippets, 'No snippets yet. Create your first one!')}
-                        </div>
-                    </section>
+                <!-- Bento Grid Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     
-                    <section class="dashboard-section starred-snippets">
-                        <div class="section-header">
-                            <h2>Starred Snippets</h2>
-                            <a href="/starred" class="view-all">View all →</a>
-                        </div>
-                        <div class="snippets-list">
-                            ${this.renderSnippetsList(this.data.starredSnippets, 'No starred snippets yet. Star snippets you like!')}
-                        </div>
-                    </section>
-                    
-                    <section class="dashboard-section activity-feed">
-                        <div class="section-header">
-                            <h2>Recent Activity</h2>
-                        </div>
-                        <div class="activity-list">
+                    <!-- Main Hero / Stats (Span 2) -->
+                    <div class="md:col-span-2 lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden group hover:border-gray-600 transition-colors animate-slide-up">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-neon-purple/10 rounded-full blur-[80px] -mr-16 -mt-16"></div>
+                        <h2 class="text-xl font-semibold text-white mb-6 relative z-10">Overview</h2>
+                         <div class="grid grid-cols-2 gap-4 relative z-10">
+                            <div class="bg-gray-900/40 p-4 rounded-xl border border-white/5 hover:border-neon-blue/30 transition-colors">
+                                <span class="text-gray-400 text-sm block mb-1">Total Views</span>
+                                <span class="text-2xl font-bold text-white">${this.data.stats?.total_views || 0}</span>
+                            </div>
+                            <div class="bg-gray-900/40 p-4 rounded-xl border border-white/5 hover:border-neon-purple/30 transition-colors">
+                                <span class="text-gray-400 text-sm block mb-1">Total Stars</span>
+                                <span class="text-2xl font-bold text-white">${this.data.stats?.total_stars || 0}</span>
+                            </div>
+                            <div class="bg-gray-900/40 p-4 rounded-xl border border-white/5 hover:border-green-400/30 transition-colors">
+                                <span class="text-gray-400 text-sm block mb-1">Achievement Points</span>
+                                <span class="text-2xl font-bold text-white">${this.data.user?.achievement_points || 0}</span>
+                            </div>
+                             <div class="bg-gray-900/40 p-4 rounded-xl border border-white/5 flex items-center justify-center cursor-pointer hover:bg-white/5 transition-colors" onclick="window.location.href='/profile'">
+                                <span class="text-neon-blue font-medium">View detailed stats →</span>
+                            </div>
+                         </div>
+                    </div>
+
+                     <!-- Quick Actions / Menu (Span 1) -->
+                    <div class="glass p-6 rounded-2xl animate-slide-up" style="animation-delay: 100ms">
+                         <h2 class="text-xl font-semibold text-white mb-6">Quick Actions</h2>
+                         <nav class="space-y-2">
+                            <a href="/new" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-all group">
+                                <span class="w-8 h-8 rounded-lg bg-neon-blue/20 flex items-center justify-center text-neon-blue group-hover:scale-110 transition-transform">📝</span>
+                                <span class="font-medium">Create Snippet</span>
+                            </a>
+                            <a href="/snippets" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-all group">
+                                <span class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">🔍</span>
+                                <span class="font-medium">Browse Library</span>
+                            </a>
+                            <a href="/profile" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-all group">
+                                <span class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">👤</span>
+                                <span class="font-medium">Edit Profile</span>
+                            </a>
+                         </nav>
+                    </div>
+
+                    <!-- Activity Feed Sidebar (Span 1, Row 2) - On mobile it flows naturally -->
+                    <div class="md:col-span-1 lg:col-span-1 md:row-span-2 glass p-6 rounded-2xl animate-slide-up" style="animation-delay: 200ms">
+                         <h2 class="text-xl font-semibold text-white mb-6 flex items-center justify-between">
+                            Activity
+                            <span class="text-xs font-normal text-gray-400 bg-white/5 px-2 py-1 rounded">Latest</span>
+                         </h2>
+                         <div class="space-y-4">
                             ${this.renderActivityFeed()}
+                         </div>
+                    </div>
+
+                    <!-- Recent Snippets (Span 3) -->
+                    <div class="md:col-span-2 lg:col-span-3 glass p-6 rounded-2xl animate-slide-up" style="animation-delay: 150ms">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-xl font-semibold text-white">Recent Snippets</h2>
+                            <a href="/snippets" class="text-sm text-neon-blue hover:text-neon-purple transition-colors">View All</a>
                         </div>
-                    </section>
-                    
-                    <section class="dashboard-section quick-links">
-                        <div class="section-header">
-                            <h2>Quick Links</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${this.renderSnippetsList(this.data.recentSnippets, 'Start coding to see your snippets here.')}
                         </div>
-                        <nav class="quick-links-grid">
-                            <a href="/new" class="quick-link">
-                                <span class="icon">📝</span>
-                                <span class="label">New Snippet</span>
-                            </a>
-                            <a href="/explore" class="quick-link">
-                                <span class="icon">🔍</span>
-                                <span class="label">Explore</span>
-                            </a>
-                            <a href="/profile" class="quick-link">
-                                <span class="icon">👤</span>
-                                <span class="label">Profile</span>
-                            </a>
-                            <a href="/settings" class="quick-link">
-                                <span class="icon">⚙️</span>
-                                <span class="label">Settings</span>
-                            </a>
-                        </nav>
-                    </section>
+                    </div>
+
                 </div>
             </div>
         `;
@@ -135,28 +155,12 @@ export class Dashboard {
     /**
      * Render stats cards
      */
+    /**
+     * Stats are now inline in render() for Bento Layout
+     * Keeping this as utility or deprecated
+     */
     renderStats() {
-        const stats = this.data.stats || {};
-        const user = this.data.user || {};
-
-        return `
-            <div class="stat-card">
-                <span class="stat-value">${stats.total_snippets || 0}</span>
-                <span class="stat-label">Total Snippets</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">${stats.total_stars || 0}</span>
-                <span class="stat-label">Stars Received</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">${stats.total_views || 0}</span>
-                <span class="stat-label">Total Views</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">${user.achievement_points || 0}</span>
-                <span class="stat-label">Achievement Points</span>
-            </div>
-        `;
+        return '';
     }
 
     /**
@@ -164,18 +168,28 @@ export class Dashboard {
      */
     renderSnippetsList(snippets, emptyMessage) {
         if (!snippets.length) {
-            return `<div class="empty-state"><p>${emptyMessage}</p></div>`;
+            return `<div class="col-span-full h-32 flex items-center justify-center opacity-50 border border-dashed border-gray-700 rounded-xl"><p>${emptyMessage}</p></div>`;
         }
 
         return snippets.map(snippet => `
-            <a href="/snippet/${snippet.id}" class="snippet-item">
-                <div class="snippet-info">
-                    <h4>${this.escapeHtml(snippet.title)}</h4>
-                    <span class="language-tag">${this.escapeHtml(snippet.language)}</span>
-                </div>
-                <div class="snippet-meta">
-                    <span class="stat">⭐ ${snippet.star_count || 0}</span>
-                    <span class="date">${this.formatTimeAgo(snippet.updated_at)}</span>
+            <a href="/snippet/${snippet.id}" class="block group relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-neon-blue to-neon-purple opacity-0 group-hover:opacity-100 blur transition duration-500 -z-10 rounded-xl"></div>
+                
+                <div class="bg-gray-900 border border-white/5 p-4 rounded-xl h-full flex flex-col hover:bg-gray-800 transition-colors">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-neon-blue border border-neon-blue/20">
+                            ${this.escapeHtml(snippet.language)}
+                        </span>
+                        <span class="text-xs text-gray-500 flex items-center gap-1">
+                            ⭐ ${snippet.star_count || 0}
+                        </span>
+                    </div>
+                    <h4 class="text-white font-medium mb-2 line-clamp-1 group-hover:text-neon-blue transition-colors">${this.escapeHtml(snippet.title)}</h4>
+                    
+                     <div class="mt-auto pt-3 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
+                        <span>${this.formatTimeAgo(snippet.updated_at)}</span>
+                        <span>v${snippet.version_count || 1}</span>
+                    </div>
                 </div>
             </a>
         `).join('');
@@ -186,15 +200,17 @@ export class Dashboard {
      */
     renderActivityFeed() {
         if (!this.data.activity.length) {
-            return '<div class="empty-state"><p>No recent activity</p></div>';
+            return '<p class="text-gray-500 text-sm">No recent activity</p>';
         }
 
         return this.data.activity.map(activity => `
-            <div class="activity-item">
-                <span class="activity-icon">${this.getActivityIcon(activity.type)}</span>
-                <div class="activity-content">
-                    <p>${this.escapeHtml(activity.description)}</p>
-                    <span class="activity-time">${this.formatTimeAgo(activity.created_at)}</span>
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900/30 border border-white/5 hover:border-white/10 transition-colors">
+                <span class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-lg border border-gray-700">
+                    ${this.getActivityIcon(activity.type)}
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm text-gray-300 line-clamp-2 leading-relaxed">${this.escapeHtml(activity.description)}</p>
+                    <span class="text-xs text-gray-500 mt-1 block">${this.formatTimeAgo(activity.created_at)}</span>
                 </div>
             </div>
         `).join('');
