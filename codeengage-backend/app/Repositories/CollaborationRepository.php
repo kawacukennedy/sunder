@@ -137,25 +137,27 @@ class CollaborationRepository
 
     public function findExpired(int $timeoutSeconds = 86400): array
     {
+        $cutoff = date('Y-m-d H:i:s', time() - $timeoutSeconds);
         $sql = "
             SELECT * FROM collaboration_sessions 
-            WHERE last_activity < DATE_SUB(NOW(), INTERVAL :seconds SECOND)
+            WHERE last_activity < :cutoff
             ORDER BY last_activity ASC
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':seconds' => $timeoutSeconds]);
+        $stmt->execute([':cutoff' => $cutoff]);
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function cleanupExpired(int $timeoutSeconds = 86400): int
     {
+        $cutoff = date('Y-m-d H:i:s', time() - $timeoutSeconds);
         $sql = "
             DELETE FROM collaboration_sessions 
-            WHERE last_activity < DATE_SUB(NOW(), INTERVAL :seconds SECOND)
+            WHERE last_activity < :cutoff
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':seconds' => $timeoutSeconds]);
+        $stmt->execute([':cutoff' => $cutoff]);
         
         return $stmt->rowCount();
     }
@@ -227,22 +229,42 @@ class CollaborationRepository
 
     public function getStatistics(?int $hours = 24): array
     {
-        $sql = "
-            SELECT 
-                COUNT(*) as total_sessions,
-                COUNT(DISTINCT snippet_id) as unique_snippets,
-                AVG(
-                    TIMESTAMPDIFF(SECOND, created_at, 
-                    COALESCE(last_activity, created_at))
-                ) as avg_session_duration_seconds,
-                COUNT(DISTINCT JSON_EXTRACT(participants, '$[*].user_id')) as total_participants
-            FROM collaboration_sessions
-        ";
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        
+        if ($driver === 'sqlite') {
+            $sql = "
+                SELECT 
+                    COUNT(*) as total_sessions,
+                    COUNT(DISTINCT snippet_id) as unique_snippets,
+                    AVG(
+                        (strftime('%s', COALESCE(last_activity, created_at)) - strftime('%s', created_at))
+                    ) as avg_session_duration_seconds,
+                    0 as total_participants -- Simple placeholder for sqlite
+                FROM collaboration_sessions
+            ";
+        } else {
+            $sql = "
+                SELECT 
+                    COUNT(*) as total_sessions,
+                    COUNT(DISTINCT snippet_id) as unique_snippets,
+                    AVG(
+                        TIMESTAMPDIFF(SECOND, created_at, 
+                        COALESCE(last_activity, created_at))
+                    ) as avg_session_duration_seconds,
+                    COUNT(DISTINCT JSON_EXTRACT(participants, '$[*].user_id')) as total_participants
+                FROM collaboration_sessions
+            ";
+        }
 
         $params = [];
         if ($hours) {
-            $sql .= " WHERE created_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)";
-            $params[':hours'] = $hours;
+            if ($driver === 'sqlite') {
+                $sql .= " WHERE created_at >= :cutoff";
+                $params[':cutoff'] = date('Y-m-d H:i:s', strtotime("-{$hours} hours"));
+            } else {
+                $sql .= " WHERE created_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)";
+                $params[':hours'] = $hours;
+            }
         }
 
         $stmt = $this->db->prepare($sql);
