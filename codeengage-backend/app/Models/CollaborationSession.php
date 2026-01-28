@@ -162,9 +162,9 @@ class CollaborationSession
 
     public static function cleanupOld(PDO $db): int
     {
-        $sql = "DELETE FROM collaboration_sessions WHERE last_activity < DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+        $sql = "DELETE FROM collaboration_sessions WHERE last_activity < :cutoff";
         $stmt = $db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([':cutoff' => date('Y-m-d H:i:s', strtotime('-24 hours'))]);
         
         return $stmt->rowCount();
     }
