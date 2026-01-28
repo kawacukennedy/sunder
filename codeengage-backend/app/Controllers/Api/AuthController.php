@@ -2,410 +2,54 @@
 
 namespace App\Controllers\Api;
 
-use PDO;
 use App\Services\AuthService;
-use App\Repositories\UserRepository;
-use App\Repositories\AuditRepository;
-use App\Helpers\SecurityHelper;
 use App\Helpers\ApiResponse;
-use App\Helpers\ValidationHelper;
-use App\Exceptions\ValidationException;
-use App\Exceptions\UnauthorizedException;
-use App\Exceptions\NotFoundException;
+use PDO;
 
 class AuthController
 {
-    private PDO $db;
-    private AuthService $authService;
-    private UserRepository $userRepository;
+    private $authService;
+    private $config;
 
-    public function __construct(PDO $db)
+    public function __construct(PDO $pdo)
     {
-        $this->db = $db;
-        $this->userRepository = new UserRepository($db);
-        $this->authService = new AuthService(
-            $this->userRepository,
-            new AuditRepository($db),
-            new SecurityHelper()
-        );
+        $this->config = require __DIR__ . '/../../../config/app.php';
+        $this->authService = new AuthService($pdo, $this->config);
     }
 
-    public function login(string $method, array $params): void
+    public function login($method, $params)
     {
         if ($method !== 'POST') {
             ApiResponse::error('Method not allowed', 405);
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) {
-            ApiResponse::error('Invalid JSON input');
-        }
-
-        try {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            
-            $userArray = $this->authService->login(
-                $input['email'],
-                $input['password'],
-                $ip,
-                $userAgent
-            );
-
-            // Get user model for JWT generation
-            $user = $this->userRepository->findById($userArray['id']);
-            $token = $this->generateJwtToken($user);
-
-            ApiResponse::success([
-                'user' => $user,
-                'token' => $token,
-                'session_id' => session_id(),
-                'csrf_token' => $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32))
-            ], 'Login successful');
-
-        } catch (ValidationException $e) {
-            ApiResponse::error($e->getMessage(), 422, $e->getErrors());
-        } catch (UnauthorizedException $e) {
-            ApiResponse::error($e->getMessage(), 401);
-        } catch (\Exception $e) {
-            ApiResponse::error('Login failed');
-        }
+        $result = $this->authService->login($input['email'] ?? '', $input['password'] ?? '');
+        
+        ApiResponse::success($result, 'Login successful');
     }
 
-    public function register(string $method, array $params): void
+    public function register($method, $params)
     {
         if ($method !== 'POST') {
             ApiResponse::error('Method not allowed', 405);
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) {
-            ApiResponse::error('Invalid JSON input');
-        }
-
-        try {
-            $userArray = $this->authService->register($input);
-
-            // Get user model for JWT generation
-            $user = $this->userRepository->findById($userArray['id']);
-            $token = $this->generateJwtToken($user);
-
-            ApiResponse::success([
-                'user' => $userArray,
-                'token' => $token,
-                'session_id' => session_id(),
-                'csrf_token' => $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32))
-            ], 'Registration successful');
-
-        } catch (ValidationException $e) {
-            ApiResponse::error($e->getMessage(), 422, $e->getErrors());
-        } catch (\Exception $e) {
-            ApiResponse::error('Registration failed: ' . $e->getMessage());
-        }
-    }
-
-    public function logout(string $method, array $params): void
-    {
-        if ($method !== 'POST') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        session_start();
+        $result = $this->authService->register($input);
         
-        // Destroy session
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params["path"], $params["domain"],
-                $params["secure"], $params["httponly"]
-            );
-        }
-        session_destroy();
-
-        ApiResponse::success(null, 'Logout successful');
+        ApiResponse::success($result, 'Registration successful', 201);
     }
 
-    public function me(string $method, array $params): void
+    public function logout($method, $params)
     {
-        if ($method !== 'GET') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        $user = $this->getCurrentUser();
-        if (!$user) {
-            ApiResponse::error('Not authenticated', 401);
-        }
-
-        ApiResponse::success($user->toArray());
+        $this->authService->logout();
+        ApiResponse::success(null, 'Logged out successfully');
     }
 
-    public function refresh(string $method, array $params): void
+    public function me($method, $params)
     {
-        if ($method !== 'POST') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        $user = $this->getCurrentUser();
-        if (!$user) {
-            ApiResponse::error('Not authenticated', 401);
-        }
-
-        // Generate new token
-        $token = $this->generateJwtToken($user);
-
-        ApiResponse::success([
-            'token' => $token,
-            'user' => $user->toArray()
-        ], 'Token refreshed');
-    }
-
-    public function forgotPassword(string $method, array $params): void
-    {
-        if ($method !== 'POST') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) {
-            ApiResponse::error('Invalid JSON input');
-        }
-
-        try {
-            ValidationHelper::validateRequired($input, ['email']);
-            ValidationHelper::validateEmail($input['email']);
-
-            $user = $this->userRepository->findByEmail($input['email']);
-            if (!$user) {
-                // Always return success to prevent email enumeration
-                ApiResponse::success(null, 'If the email exists, a reset link has been sent');
-                return;
-            }
-
-            // Generate reset token
-            $resetToken = bin2hex(random_bytes(32));
-
-            // Store reset token
-            $this->storePasswordResetToken($user->getEmail(), $resetToken);
-
-            // Send email (implementation depends on your email service)
-            $this->sendPasswordResetEmail($user->getEmail(), $resetToken);
-
-            ApiResponse::success(null, 'If the email exists, a reset link has been sent');
-
-        } catch (ValidationException $e) {
-            ApiResponse::error($e->getMessage(), 422, $e->getErrors());
-        }
-    }
-
-    public function resetPassword(string $method, array $params): void
-    {
-        if ($method !== 'POST') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) {
-            ApiResponse::error('Invalid JSON input');
-        }
-
-        try {
-            ValidationHelper::validateRequired($input, ['token', 'password']);
-            ValidationHelper::validatePassword($input['password']);
-
-            $email = $this->validatePasswordResetToken($input['token']);
-            if (!$email) {
-                ApiResponse::error('Invalid or expired reset token', 400);
-            }
-
-            $user = $this->userRepository->findByEmail($email);
-            if (!$user) {
-                ApiResponse::error('Invalid reset token', 400);
-            }
-
-            // Update password
-            $this->userRepository->update($user->getId(), ['password' => $input['password']]);
-            
-            // Clear reset token
-            $this->clearPasswordResetToken($email);
-
-            ApiResponse::success(null, 'Password reset successful');
-
-        } catch (ValidationException $e) {
-            ApiResponse::error($e->getMessage(), 422, $e->getErrors());
-        }
-    }
-
-    private function getCurrentUser(): ?\App\Models\User
-    {
-        // Check session first
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (!empty($_SESSION['user_id'])) {
-            return $this->userRepository->findById($_SESSION['user_id']);
-        }
-
-        // Check JWT token
-        $headers = getallheaders();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            try {
-                $payload = $this->validateJwtToken($matches[1]);
-                if ($payload && isset($payload['user_id'])) {
-                    return $this->userRepository->findById($payload['user_id']);
-                }
-            } catch (\Exception $e) {
-                // Token is invalid
-            }
-        }
-
-        return null;
-    }
-
-    private function generateJwtToken(\App\Models\User $user): string
-    {
-        $config = require __DIR__ . '/../../../config/auth.php';
-        $secret = $config['jwt']['secret'];
-        $algorithm = $config['jwt']['algorithm'];
-        $ttl = $config['jwt']['ttl'];
-
-        $payload = [
-            'user_id' => $user->getId(),
-            'username' => $user->getUsername(),
-            'email' => $user->getEmail(),
-            'iat' => time(),
-            'exp' => time() + $ttl
-        ];
-
-        // Simple JWT implementation (use a proper library in production)
-        $header = json_encode(['typ' => 'JWT', 'alg' => $algorithm]);
-        $payload = json_encode($payload);
-        
-        $headerEncoded = rtrim(strtr(base64_encode($header), '+/', '-_'), '=');
-        $payloadEncoded = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
-        
-        $signature = hash_hmac('sha256', $headerEncoded . '.' . $payloadEncoded, $secret, true);
-        $signatureEncoded = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
-        
-        return $headerEncoded . '.' . $payloadEncoded . '.' . $signatureEncoded;
-    }
-
-    private function validateJwtToken(string $token): ?array
-    {
-        $config = require __DIR__ . '/../../../config/auth.php';
-        $secret = $config['jwt']['secret'];
-
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            return null;
-        }
-
-        [$headerEncoded, $payloadEncoded, $signatureEncoded] = $parts;
-
-        // Verify signature
-        $signature = base64_decode(strtr($signatureEncoded, '-_', '+/'));
-        $expectedSignature = hash_hmac('sha256', $headerEncoded . '.' . $payloadEncoded, $secret, true);
-        
-        if (!hash_equals($signature, $expectedSignature)) {
-            return null;
-        }
-
-        // Check expiration
-        $payload = json_decode(base64_decode(strtr($payloadEncoded, '-_', '+/')), true);
-        if (!$payload || !isset($payload['exp']) || $payload['exp'] < time()) {
-            return null;
-        }
-
-        return $payload;
-    }
-
-    private function checkLoginAttempts(string $ip): bool
-    {
-        // Check last 15 minutes
-        $sql = "SELECT COUNT(*) as attempts FROM login_attempts 
-                WHERE ip_address = :ip AND attempt_time > DATE_SUB(NOW(), INTERVAL 15 MINUTE) 
-                AND success = FALSE";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':ip' => $ip]);
-        $attempts = (int)$stmt->fetch()['attempts'];
-
-        return $attempts < 5; // Allow 5 failed attempts per 15 minutes
-    }
-
-    private function checkRegistrationAttempts(string $ip): bool
-    {
-        // Check last hour
-        $sql = "SELECT COUNT(*) as attempts FROM login_attempts 
-                WHERE ip_address = :ip AND attempt_time > DATE_SUB(NOW(), INTERVAL 1 HOUR)";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':ip' => $ip]);
-        $attempts = (int)$stmt->fetch()['attempts'];
-
-        return $attempts < 3; // Allow 3 registrations per hour
-    }
-
-    private function recordLoginAttempt(string $ip, ?int $userId, bool $success): void
-    {
-        $sql = "INSERT INTO login_attempts (user_id, ip_address, success, user_agent) 
-                VALUES (:user_id, :ip, :success, :user_agent)";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':user_id' => $userId,
-            ':ip' => $ip,
-            ':success' => $success ? 1 : 0,
-            ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
-    }
-
-    private function storePasswordResetToken(string $email, string $token): void
-    {
-        $sql = "INSERT INTO password_resets (email, token) VALUES (:email, :token)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':email' => $email,
-            ':token' => $token
-        ]);
-    }
-
-    private function validatePasswordResetToken(string $token): ?string
-    {
-        $sql = "SELECT email FROM password_resets 
-                WHERE token = :token AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':token' => $token]);
-        $result = $stmt->fetch();
-
-        if (!$result) {
-            return null;
-        }
-
-        return $result['email'];
-    }
-
-    private function clearPasswordResetToken(string $email): void
-    {
-        $sql = "DELETE FROM password_resets WHERE email = :email";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':email' => $email]);
-    }
-
-    private function sendPasswordResetEmail(string $email, string $token): void
-    {
-        // Implementation depends on your email service
-        // This is a placeholder for email sending logic
-        
-        $resetUrl = "https://yourdomain.com/reset-password?token={$token}";
-        $subject = "Password Reset - CodeEngage";
-        $message = "Click here to reset your password: {$resetUrl}";
-        
-        // In production, use a proper email service like SendGrid, Mailgun, etc.
-        error_log("Password reset email sent to {$email}: {$resetUrl}");
+        $user = $this->authService->me();
+        ApiResponse::success($user);
     }
 }
