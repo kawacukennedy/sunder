@@ -14,13 +14,27 @@ class MigrationRunner
 
     private function createMigrationsTable(): void
     {
+        // Check driver
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        
         $sql = "
             CREATE TABLE IF NOT EXISTS migrations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 migration VARCHAR(255) NOT NULL UNIQUE,
                 executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            )
         ";
+        
+        if ($driver === 'mysql') {
+            $sql = "
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    migration VARCHAR(255) NOT NULL UNIQUE,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+        }
+        
         $this->db->exec($sql);
     }
 
@@ -86,7 +100,16 @@ class MigrationRunner
 
     private function runMigration(string $migrationName): void
     {
-        require_once $this->migrationsPath . '/' . $migrationName . '.php';
+        $result = require $this->migrationsPath . '/' . $migrationName . '.php';
+        
+        if (is_callable($result)) {
+            $result($this->db);
+            
+            $stmt = $this->db->prepare("INSERT INTO migrations (migration) VALUES (?)");
+            $stmt->execute([$migrationName]);
+            return;
+        }
+
         $className = 'Migration_' . str_replace('-', '_', $migrationName);
 
         if (class_exists($className)) {
@@ -96,7 +119,7 @@ class MigrationRunner
             $stmt = $this->db->prepare("INSERT INTO migrations (migration) VALUES (?)");
             $stmt->execute([$migrationName]);
         } else {
-            throw new Exception("Migration class {$className} not found");
+            throw new Exception("Migration class {$className} not found or file provided no closure");
         }
     }
 
