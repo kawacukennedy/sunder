@@ -90,11 +90,31 @@ spl_autoload_register(function ($className) {
 });
 
 // Create database connection
-$dsn = "mysql:host={$databaseConfig['host']};dbname={$databaseConfig['name']};charset={$databaseConfig['charset']}";
-$options = $databaseConfig['options'];
-
 try {
-    $db = new PDO($dsn, $databaseConfig['user'], $databaseConfig['pass'], $options);
+    if (($_ENV['DB_CONNECTION'] ?? 'mysql') === 'sqlite') {
+        // SQLite Connection
+        $dbPath = $databaseConfig['sqlite_path'];
+        $dsn = "sqlite:{$dbPath}";
+        
+        // Ensure storage directory exists
+        $storageDir = dirname($dbPath);
+        if (!is_dir($storageDir)) {
+            mkdir($storageDir, 0755, true);
+        }
+        
+        // Ensure DB file exists (touch it if not)
+        if (!file_exists($dbPath)) {
+            touch($dbPath);
+        }
+
+        $db = new PDO($dsn, null, null, $databaseConfig['options']);
+        // SQLite specific pragmas for performance/constraints
+        $db->exec("PRAGMA foreign_keys = ON;");
+    } else {
+        // MySQL Connection
+        $dsn = "mysql:host={$databaseConfig['host']};dbname={$databaseConfig['name']};charset={$databaseConfig['charset']}";
+        $db = new PDO($dsn, $databaseConfig['user'], $databaseConfig['pass'], $databaseConfig['options']);
+    }
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([
