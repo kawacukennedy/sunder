@@ -9,17 +9,26 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
-        'mono': ['Fira Mono', 'ui-monospace', 'SFMono-Regular']
+        'sans': ['Inter Variable', 'Inter', 'ui-sans-serif', 'system-ui'],
+        'mono': ['JetBrains Mono Variable', 'JetBrains Mono', 'Fira Mono', 'monospace'],
+        'display': ['Plus Jakarta Sans', 'Inter', 'system-ui']
       },
       colors: {
-        'code-bg': '#1e1e1e',
-        'code-highlight': '#264f78',
-        'code-comment': '#6a9955',
-        'code-keyword': '#569cd6',
-        'code-string': '#ce9178',
-        'code-number': '#b5cea8',
-        'code-function': '#dcdcaa'
+        'deep-space': '#0B0F19',
+        'glass-surface': 'rgba(31, 41, 55, 0.5)',
+        'neon-blue': '#00F0FF',
+        'neon-purple': '#7000FF',
+        'code-bg': '#0D1117',
+        'code-highlight': '#1F2937',
+        'code-comment': '#6B7280',
+        'code-keyword': '#FF79C6',
+        'code-string': '#F1FA8C',
+        'code-number': '#BD93F9',
+        'code-function': '#50FA7B'
+      },
+      backgroundImage: {
+        'gradient-aurora': 'linear-gradient(to right, #00F0FF, #7000FF)',
+        'gradient-dark': 'linear-gradient(to bottom, #0B0F19, #111827)'
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -54,6 +63,13 @@ export default {
         '80': '80',
         '90': '90',
         '100': '100'
+      },
+      boxShadow: {
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+        'neon': '0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(112, 0, 255, 0.3)'
+      },
+      backdropBlur: {
+        'xs': '2px',
       }
     }
   },
