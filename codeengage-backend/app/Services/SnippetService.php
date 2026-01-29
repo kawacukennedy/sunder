@@ -9,6 +9,10 @@ class SnippetService
 {
     private $snippetModel;
 
+    public function getById($id) {
+        return $this->get($id);
+    }
+
     public function __construct($pdo)
     {
         $this->snippetModel = new Snippet($pdo);
@@ -54,5 +58,62 @@ class SnippetService
         $snippet['version'] = $version ? $version['version_number'] : 0;
         
         return $snippet;
+    }
+    public function update($id, array $data, $userId)
+    {
+        $snippet = $this->get($id);
+        if ($snippet['author_id'] != $userId) {
+            ApiResponse::error('Unauthorized to update this snippet', 403);
+        }
+
+        $this->snippetModel->update($id, $data);
+        
+        if (!empty($data['code'])) {
+            $newVersionNumber = $snippet['version'] + 1;
+            $this->snippetModel->createVersion($id, $data['code'], $userId, $newVersionNumber);
+        }
+        
+        return $this->get($id);
+    }
+
+    public function delete($id, $userId)
+    {
+        $snippet = $this->get($id);
+        if ($snippet['author_id'] != $userId) {
+            ApiResponse::error('Unauthorized to delete this snippet', 403);
+        }
+
+        return $this->snippetModel->delete($id);
+    }
+
+    public function star($id, $userId)
+    {
+        return $this->snippetModel->star($id, $userId);
+    }
+
+    public function unstar($id, $userId)
+    {
+        return $this->snippetModel->unstar($id, $userId);
+    }
+
+    public function fork($id, $userId, $newTitle = null)
+    {
+        $original = $this->get($id);
+        $forkData = [
+            'author_id' => $userId,
+            'title' => $newTitle ?? "Fork of " . $original['title'],
+            'description' => $original['description'],
+            'visibility' => 'public',
+            'language' => $original['language'],
+            'code' => $original['code'],
+            'forked_from_id' => $id
+        ];
+        
+        return $this->create($forkData, $userId);
+    }
+
+    public function getVersions($id)
+    {
+        return $this->snippetModel->getAllVersions($id);
     }
 }
