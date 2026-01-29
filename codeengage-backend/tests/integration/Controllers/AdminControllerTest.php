@@ -145,16 +145,16 @@ class AdminControllerTest extends DatabaseTestCase
     {
         // Create audit log entry
         $stmt = $this->db->prepare("
-            INSERT INTO audit_logs (user_id, action_type, description, ip_address, created_at)
-            VALUES (?, 'user_update', 'Updated user role', '127.0.0.1', NOW())
+            INSERT INTO audit_logs (actor_id, action_type, entity_type, ip_address, created_at)
+            VALUES (?, 'user_update', 'user', '127.0.0.1', NOW())
         ");
         $stmt->execute([$this->adminUserId]);
         
         // Fetch logs
         $query = $this->db->prepare("
-            SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 10
+            SELECT * FROM audit_logs WHERE actor_id = ? ORDER BY created_at DESC LIMIT 10
         ");
-        $query->execute();
+        $query->execute([$this->adminUserId]);
         $logs = $query->fetchAll(\PDO::FETCH_ASSOC);
         
         $this->assertGreaterThan(0, count($logs));
@@ -179,7 +179,7 @@ class AdminControllerTest extends DatabaseTestCase
         
         // Fetch pending reports
         $query = $this->db->prepare("
-            SELECT * FROM content_reports WHERE status = 'pending'
+            SELECT id, reporter_id, target_type, target_id, reason, status, created_at FROM content_reports WHERE status = 'pending'
         ");
         $query->execute();
         $reports = $query->fetchAll(\PDO::FETCH_ASSOC);
@@ -230,7 +230,7 @@ class AdminControllerTest extends DatabaseTestCase
         $stmt->execute();
         
         // Fetch settings
-        $query = $this->db->query("SELECT * FROM system_settings");
+        $query = $this->db->query("SELECT setting_key, setting_value FROM system_settings");
         $settings = $query->fetchAll(\PDO::FETCH_KEY_PAIR);
         
         $this->assertIsArray($settings);
