@@ -1,5 +1,5 @@
 // Command Palette - Global command launcher
-class CommandPalette {
+export class CommandPalette {
     constructor() {
         this.isOpen = false;
         this.commands = new Map();
@@ -8,17 +8,17 @@ class CommandPalette {
         this.resultsContainer = null;
         this.selectedIndex = 0;
         this.maxRecentCommands = 10;
-        
+
         this.init();
     }
 
     init() {
         // Register default commands
         this.registerDefaultCommands();
-        
+
         // Setup DOM elements
         this.setupDOM();
-        
+
         // Load recent commands from localStorage
         this.loadRecentCommands();
     }
@@ -253,12 +253,12 @@ class CommandPalette {
 
         this.isOpen = true;
         this.modal.classList.remove('hidden');
-        
+
         // Focus search input
-        setTimeout(() => {
+        setTimeout(async () => {
             this.searchInput.focus();
             this.searchInput.value = '';
-            this.handleSearch();
+            await this.handleSearch();
         }, 100);
     }
 
@@ -272,37 +272,57 @@ class CommandPalette {
         this.selectedIndex = 0;
     }
 
-    handleSearch() {
+    async handleSearch() {
         const query = this.searchInput.value.toLowerCase().trim();
-        const results = this.searchCommands(query);
-        
+        const results = await this.searchCommands(query);
+
         this.displayResults(results);
         this.updateSelectedIndex(0);
     }
 
-    searchCommands(query) {
+    async searchCommands(query) {
         if (!query) {
             return this.getRecentCommands();
         }
 
         const results = [];
-        
-        // Search through all commands
+
+        // 1. Search through registered commands
         for (const [name, command] of this.commands) {
             if (command.condition && !command.condition()) {
                 continue;
             }
 
             const score = this.calculateMatchScore(query, command, name);
-            if (score > 0) {
-                results.push({ ...command, score });
+            if (score > 40) { // Threshold for commands
+                results.push({ ...command, type: 'command', score });
             }
+        }
+
+        // 2. Search snippets from backend
+        try {
+            const snippets = await window.app.apiClient.get(`/snippets?search=${encodeURIComponent(query)}&limit=5`);
+            if (snippets && Array.isArray(snippets)) {
+                snippets.forEach(snippet => {
+                    results.push({
+                        name: `snippet-${snippet.id}`,
+                        title: snippet.title,
+                        description: snippet.description || `Language: ${snippet.language}`,
+                        icon: '📄',
+                        type: 'snippet',
+                        action: () => window.app.router.navigate(`/snippets/${snippet.id}`),
+                        score: 70 // High enough to appear but below exact command matches
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Snippet search failed:', error);
         }
 
         // Sort by score
         results.sort((a, b) => b.score - a.score);
 
-        return results.slice(0, 10); // Limit to 10 results
+        return results.slice(0, 10);
     }
 
     calculateMatchScore(query, command, name) {
@@ -460,7 +480,7 @@ class CommandPalette {
 
     updateSelectedIndex(index) {
         const results = this.resultsContainer.querySelectorAll('.command-result');
-        
+
         // Remove previous selection
         if (this.selectedIndex >= 0 && this.selectedIndex < results.length) {
             results[this.selectedIndex].classList.remove('bg-gray-700');
@@ -473,7 +493,7 @@ class CommandPalette {
             results[index].classList.add('bg-gray-700');
             results[index].classList.add('border-l-2');
             results[index].classList.add('border-blue-500');
-            
+
             // Store command data
             const commandName = results[index].dataset.commandName;
             if (commandName) {
@@ -488,10 +508,10 @@ class CommandPalette {
         if (command.action && typeof command.action === 'function') {
             // Add to recent commands
             this.addToRecentCommands(command.name);
-            
+
             // Execute action
             command.action();
-            
+
             // Hide palette
             this.hide();
         }
@@ -595,4 +615,4 @@ class CommandPalette {
 }
 
 // Export for use in other modules
-window.CommandPalette = CommandPalette;
+export default CommandPalette;
