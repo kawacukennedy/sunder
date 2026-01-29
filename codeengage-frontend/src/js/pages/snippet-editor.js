@@ -1,8 +1,20 @@
-// Snippet Editor Page
+import Navigation from '../modules/components/navigation.js';
+import CollaborativeEditor from '../modules/components/collaborative-editor.js?v=2.0';
+
 export default class SnippetEditor {
     constructor(app, snippetId = null) {
         this.app = app;
         this.snippetId = snippetId;
+        this.nav = new Navigation('/new'); // Defaults to new, but updated if edit
+
+        if (snippetId) {
+            // Extract base path for nav highlighting compatibility
+            this.nav.activeRoute = '/snippets'; // If editing, highlight snippets or just nothing specific
+        }
+
+        // Expose instance for inline event handlers (like tag removal)
+        window.snippetEditor = this;
+
         this.data = {
             snippet: null,
             languages: [],
@@ -18,16 +30,13 @@ export default class SnippetEditor {
     }
 
     async init() {
+        this.render(); // Ensure DOM is ready
         await this.loadLanguages();
         await this.loadTags();
-        
+
         if (this.snippetId) {
             await this.loadSnippet();
         }
-        
-        this.setupEditor();
-        this.setupEventListeners();
-        this.startAutosave();
     }
 
     async loadLanguages() {
@@ -69,36 +78,20 @@ export default class SnippetEditor {
         const editorContainer = document.getElementById('code-editor');
         if (!editorContainer) return;
 
-        // Initialize CodeMirror
-        this.editor = new CodeMirror(editorContainer, {
+        // Initialize Collaborative Editor
+        this.editor = new CollaborativeEditor(editorContainer, {
             value: this.data.snippet?.code || '',
             mode: this.getLanguageMode(this.data.snippet?.language || 'javascript'),
-            theme: 'one-dark',
-            lineNumbers: true,
-            lineWrapping: false,
-            indentUnit: 4,
-            tabSize: 4,
-            autofocus: true,
-            extraKeys: {
-                'Ctrl-S': () => this.saveSnippet(),
-                'Cmd-S': () => this.saveSnippet(),
-                'Ctrl-K': () => this.app.commandPalette.show(),
-                'Cmd-K': () => this.app.commandPalette.show(),
-                'F11': () => this.toggleFullscreen(),
-                'Esc': () => this.exitFullscreen()
-            }
-        });
-
-        // Track changes
-        this.editor.on('change', () => {
-            this.hasUnsavedChanges = true;
-            this.updateSaveButton();
-        });
-
-        // Handle language changes
-        this.editor.on('optionChange', (cm, option) => {
-            if (option === 'mode') {
-                this.updateLanguageFromMode();
+            snippetId: this.snippetId,
+            collaborate: this.data.isCollaborating,
+            onSave: () => this.saveSnippet(),
+            onRun: () => this.runAnalysis(),
+            onReady: (editorInstance) => {
+                // Track changes once editor is ready
+                editorInstance.editor.on('change', () => {
+                    this.hasUnsavedChanges = true;
+                    this.updateSaveButton();
+                });
             }
         });
     }
@@ -194,7 +187,7 @@ export default class SnippetEditor {
 
     setupTagsInput(input) {
         let currentTags = this.data.snippet?.tags || [];
-        
+
         // Create tag suggestions
         const suggestionsContainer = document.createElement('div');
         suggestionsContainer.className = 'tag-suggestions hidden absolute bg-gray-700 border border-gray-600 rounded-lg mt-1 w-full z-10';
@@ -203,7 +196,7 @@ export default class SnippetEditor {
         input.addEventListener('input', (e) => {
             const value = e.target.value;
             const lastTag = value.split(',').pop().trim();
-            
+
             if (lastTag.length > 0) {
                 this.showTagSuggestions(lastTag, suggestionsContainer);
             } else {
@@ -223,7 +216,7 @@ export default class SnippetEditor {
     }
 
     showTagSuggestions(query, container) {
-        const suggestions = this.data.tags.filter(tag => 
+        const suggestions = this.data.tags.filter(tag =>
             tag.name.toLowerCase().includes(query.toLowerCase())
         ).slice(0, 5);
 
@@ -234,7 +227,7 @@ export default class SnippetEditor {
 
         container.innerHTML = suggestions.map(tag => `
             <div class="tag-suggestion px-3 py-2 hover:bg-gray-600 cursor-pointer text-white text-sm"
-                 onclick="window.snippetEditor.addTag('${tag.name}')">
+                onclick="window.snippetEditor.addTag('${tag.name}')">
                 ${tag.name} <span class="text-gray-400">(${tag.usage_count})</span>
             </div>
         `).join('');
@@ -245,7 +238,7 @@ export default class SnippetEditor {
     addTag(tagName) {
         const input = document.getElementById('snippet-tags');
         const currentTags = this.getCurrentTags();
-        
+
         if (!currentTags.includes(tagName)) {
             currentTags.push(tagName);
             input.value = currentTags.join(', ');
@@ -264,7 +257,7 @@ export default class SnippetEditor {
     addTagFromInput(input) {
         const value = input.value;
         const tags = value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-        
+
         if (tags.length > 0) {
             this.displayTags(tags);
             this.hasUnsavedChanges = true;
@@ -284,8 +277,8 @@ export default class SnippetEditor {
         container.innerHTML = tags.map(tag => `
             <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-sm rounded mr-2 mb-2">
                 ${this.escapeHtml(tag)}
-                <button onclick="window.snippetEditor.removeTag('${tag}')" 
-                        class="ml-2 text-blue-200 hover:text-white">
+                <button onclick="window.snippetEditor.removeTag('${tag}')"
+                    class="ml-2 text-blue-200 hover:text-white">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -298,7 +291,7 @@ export default class SnippetEditor {
         const input = document.getElementById('snippet-tags');
         const currentTags = this.getCurrentTags();
         const newTags = currentTags.filter(tag => tag !== tagName);
-        
+
         input.value = newTags.join(', ');
         this.displayTags(newTags);
         this.hasUnsavedChanges = true;
@@ -313,9 +306,9 @@ export default class SnippetEditor {
         document.getElementById('snippet-language').value = this.data.snippet.language || 'javascript';
         document.getElementById('snippet-visibility').value = this.data.snippet.visibility || 'public';
         document.getElementById('snippet-tags').value = this.data.snippet.tags?.map(tag => tag.name).join(', ') || '';
-        
+
         this.displayTags(this.data.snippet.tags?.map(tag => tag.name) || []);
-        
+
         if (this.editor) {
             this.editor.setValue(this.data.snippet.code || '');
         }
@@ -329,7 +322,23 @@ export default class SnippetEditor {
             this.updateSaveButton();
 
             const formData = this.getFormData();
-            
+
+            // Validation
+            if (!formData.title || !formData.title.trim()) {
+                this.app.showError('Title is required');
+                this.isSaving = false;
+                this.updateSaveButton();
+                return;
+            }
+            if (!formData.code || !formData.code.trim()) {
+                this.app.showError('Code content cannot be empty');
+                this.isSaving = false;
+                this.updateSaveButton();
+                return;
+            }
+
+            console.log('Saving snippet payload:', formData);
+
             let response;
             if (this.snippetId) {
                 response = await this.app.apiClient.put(`/snippets/${this.snippetId}`, formData);
@@ -340,13 +349,13 @@ export default class SnippetEditor {
             if (response.success) {
                 this.hasUnsavedChanges = false;
                 this.updateSaveButton();
-                
+
                 if (!this.snippetId) {
                     this.snippetId = response.data.id;
                     this.data.snippet = response.data;
                     window.history.replaceState({}, '', `/editor/${this.snippetId}`);
                 }
-                
+
                 this.app.showSuccess('Snippet saved successfully');
             }
         } catch (error) {
@@ -394,10 +403,10 @@ export default class SnippetEditor {
 
     updateLanguageFromMode() {
         if (!this.editor) return;
-        
+
         const mode = this.editor.getOption('mode');
         const language = this.getLanguageFromMode(mode);
-        
+
         const languageSelect = document.getElementById('snippet-language');
         if (languageSelect) {
             languageSelect.value = language;
@@ -438,7 +447,7 @@ export default class SnippetEditor {
     updateSaveButton() {
         const saveButton = document.getElementById('save-button');
         const saveCloseButton = document.getElementById('save-close-button');
-        
+
         if (!saveButton) return;
 
         if (this.isSaving) {
@@ -471,11 +480,11 @@ export default class SnippetEditor {
     async autosave() {
         try {
             const formData = this.getFormData();
-            
+
             if (this.snippetId) {
                 await this.app.apiClient.put(`/snippets/${this.snippetId}`, formData);
             }
-            
+
             // Show subtle autosave indicator
             this.showAutosaveIndicator();
         } catch (error) {
@@ -488,7 +497,7 @@ export default class SnippetEditor {
         if (indicator) {
             indicator.textContent = 'Autosaved';
             indicator.className = 'text-green-400 text-sm';
-            
+
             setTimeout(() => {
                 indicator.textContent = '';
             }, 2000);
@@ -497,7 +506,7 @@ export default class SnippetEditor {
 
     toggleFullscreen() {
         const editorContainer = document.getElementById('editor-container');
-        
+
         if (!document.fullscreenElement) {
             editorContainer.requestFullscreen().then(() => {
                 editorContainer.classList.add('fullscreen');
@@ -524,17 +533,15 @@ export default class SnippetEditor {
     }
 
     async startCollaboration() {
-        try {
-            const response = await this.app.apiClient.post('/collaboration/sessions', {
-                snippet_id: this.snippetId
-            });
+        if (!this.snippetId) {
+            this.app.showError('Please save the snippet first');
+            return;
+        }
 
-            if (response.success) {
-                this.data.isCollaborating = true;
-                this.data.sessionToken = response.data.session_token;
-                this.updateCollaborationUI();
-                this.app.showSuccess('Collaboration session started');
-            }
+        try {
+            this.data.isCollaborating = true;
+            this.editor.startCollaboration(this.snippetId);
+            this.updateCollaborationUI();
         } catch (error) {
             console.error('Failed to start collaboration:', error);
             this.app.showError('Failed to start collaboration');
@@ -543,22 +550,19 @@ export default class SnippetEditor {
 
     async stopCollaboration() {
         try {
-            await this.app.apiClient.delete(`/collaboration/sessions/${this.data.sessionToken}`);
-            
             this.data.isCollaborating = false;
-            this.data.sessionToken = null;
+            this.editor.isCollaborating = false;
             this.updateCollaborationUI();
             this.app.showSuccess('Collaboration session ended');
         } catch (error) {
             console.error('Failed to stop collaboration:', error);
-            this.app.showError('Failed to stop collaboration');
         }
     }
 
     updateCollaborationUI() {
         const button = document.getElementById('collaboration-button');
         const participantsContainer = document.getElementById('participants-container');
-        
+
         if (button) {
             if (this.data.isCollaborating) {
                 button.innerHTML = 'Stop Collaboration';
@@ -575,9 +579,14 @@ export default class SnippetEditor {
     }
 
     async exportSnippet(format) {
+        if (!this.snippetId) {
+            this.app.showError('Please save the snippet first');
+            return;
+        }
+
         try {
             const response = await this.app.apiClient.get(`/snippets/${this.snippetId}/export?format=${format}`);
-            
+
             if (response.success) {
                 this.downloadFile(response.data.filename, response.data.content, response.data.mime_type);
                 this.app.showSuccess(`Snippet exported as ${format.toUpperCase()}`);
@@ -591,14 +600,14 @@ export default class SnippetEditor {
     downloadFile(filename, content, mimeType) {
         const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         URL.revokeObjectURL(url);
     }
 
@@ -610,7 +619,7 @@ export default class SnippetEditor {
 
         try {
             const response = await this.app.apiClient.post(`/snippets/${this.snippetId}/analyze`);
-            
+
             if (response.success) {
                 this.showAnalysisResults(response.data);
                 this.app.showSuccess('Code analysis completed');
@@ -678,160 +687,231 @@ export default class SnippetEditor {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
     }
 
     render() {
-        const container = document.createElement('div');
-        container.className = 'snippet-editor-page min-h-screen';
+        const container = document.getElementById('app');
+        if (!container) return;
+
+        // Clean up any existing editor instance
+        if (this.editor) {
+            this.editor = null;
+        }
 
         container.innerHTML = `
-            <div class="container mx-auto px-4 py-8">
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center space-x-4">
-                        <button onclick="window.app.router.navigate('/snippets')" 
-                                class="text-gray-400 hover:text-white transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                            </svg>
-                        </button>
-                        <h1 class="text-2xl font-bold text-white">
-                            ${this.snippetId ? 'Edit Snippet' : 'Create New Snippet'}
-                        </h1>
-                    </div>
-                    
-                    <div class="flex items-center space-x-3">
-                        <button id="analysis-button" 
-                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            Analyze
-                        </button>
-                        
-                        <div class="relative">
-                            <button class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                                    onclick="document.getElementById('export-menu').classList.toggle('hidden')">
-                                Export
-                                <svg class="w-4 h-4 inline ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            ${this.nav.render()}
+            <div class="snippet-editor-page min-h-screen pb-12">
+                <div class="container mx-auto px-4 pt-8">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-8 animate-fadeIn">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="window.app.router.navigate('/snippets')" 
+                                    class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 bg-opacity-50 text-gray-400 hover:text-white hover:bg-gray-700 transition-all border border-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </button>
-                            <div id="export-menu" class="hidden absolute right-0 mt-2 w-48 bg-gray-700 rounded-lg shadow-lg z-10">
-                                <button data-export-format="json" class="block w-full text-left px-4 py-2 text-white hover:bg-gray-600 rounded-t-lg">
-                                    JSON
-                                </button>
-                                <button data-export-format="markdown" class="block w-full text-left px-4 py-2 text-white hover:bg-gray-600">
-                                    Markdown
-                                </button>
-                                <button data-export-format="html" class="block w-full text-left px-4 py-2 text-white hover:bg-gray-600 rounded-b-lg">
-                                    HTML
-                                </button>
+                            <div>
+                                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                                    ${this.snippetId ? 'Edit Snippet' : 'Create Snippet'}
+                                </h1>
+                                <p class="text-sm text-gray-400 mt-1">
+                                    ${this.snippetId ? 'Update your code masterpiece' : 'Share your knowledge with the world'}
+                                </p>
                             </div>
                         </div>
                         
-                        <button id="collaboration-button" 
-                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                            Start Collaboration
-                        </button>
-                        
-                        <button id="save-close-button" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                            Save & Close
-                        </button>
-                        
-                        <button id="save-button" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                            Save
-                        </button>
-                    </div>
-                </div>
+                        <div class="flex items-center space-x-3">
+                            <button id="analysis-button" 
+                                    class="glass-btn px-4 py-2 rounded-lg font-medium transition-all text-sm flex items-center hover:bg-white hover:bg-opacity-10 text-purple-300 border-purple-500 border-opacity-30">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                Analyze
+                            </button>
+                            
+                            <div class="relative group">
+                                <button class="glass-btn px-4 py-2 rounded-lg font-medium transition-all text-sm flex items-center hover:bg-white hover:bg-opacity-10 text-gray-300">
+                                    Export
+                                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <div class="hidden group-hover:block absolute right-0 top-full mt-2 w-48 glass-panel shadow-xl rounded-lg overflow-hidden py-1 z-50">
+                                    <button data-export-format="json" class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors">
+                                        JSON Format
+                                    </button>
+                                    <button data-export-format="markdown" class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors">
+                                        Markdown
+                                    </button>
+                                    <button data-export-format="html" class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors">
+                                        HTML Format
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="h-8 w-px bg-gray-700 mx-2"></div>
 
-                <!-- Main Content -->
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <!-- Editor Section -->
-                    <div class="lg:col-span-3">
-                        <div id="editor-container" class="bg-gray-800 rounded-lg overflow-hidden">
-                            <!-- Editor Toolbar -->
-                            <div class="bg-gray-700 px-4 py-2 flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <select id="snippet-language" class="bg-gray-600 text-white px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="javascript">JavaScript</option>
-                                        <option value="typescript">TypeScript</option>
-                                        <option value="python">Python</option>
-                                        <option value="php">PHP</option>
-                                        <option value="html">HTML</option>
-                                        <option value="css">CSS</option>
-                                        <option value="sql">SQL</option>
-                                        <option value="json">JSON</option>
-                                        <option value="xml">XML</option>
-                                    </select>
+                            <button id="collaboration-button" 
+                                    class="glass-btn px-4 py-2 rounded-lg font-medium transition-all text-sm flex items-center text-green-400 hover:bg-green-500 hover:bg-opacity-10 border-green-500 border-opacity-30">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                Collaborate
+                            </button>
+                            
+                            <button id="save-button" 
+                                    class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-2 rounded-lg font-medium shadow-lg hover:shadow-blue-500/30 transition-all text-sm flex items-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                Save Snippet
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-slideUp">
+                        <!-- Editor Section -->
+                        <div class="lg:col-span-3 space-y-4">
+                            <div id="editor-container" class="glass-panel overflow-hidden border border-gray-700/50 shadow-2xl relative group flex flex-col h-[calc(100vh-12rem)] min-h-[500px]">
+                                <!-- Editor Toolbar -->
+                                <div class="bg-gray-900/50 backdrop-blur px-4 py-3 flex-none flex items-center justify-between border-b border-gray-700/50">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                        </div>
+                                        <div class="h-4 w-px bg-gray-700"></div>
+                                        <select id="snippet-language" class="bg-transparent text-gray-300 text-sm focus:outline-none cursor-pointer hover:text-white transition-colors">
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="typescript">TypeScript</option>
+                                            <option value="python">Python</option>
+                                            <option value="php">PHP</option>
+                                            <option value="html">HTML</option>
+                                            <option value="css">CSS</option>
+                                            <option value="sql">SQL</option>
+                                            <option value="json">JSON</option>
+                                            <option value="xml">XML</option>
+                                            <option value="java">Java</option>
+                                            <option value="cpp">C++</option>
+                                            <option value="go">Go</option>
+                                            <option value="rust">Rust</option>
+                                        </select>
+                                    </div>
                                     
-                                    <div class="flex items-center space-x-2">
+                                    <div class="flex items-center space-x-4 text-xs">
+                                        <span id="autosave-indicator" class="text-green-400 opacity-0 transition-opacity duration-300 flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Saved
+                                        </span>
+                                        <div class="h-4 w-px bg-gray-700"></div>
                                         <button onclick="window.snippetEditor.toggleFullscreen()" 
-                                                class="text-gray-400 hover:text-white" title="Fullscreen (F11)">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                class="text-gray-400 hover:text-white transition-colors flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
                                             </svg>
+                                            Fullscreen
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <div class="flex items-center space-x-2">
-                                    <span id="autosave-indicator" class="text-green-400 text-sm"></span>
-                                    <span class="text-gray-400 text-sm">Ln 1, Col 1</span>
+                                <!-- Code Editor -->
+                                <div id="code-editor" class="text-base font-mono bg-gray-900 flex-1 overflow-hidden h-full"></div>
+                                
+                                <!-- Bottom Status Bar -->
+                                <div class="bg-gray-900/80 px-4 py-1 text-xs text-gray-500 border-t border-gray-700/50 flex justify-between">
+                                    <span>UTF-8</span>
+                                    <span id="cursor-position">Ln 1, Col 1</span>
                                 </div>
                             </div>
-                            
-                            <!-- Code Editor -->
-                            <div id="code-editor" class="h-96"></div>
+                        </div>
+
+                        <!-- Properties Panel -->
+                        <div class="lg:col-span-1">
+                            <div class="glass-panel p-6 space-y-6 sticky top-24">
+                                <h3 class="text-lg font-semibold text-white border-b border-gray-700/50 pb-4 mb-2">Details</h3>
+                                
+                                <!-- Title -->
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Title</label>
+                                    <input type="text" id="snippet-title" 
+                                           class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                                           placeholder="e.g. Recursive Fibonacci" required>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Description</label>
+                                    <textarea id="snippet-description" rows="4"
+                                              class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm resize-none"
+                                              placeholder="Explain what this snippet does..."></textarea>
+                                </div>
+
+                                <!-- Visibility -->
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Visibility</label>
+                                    <div class="relative">
+                                        <select id="snippet-visibility" 
+                                                class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm appearance-none cursor-pointer">
+                                            <option value="public">Public</option>
+                                            <option value="private">Private</option>
+                                            <option value="organization">Organization</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tags -->
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Tags</label>
+                                    <div class="relative">
+                                        <input type="text" id="snippet-tags" 
+                                               class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                                               placeholder="Type and press comma to add tags...">
+                                    </div>
+                                    <div id="tags-display" class="flex flex-wrap mt-2"></div>
+                                </div>
+
+                                <!-- Tags -->
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Tags</label>
+                                    <div class="relative group">
+                                        <input type="text" id="snippet-tags" 
+                                               class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                                               placeholder="Type and press comma...">
+                                         <div class="absolute right-3 top-2.5 text-gray-500">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div id="tags-display" class="flex flex-wrap gap-2 mt-2"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Properties Panel -->
-                    <div class="lg:col-span-1">
-                        <div class="bg-gray-800 rounded-lg p-6 space-y-6">
-                            <!-- Title -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Title *</label>
-                                <input type="text" id="snippet-title" 
-                                       class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                                       placeholder="Enter snippet title" required>
-                            </div>
-
-                            <!-- Description -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                                <textarea id="snippet-description" rows="3"
-                                          class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                                          placeholder="Describe your snippet"></textarea>
-                            </div>
-
-                            <!-- Visibility -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Visibility</label>
-                                <select id="snippet-visibility" 
-                                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-                                    <option value="public">Public</option>
-                                    <option value="private">Private</option>
-                                    <option value="organization">Organization</option>
-                                </select>
-                            </div>
-
-                            <!-- Tags -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Tags</label>
-                                <div class="relative">
-                                    <input type="text" id="snippet-tags" 
-                                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                                           placeholder="Add tags (comma separated)">
-                                </div>
-                                <div id="tags-display" class="mt-2"></div>
-                            </div>
-
-                            <!-- Collaboration Participants -->
+                <!-- Footer Scripts -->
+                <div id="participants-container" class="fixed bottom-6 right-6 hidden z-50">
+                    <div class="glass-panel p-3 rounded-lg flex items-center space-x-3 border border-green-500/30">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        <span class="text-sm font-medium text-green-400">Live Session Active</span>
+                    </div>
+                </div>
                             <div id="participants-container" class="hidden">
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Participants</label>
                                 <div id="participants-list" class="space-y-2"></div>
@@ -850,13 +930,28 @@ export default class SnippetEditor {
             </div>
         `;
 
-        // Initialize after DOM insertion
-        setTimeout(() => this.init(), 0);
+        // Make window.snippetEditor available for global callbacks (like tag removal)
+        window.snippetEditor = this;
 
-        return container;
+        // Initialize components after DOM is ready
+        this.setupEditor();
+        this.setupEventListeners();
+        this.startAutosave();
+
+        // Initial UI updates
+        this.updateSaveButton();
+        this.updateCollaborationUI();
+
+        // If we have snippet data, ensure it's populated (in case of re-render)
+        if (this.data.snippet && !this.editor) {
+            this.populateForm();
+        }
     }
 
+
+
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -866,11 +961,11 @@ export default class SnippetEditor {
         if (this.autosaveInterval) {
             clearInterval(this.autosaveInterval);
         }
-        
+
         if (this.editor) {
-            this.editor.toTextArea();
+            this.editor.destroy();
         }
-        
+
         window.snippetEditor = null;
     }
 }
