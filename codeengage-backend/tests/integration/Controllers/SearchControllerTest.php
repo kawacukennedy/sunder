@@ -72,8 +72,9 @@ class SearchControllerTest extends DatabaseTestCase
         $searchQuery = 'map';
         
         $query = $this->db->prepare("
-            SELECT * FROM snippets 
-            WHERE (code LIKE ? OR title LIKE ?) AND deleted_at IS NULL
+            SELECT s.* FROM snippets s
+            JOIN snippet_versions sv ON s.id = sv.snippet_id
+            WHERE (sv.code LIKE ? OR s.title LIKE ?) AND s.deleted_at IS NULL
         ");
         $query->execute(["%{$searchQuery}%", "%{$searchQuery}%"]);
         $results = $query->fetchAll(\PDO::FETCH_ASSOC);
@@ -156,13 +157,14 @@ class SearchControllerTest extends DatabaseTestCase
         $searchQuery = 'array';
         
         $query = $this->db->prepare("
-            SELECT *, 
-                (CASE WHEN title LIKE ? THEN 10 ELSE 0 END +
-                 CASE WHEN description LIKE ? THEN 5 ELSE 0 END +
-                 CASE WHEN code LIKE ? THEN 2 ELSE 0 END) as relevance
-            FROM snippets 
-            WHERE (title LIKE ? OR description LIKE ? OR code LIKE ?)
-            AND deleted_at IS NULL
+            SELECT s.*, 
+                (CASE WHEN s.title LIKE ? THEN 10 ELSE 0 END +
+                 CASE WHEN s.description LIKE ? THEN 5 ELSE 0 END +
+                 CASE WHEN sv.code LIKE ? THEN 2 ELSE 0 END) as relevance
+            FROM snippets s
+            JOIN snippet_versions sv ON s.id = sv.snippet_id
+            WHERE (s.title LIKE ? OR s.description LIKE ? OR sv.code LIKE ?)
+            AND s.deleted_at IS NULL
             ORDER BY relevance DESC
         ");
         $likeQuery = "%{$searchQuery}%";
@@ -199,9 +201,9 @@ class SearchControllerTest extends DatabaseTestCase
     {
         // Add tags to a snippet
         $stmt = $this->db->prepare("
-            INSERT INTO tags (name, created_at) VALUES (?, NOW())
+            INSERT INTO tags (name, slug, created_at) VALUES (?, ?, NOW())
         ");
-        $stmt->execute(['algorithms']);
+        $stmt->execute(['algorithms', 'algorithms']);
         $tagId = (int) $this->db->lastInsertId();
         
         $stmt = $this->db->prepare("
