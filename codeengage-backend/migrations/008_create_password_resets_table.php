@@ -44,3 +44,8 @@ class Migration_008_create_password_resets_table
         return $this->db->exec("DROP TABLE IF EXISTS password_resets") !== false;
     }
 }
+
+return function(PDO $pdo) {
+    $migration = new Migration_008_create_password_resets_table($pdo);
+    return $migration->up();
+};
