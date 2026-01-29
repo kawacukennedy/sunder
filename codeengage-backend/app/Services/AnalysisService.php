@@ -13,32 +13,54 @@ class AnalysisService
 
     public function analyze($code, $language)
     {
-        // Simple mock analysis for demo purposes
-        // In real app, this would parse AST
-        
         $complexity = 1;
         $lines = explode("\n", $code);
         $loc = count($lines);
         
+        // Cyclomatic Complexity Patterns
+        $patterns = [
+            '/\bif\b/i', '/\bfor\b/i', '/\bwhile\b/i', 
+            '/\bcase\b/i', '/\bcatch\b/i', '/\b&& \b/', '/\b\|\| \b/'
+        ];
+
         foreach ($lines as $line) {
-            if (preg_match('/(if|for|while|case|catch)\\s*\\(/', $line)) {
-                $complexity++;
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $line)) {
+                    $complexity++;
+                }
             }
         }
         
         $securityIssues = [];
-        if (stripos($code, 'eval(') !== false) {
-            $securityIssues[] = 'Avoid using eval() - it is a security risk.';
+        $secPatterns = [
+            'eval\(' => 'Dangerous use of eval() detected. Please avoid as it allows arbitrary code execution.',
+            'exec\(' => 'Command execution detected. Potential command injection risk.',
+            'base64_decode\(' => 'Obfuscated data decoding detected. Ensure source is trusted.',
+            'mysqli_query\(.*\$' => 'Potential SQL injection detected. Use prepared statements instead.',
+            'document\.write\(' => 'Potential XSS vulnerability. Use safer DOM manipulation methods.'
+        ];
+
+        foreach ($secPatterns as $pattern => $msg) {
+            if (preg_match("/$pattern/i", $code)) {
+                $securityIssues[] = ['type' => 'security', 'message' => $msg];
+            }
         }
-        if (stripos($code, 'exec(') !== false) {
-            $securityIssues[] = 'Avoid using exec() - command injection risk.';
+
+        $performanceSuggestions = [];
+        if ($loc > 300) {
+            $performanceSuggestions[] = 'File is too large (> 300 lines). Consider breaking it down into modules.';
+        }
+        if (preg_match_all('/\bfor\b/i', $code) > 3 && preg_match('/for.*for/s', $code)) {
+            $performanceSuggestions[] = 'Deeply nested loops detected. This may cause performance issues.';
         }
 
         return [
             'complexity' => $complexity,
             'loc' => $loc,
             'security_issues' => $securityIssues,
-            'suggestions' => $complexity > 5 ? ['Consider refactoring large implementation.'] : []
+            'performance_suggestions' => $performanceSuggestions,
+            'code_smells' => $complexity > 15 ? ['High complexity detected. Refactoring recommended.'] : [],
+            'analyzed_at' => date('Y-m-d H:i:s')
         ];
     }
 }
