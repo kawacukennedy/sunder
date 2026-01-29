@@ -44,7 +44,7 @@ export class Router {
             .replace(/\//g, '\\/')
             .replace(/:(\w+)/g, '([^\\/]+)');
 
-        return new RegExp(`^${pattern}$`);
+        return new RegExp(`^${pattern}\\/?$`);
     }
 
     /**
@@ -94,6 +94,7 @@ export class Router {
 
         if (!route) {
             console.warn(`No route found for ${path}`);
+            console.log('Registered routes:', this.routes.map(r => r.path));
             return this.handle404();
         }
 
@@ -163,10 +164,25 @@ export class Router {
         const container = document.getElementById('app');
         if (container) {
             container.innerHTML = `
-                <div class="error-page">
-                    <h1>404</h1>
-                    <p>Page not found</p>
-                    <a href="/dashboard" class="btn btn-primary">Go Home</a>
+                <div class="min-h-screen flex items-center justify-center bg-deep-space p-4 text-center">
+                    <div class="space-y-6 max-w-lg">
+                        <div class="relative">
+                            <div class="absolute inset-0 bg-neon-purple blur-3xl opacity-20 rounded-full"></div>
+                            <h1 class="relative text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-purple">404</h1>
+                        </div>
+                        <h2 class="text-3xl font-bold text-white">Page Not Found</h2>
+                        <p class="text-gray-400 text-lg">
+                            The code snippet you are looking for has been garbage collected or never existed.
+                        </p>
+                        <div class="pt-4 flex justify-center gap-4">
+                            <a href="/" class="px-6 py-3 rounded-xl bg-gray-800 text-white font-medium hover:bg-gray-700 transition-colors">
+                                Home
+                            </a>
+                            <a href="/dashboard" class="px-6 py-3 rounded-xl bg-gradient-to-r from-neon-blue to-neon-purple text-white font-bold shadow-neon hover:opacity-90 transition-opacity">
+                                Dashboard
+                            </a>
+                        </div>
+                    </div>
                 </div>
             `;
         }
