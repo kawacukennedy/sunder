@@ -45,3 +45,8 @@ class Migration_009_create_snippet_stars_table
         return $this->db->exec("DROP TABLE IF EXISTS snippet_stars") !== false;
     }
 }
+
+return function(PDO $pdo) {
+    $migration = new Migration_009_create_snippet_stars_table($pdo);
+    return $migration->up();
+};
