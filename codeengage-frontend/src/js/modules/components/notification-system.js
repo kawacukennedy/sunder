@@ -1,5 +1,5 @@
 // Notification System
-class NotificationSystem {
+export class NotificationSystem {
     constructor() {
         this.container = document.getElementById('toast-container') || this.createContainer();
         this.notifications = new Map();
@@ -68,6 +68,13 @@ class NotificationSystem {
         return this.show(message, 'info', { ...options, icon: 'ℹ' });
     }
 
+    achievement(title, message, options = {}) {
+        return this.show(`
+            <div class="font-bold text-yellow-400 mb-1">${title}</div>
+            <div class="text-white">${message}</div>
+        `, 'achievement', { ...options, icon: '🏆', duration: 8000 });
+    }
+
     createNotification(id, message, type, options = {}) {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type} bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4 min-w-[300px] max-w-md transition-all duration-300 transform`;
@@ -77,14 +84,16 @@ class NotificationSystem {
             success: 'border-green-500 text-green-400',
             error: 'border-red-500 text-red-400',
             warning: 'border-yellow-500 text-yellow-400',
-            info: 'border-blue-500 text-blue-400'
+            info: 'border-blue-500 text-blue-400',
+            achievement: 'border-yellow-400 bg-gray-900 bg-opacity-95 shadow-yellow-500/20'
         };
 
         const icons = {
             success: options.icon || '✓',
             error: options.icon || '✕',
             warning: options.icon || '⚠',
-            info: options.icon || 'ℹ'
+            info: options.icon || 'ℹ',
+            achievement: options.icon || '🏆'
         };
 
         notification.classList.add(...typeStyles[type].split(' '));
@@ -98,7 +107,8 @@ class NotificationSystem {
                     <p class="text-white text-sm leading-relaxed">${this.escapeHtml(message)}</p>
                     ${options.action ? this.createActionHTML(options.action) : ''}
                 </div>
-                <button class="notification-close flex-shrink-0 text-gray-400 hover:text-white transition-colors ml-2" onclick="window.app.modules.get('notifications').remove('${id}')">
+                </div>
+                <button class="notification-close flex-shrink-0 text-gray-400 hover:text-white transition-colors ml-2" onclick="window.app.notifications.remove('${id}')">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -141,7 +151,7 @@ class NotificationSystem {
 
         // Add exit animation
         notification.element.classList.add('notification-exit');
-        
+
         // Remove after animation
         setTimeout(() => {
             if (notification.element.parentNode) {
@@ -187,17 +197,17 @@ class NotificationSystem {
     showProgress(message, progress = 0) {
         const id = this.show(message, 'info', { persistent: true });
         const notification = this.notifications.get(id);
-        
+
         // Add progress bar
         const progressBar = document.createElement('div');
         progressBar.className = 'mt-2 bg-gray-700 rounded-full h-1';
         progressBar.innerHTML = `
             <div class="bg-blue-500 h-1 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
         `;
-        
+
         notification.element.querySelector('.flex-1').appendChild(progressBar);
         notification.progress = true;
-        
+
         return {
             updateProgress: (newProgress) => {
                 const bar = progressBar.querySelector('.bg-blue-500');
@@ -276,4 +286,4 @@ styleSheet.textContent = notificationStyles;
 document.head.appendChild(styleSheet);
 
 // Export for use in other modules
-window.NotificationSystem = NotificationSystem;
+export default NotificationSystem;
