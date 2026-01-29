@@ -104,6 +104,9 @@ class UserController
         }
     }
 
+
+
+
     public function snippets(string $method, array $params): void
     {
         if ($method !== 'GET') {
@@ -130,7 +133,7 @@ class UserController
             $total = $this->userRepository->countSnippetsByUser($id, $filters);
 
             ApiResponse::success([
-                'snippets' => array_map(fn($s) => $s->toArray(), $snippets),
+                'snippets' => $snippets,
                 'total' => $total,
                 'page' => ($offset / $limit) + 1,
                 'limit' => $limit,
@@ -159,20 +162,35 @@ class UserController
             $currentUser = $this->auth->handle();
             $id = $currentUser->getId();
 
-            $limit = (int)($_GET['limit'] ?? 50);
-            $achievements = $this->userRepository->getAchievements($id, $limit);
+            // Instantiate GamificationService (Manual DI)
+            $userRepo = new \App\Repositories\UserRepository($this->db);
+            $achievementRepo = new \App\Repositories\AchievementRepository($this->db);
+            $auditRepo = new \App\Repositories\AuditRepository($this->db);
+            $notificationRepo = new \App\Repositories\NotificationRepository($this->db);
+            $emailService = new \App\Services\EmailService();
+            $notificationService = new \App\Services\NotificationService($notificationRepo, $userRepo, $emailService);
+            
+            $gamificationService = new \App\Services\GamificationService(
+                $userRepo,
+                $achievementRepo,
+                $auditRepo,
+                new \App\Helpers\SecurityHelper(),
+                $notificationService
+            );
 
-            // Handle empty achievements gracefully
-            if (empty($achievements)) {
-                ApiResponse::success([]);
-                return;
-            }
+            // Get all achievements with unlocked status
+            $achievements = $gamificationService->getAchievementsWithStatus($id);
 
-            ApiResponse::success(array_map(fn($a) => $a->toArray(), $achievements));
+            ApiResponse::success([
+                'achievements' => $achievements
+            ]);
 
         } catch (\Exception $e) {
-            // Return empty array on error
-            ApiResponse::success([]);
+            // Log error
+            error_log("Failed to fetch achievements: " . $e->getMessage());
+            ApiResponse::success([
+                'achievements' => []
+            ]);
         }
     }
 
@@ -236,18 +254,19 @@ class UserController
 
         try {
             // Calculate user statistics
-            $snippets = $this->userRepository->findSnippetsByUser($id);
+            // findSnippetsByUser returns associative arrays, NOT objects
+            $snippets = $this->userRepository->findSnippetsByUser($id, [], 1000); // Higher limit for stats
             $achievements = $this->userRepository->getAchievements($id);
 
             $stats = [
                 'total_snippets' => count($snippets),
-                'public_snippets' => count(array_filter($snippets, fn($s) => $s->getVisibility() === 'public')),
-                'private_snippets' => count(array_filter($snippets, fn($s) => $s->getVisibility() === 'private')),
-                'total_views' => array_sum(array_map(fn($s) => $s->getViewCount(), $snippets)),
-                'total_stars' => array_sum(array_map(fn($s) => $s->getStarCount(), $snippets)),
+                'public_snippets' => count(array_filter($snippets, fn($s) => ($s['visibility'] ?? 'public') === 'public')),
+                'private_snippets' => count(array_filter($snippets, fn($s) => ($s['visibility'] ?? 'public') === 'private')),
+                'total_views' => array_sum(array_column($snippets, 'view_count')),
+                'total_stars' => array_sum(array_column($snippets, 'star_count')),
                 'total_achievements' => count($achievements),
                 'achievement_points' => $currentUser->getAchievementPoints(),
-                'languages_used' => array_unique(array_map(fn($s) => $s->getLanguage(), $snippets)),
+                'languages_used' => array_values(array_unique(array_column($snippets, 'language'))),
                 'join_date' => $currentUser->getCreatedAt()?->format('Y-m-d'),
                 'last_active' => $currentUser->getLastActiveAt()?->format('Y-m-d H:i:s')
             ];
@@ -255,7 +274,7 @@ class UserController
             ApiResponse::success($stats);
 
         } catch (\Exception $e) {
-            ApiResponse::error('Failed to fetch user statistics');
+            ApiResponse::error('Failed to fetch user statistics: ' . $e->getMessage());
         }
     }
 
@@ -304,10 +323,11 @@ class UserController
             $offset = (int)($_GET['offset'] ?? 0);
 
             // Get starred snippets from database
+            // Assumes getStarredSnippets returns arrays
             $starred = $this->userRepository->getStarredSnippets($currentUser->getId(), $limit, $offset);
             
             ApiResponse::success([
-                'snippets' => array_map(fn($s) => $s->toArray(), $starred),
+                'snippets' => $starred,
                 'total' => count($starred)
             ]);
 
