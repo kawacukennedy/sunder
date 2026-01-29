@@ -1,10 +1,10 @@
 // Collaborative Editor - CodeMirror Wrapper
-class CollaborativeEditor {
+export class CollaborativeEditor {
     constructor(container, options = {}) {
         this.container = container;
         this.options = {
             mode: 'javascript',
-            theme: 'dark',
+            theme: 'dracula', // Use valid dark theme
             lineNumbers: true,
             lineWrapping: true,
             autoCloseBrackets: true,
@@ -25,43 +25,55 @@ class CollaborativeEditor {
         this.cursors = new Map();
         this.changesQueue = [];
         this.isCollaborating = false;
-        
+
         this.init();
     }
 
     async init() {
-        // Load CodeMirror
+        // Load CodeMirror (Addons only as core is in index.html)
         await this.loadCodeMirror();
-        
+
         // Initialize editor
         this.createEditor();
-        
+
         // Setup collaboration if enabled
         if (this.options.collaborate) {
             this.setupCollaboration();
         }
-        
+
         // Setup event handlers
         this.setupEventHandlers();
+
+        // Notify ready state
+        if (this.options.onReady) {
+            this.options.onReady(this);
+        }
+    }
+
+    setupEventHandlers() {
+        if (!this.editor) return;
+
+        this.editor.on('change', () => {
+            // Propagate change to internal session state if needed
+        });
     }
 
     async loadCodeMirror() {
         return new Promise((resolve) => {
             if (typeof CodeMirror !== 'undefined') {
-                resolve();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js';
-            script.onload = () => {
                 // Load additional modes and addons
                 this.loadCodeMirrorAddons().then(resolve);
-            };
-            document.head.appendChild(script);
+            } else {
+                // Fallback if not loaded in head for some reason (race condition check)
+                const checkInterval = setInterval(() => {
+                    if (typeof CodeMirror !== 'undefined') {
+                        clearInterval(checkInterval);
+                        this.loadCodeMirrorAddons().then(resolve);
+                    }
+                }, 50);
+            }
         });
     }
-
     async loadCodeMirrorAddons() {
         const addons = [
             'mode/javascript/javascript.min.js',
@@ -117,14 +129,25 @@ class CollaborativeEditor {
             this.editor.setValue(this.options.value);
         }
 
+        // Apply theme (redundant if option set, but safe)
+        if (this.options.theme) {
+            this.editor.setOption('theme', this.options.theme);
+        }
+
         // Setup Vim/Emacs if requested
         if (this.options.vim) {
             this.loadVimMode();
         }
-        
+
         if (this.options.emacs) {
             this.loadEmacsMode();
         }
+
+        // Force refresh and size to ensure layout and cursor visibility
+        this.editor.setSize('100%', '100%');
+        setTimeout(() => {
+            this.editor.refresh();
+        }, 10);
     }
 
     async loadVimMode() {
@@ -155,158 +178,110 @@ class CollaborativeEditor {
         this.userName = user.display_name || user.username;
         this.userColor = this.getUserColor(user.id);
 
-        // Initialize WebSocket connection
+        this.lastPollTimestamp = Math.floor(Date.now() / 1000);
+        this.isPolling = false;
+
         const snippetId = this.options.snippetId;
         if (snippetId) {
-            this.connectToCollaboration(snippetId);
+            this.startCollaboration(snippetId);
         }
     }
 
-    async connectToCollaboration(snippetId) {
+    async startCollaboration(snippetId) {
         try {
-            // Create WebSocket connection
-            this.websocket = WebSocket.create(`/collaboration/sessions/${snippetId}`);
-            
-            this.websocket.onopen = () => {
-                this.isCollaborating = true;
-                console.log('Connected to collaboration session');
-                window.app.showSuccess('Connected to collaboration session');
-                
-                // Send initial cursor position
-                this.sendCursorPosition();
-            };
-            
-            this.websocket.onmessage = (event) => {
-                this.handleCollaborationMessage(JSON.parse(event.data));
-            };
-            
-            this.websocket.onclose = () => {
-                this.isCollaborating = false;
-                console.log('Disconnected from collaboration session');
-                this.clearAllCursors();
-            };
-            
-            this.websocket.onerror = (error) => {
-                console.error('Collaboration error:', error);
-                window.app.showError('Collaboration connection error');
-            };
-            
+            // Join session first
+            const session = await window.app.apiClient.post(`/collaboration/sessions/${snippetId}/join`);
+            this.sessionId = session.id;
+            this.sessionToken = session.session_token;
+            this.isCollaborating = true;
+
+            console.log('Joined collaboration session');
+            window.app.showSuccess('Joined collaboration session');
+
+            // Start polling
+            this.pollUpdates();
+
+            // Send initial cursor
+            this.sendCursorPosition();
+
         } catch (error) {
-            console.error('Failed to connect to collaboration:', error);
-            window.app.showError('Failed to connect to collaboration session');
+            console.error('Failed to join collaboration:', error);
+            window.app.showError('Failed to join collaboration session');
         }
     }
 
-    handleCollaborationMessage(message) {
-        switch (message.type) {
-            case 'cursor':
-                this.updateRemoteCursor(message.user_id, message.position);
-                break;
-                
-            case 'text_change':
-                this.applyRemoteChange(message.change);
-                break;
-                
-            case 'user_join':
-                this.handleUserJoin(message.user);
-                break;
-                
-            case 'user_leave':
-                this.handleUserLeave(message.user_id);
-                break;
-                
-            case 'participants':
-                this.updateParticipants(message.participants);
-                break;
-        }
-    }
+    async pollUpdates() {
+        if (!this.isCollaborating || this.isPolling) return;
 
-    setupEventHandlers() {
-        if (!this.editor) return;
+        this.isPolling = true;
+        try {
+            const data = await window.app.apiClient.get(
+                `/collaboration/sessions/${this.sessionToken}/updates?since=${this.lastPollTimestamp}`
+            );
 
-        // Handle text changes
-        this.editor.on('change', (instance, change) => {
-            if (this.isCollaborating && !change.originMatch('setValue')) {
-                this.broadcastChange(change);
+            if (data && data.last_activity) {
+                this.lastPollTimestamp = data.last_activity;
+                this.handleCollaborationData(data);
             }
-        });
-
-        // Handle cursor activity
-        this.editor.on('cursorActivity', () => {
+        } catch (error) {
+            if (error.status !== 408) { // Ignore timeouts
+                console.error('Polling error:', error);
+            }
+        } finally {
+            this.isPolling = false;
             if (this.isCollaborating) {
-                this.sendCursorPosition();
+                // Schedule next poll immediately (long polling)
+                setTimeout(() => this.pollUpdates(), 100);
             }
-        });
-
-        // Handle viewport changes
-        this.editor.on('viewportChange', () => {
-            if (this.isCollaborating) {
-                this.sendCursorPosition();
-            }
-        });
+        }
     }
 
-    broadcastChange(change) {
-        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-            return;
+    handleCollaborationData(data) {
+        // Update other cursors
+        if (data.cursors) {
+            Object.entries(data.cursors).forEach(([userId, position]) => {
+                if (parseInt(userId) !== this.userId) {
+                    this.updateRemoteCursor(parseInt(userId), position);
+                }
+            });
         }
 
-        const changeData = {
-            type: 'text_change',
-            change: {
-                from: change.from,
-                to: change.to,
-                text: change.text,
-                origin: change.origin,
-                removed: change.removed
-            },
-            user_id: this.userId
-        };
+        // Handle code changes
+        if (data.metadata && data.metadata.last_change && parseInt(data.metadata.last_change_by) !== this.userId) {
+            const change = JSON.parse(data.metadata.last_change);
+            this.applyRemoteChange(change);
+        }
 
-        this.websocket.send(JSON.stringify(changeData));
+        // Update participants
+        if (data.participants) {
+            this.updateParticipants(data.participants);
+        }
     }
 
-    applyRemoteChange(change) {
-        if (change.user_id === this.userId) {
-            return; // Ignore own changes
-        }
+    async broadcastChange(change) {
+        if (!this.isCollaborating) return;
 
-        // Apply change to editor
-        this.editor.operation(() => {
-            const from = CodeMirror.Pos(change.from.line, change.from.ch);
-            const to = CodeMirror.Pos(change.to.line, change.to.ch);
-            
-            if (change.text.length === 0) {
-                // Deletion
-                this.editor.replaceRange('', from, to);
-            } else if (change.from.line === change.to.line && change.from.ch === change.to.ch) {
-                // Insertion
-                this.editor.replaceRange(change.text.join('\n'), from);
-            } else {
-                // Replacement
-                this.editor.replaceRange(change.text.join('\n'), from, to);
-            }
-        });
+        try {
+            await window.app.apiClient.post(`/collaboration/sessions/${this.sessionToken}/updates`, {
+                change: JSON.stringify(change),
+                cursor: this.editor.getCursor()
+            });
+        } catch (error) {
+            console.error('Failed to push change:', error);
+        }
     }
 
-    sendCursorPosition() {
-        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-            return;
+    async sendCursorPosition() {
+        if (!this.isCollaborating) return;
+
+        try {
+            const cursor = this.editor.getCursor();
+            await window.app.apiClient.post(`/collaboration/sessions/${this.sessionToken}/updates`, {
+                cursor: cursor
+            });
+        } catch (error) {
+            console.error('Failed to push cursor:', error);
         }
-
-        const cursor = this.editor.getCursor();
-        const viewport = this.editor.getViewport();
-
-        const position = {
-            line: cursor.line,
-            ch: cursor.ch,
-            viewport: {
-                from: viewport.from,
-                to: viewport.to
-            }
-        };
-
-        this.websocket.updateCursor(position);
     }
 
     updateRemoteCursor(userId, position) {
@@ -365,12 +340,12 @@ class CollaborativeEditor {
             '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
             '#DDA0DD', '#98D8C8', '#FFB6C1', '#87CEEB', '#F0E68C'
         ];
-        
+
         let hash = 0;
         for (let i = 0; i < userId.toString().length; i++) {
             hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         return colors[Math.abs(hash) % colors.length];
     }
 
@@ -389,6 +364,16 @@ class CollaborativeEditor {
         if (this.editor) {
             this.editor.setOption('mode', mode);
         }
+    }
+
+    setOption(option, value) {
+        if (this.editor) {
+            this.editor.setOption(option, value);
+        }
+    }
+
+    getOption(option) {
+        return this.editor ? this.editor.getOption(option) : null;
     }
 
     setTheme(theme) {
@@ -484,11 +469,20 @@ class CollaborativeEditor {
         if (this.websocket) {
             this.websocket.close();
         }
-        
+
         if (this.editor) {
-            this.editor.toTextArea();
+            // Check if toTextArea exists (only for fromTextArea instances)
+            if (typeof this.editor.toTextArea === 'function') {
+                this.editor.toTextArea();
+            } else {
+                // Otherwise manually remove the wrapper
+                const wrapper = this.editor.getWrapperElement();
+                if (wrapper && wrapper.parentNode) {
+                    wrapper.parentNode.removeChild(wrapper);
+                }
+            }
         }
-        
+
         this.clearAllCursors();
     }
 }
@@ -501,7 +495,7 @@ class RemoteCursor {
         this.color = color;
         this.position = position;
         this.element = null;
-        
+
         this.create();
     }
 
@@ -517,7 +511,7 @@ class RemoteCursor {
             z-index: 1000;
             pointer-events: none;
         `;
-        
+
         this.label = document.createElement('div');
         this.label.className = 'remote-cursor-label';
         this.label.style.cssText = `
@@ -534,10 +528,10 @@ class RemoteCursor {
             z-index: 1001;
             pointer-events: none;
         `;
-        
+
         this.element.appendChild(this.label);
         this.editor.getWrapperElement().appendChild(this.element);
-        
+
         this.updatePosition(this.position);
     }
 
@@ -547,15 +541,15 @@ class RemoteCursor {
         }
 
         this.position = position;
-        
+
         const coords = this.editor.charCoords(
             { line: position.line, ch: position.ch },
             'local'
         );
-        
+
         this.element.style.left = coords.left + 'px';
         this.element.style.top = coords.top + 'px';
-        
+
         // Update label position
         if (this.label) {
             this.label.style.transform = `translateX(${coords.left}px) translateY(${coords.top - 20}px)`;
@@ -570,5 +564,4 @@ class RemoteCursor {
 }
 
 // Export for use in other modules
-window.CollaborativeEditor = CollaborativeEditor;
-window.RemoteCursor = RemoteCursor;
+export default CollaborativeEditor;
