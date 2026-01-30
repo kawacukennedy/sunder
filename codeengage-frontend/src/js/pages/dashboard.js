@@ -26,9 +26,37 @@ export class Dashboard {
         if (!this.app.auth.isAuthenticated()) {
             return this.app.router.navigate('/login');
         }
+
+        // Render skeletons first
+        this.renderSkeletons();
+
         await this.loadDashboardData();
         this.render();
         this.setupEventListeners();
+    }
+
+    renderSkeletons() {
+        const container = document.getElementById('app');
+        if (!container) return;
+
+        container.innerHTML = `
+            ${this.nav.render()}
+            <div class="min-h-screen bg-deep-space p-4 md:p-8">
+                <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
+                    <div class="w-64 h-10 skeleton rounded-lg"></div>
+                    <div class="flex gap-4 mt-4 md:mt-0">
+                        <div class="w-32 h-10 skeleton rounded-lg"></div>
+                        <div class="w-32 h-10 skeleton rounded-lg"></div>
+                    </div>
+                </header>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div class="md:col-span-2 lg:col-span-2 h-64 skeleton rounded-2xl"></div>
+                    <div class="h-64 skeleton rounded-2xl"></div>
+                    <div class="md:col-span-1 lg:col-span-1 md:row-span-2 h-96 skeleton rounded-2xl"></div>
+                    <div class="md:col-span-2 lg:col-span-3 h-96 skeleton rounded-2xl"></div>
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -182,26 +210,31 @@ export class Dashboard {
         }
 
         return snippets.map(snippet => `
-            <a href="/snippet/${snippet.id}" class="block group relative">
-                <div class="absolute inset-0 bg-gradient-to-r from-neon-blue to-neon-purple opacity-0 group-hover:opacity-100 blur transition duration-500 -z-10 rounded-xl"></div>
-                
-                <div class="bg-gray-900 border border-white/5 p-4 rounded-xl h-full flex flex-col hover:bg-gray-800 transition-colors">
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-neon-blue border border-neon-blue/20">
-                            ${this.escapeHtml(snippet.language)}
-                        </span>
-                        <span class="text-xs text-gray-500 flex items-center gap-1">
-                            ⭐ ${snippet.star_count || 0}
-                        </span>
-                    </div>
-                    <h4 class="text-white font-medium mb-2 line-clamp-1 group-hover:text-neon-blue transition-colors">${this.escapeHtml(snippet.title)}</h4>
-                    
-                     <div class="mt-auto pt-3 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
-                        <span>${this.formatTimeAgo(snippet.updated_at)}</span>
-                        <span>v${snippet.version_count || 1}</span>
-                    </div>
+            <div class="snippet-card-wrapper" data-id="${snippet.id}">
+                <div class="snippet-card-actions-bg">
+                    <span class="text-white text-sm font-bold">DELETE</span>
                 </div>
-            </a>
+                <a href="/snippet/${snippet.id}" class="block group relative snippet-card transition-transform duration-200">
+                    <div class="absolute inset-0 bg-gradient-to-r from-neon-blue to-neon-purple opacity-0 group-hover:opacity-100 blur transition duration-500 -z-10 rounded-xl"></div>
+                    
+                    <div class="bg-gray-900 border border-white/5 p-4 rounded-xl h-full flex flex-col hover:bg-gray-800 transition-colors">
+                        <div class="flex items-start justify-between mb-3">
+                            <span class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-neon-blue border border-neon-blue/20">
+                                ${this.escapeHtml(snippet.language)}
+                            </span>
+                            <span class="text-xs text-gray-500 flex items-center gap-1">
+                                ⭐ ${snippet.star_count || 0}
+                            </span>
+                        </div>
+                        <h4 class="text-white font-medium mb-2 line-clamp-1 group-hover:text-neon-blue transition-colors">${this.escapeHtml(snippet.title)}</h4>
+                        
+                        <div class="mt-auto pt-3 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
+                            <span>${this.formatTimeAgo(snippet.updated_at)}</span>
+                            <span>v${snippet.version_count || 1}</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
         `).join('');
     }
 
@@ -246,7 +279,69 @@ export class Dashboard {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Snippet item clicks are handled by anchors
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                window.app.authManager.logout();
+                this.app.router.navigate('/login');
+            });
+        }
+
+        // Swipe Action Implementation
+        this.setupSwipeActions();
+    }
+
+    setupSwipeActions() {
+        const cards = document.querySelectorAll('.snippet-card-wrapper');
+        cards.forEach(card => {
+            let startX = 0;
+            let currentX = 0;
+
+            card.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                currentX = e.touches[0].clientX;
+                const diff = startX - currentX;
+
+                if (diff > 50) { // Swipe left
+                    const inner = card.querySelector('.snippet-card');
+                    const bg = card.querySelector('.snippet-card-actions-bg');
+                    inner.style.transform = `translateX(-${Math.min(diff, 100)}px)`;
+                    bg.style.opacity = Math.min(diff / 100, 1);
+                }
+            }, { passive: true });
+
+            card.addEventListener('touchend', (e) => {
+                const diff = startX - currentX;
+                const inner = card.querySelector('.snippet-card');
+                const bg = card.querySelector('.snippet-card-actions-bg');
+
+                if (diff > 80) {
+                    // Trigger action (e.g. Delete)
+                    const snippetId = card.dataset.id;
+                    if (confirm('Delete this snippet?')) {
+                        this.deleteSnippet(snippetId);
+                    }
+                }
+
+                inner.style.transform = 'translateX(0)';
+                bg.style.opacity = '0';
+                startX = 0;
+                currentX = 0;
+            });
+        });
+    }
+
+    async deleteSnippet(id) {
+        try {
+            await window.app.apiClient.delete(`/snippets/${id}`);
+            window.app.showSuccess('Snippet deleted');
+            this.init(); // Refresh dashboard
+        } catch (error) {
+            window.app.showError('Failed to delete snippet');
+        }
     }
 
     /**
