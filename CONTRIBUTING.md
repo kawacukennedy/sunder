@@ -1,39 +1,26 @@
-# Contributing to CodeEngage
+# Contribution Guidelines
 
-## Code of Conduct
+Thank you for contributing to CodeEngage!
 
-This project and everyone participating in it is governed by the [CodeEngage Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+## Development Setup
 
-## How to Contribute
-
-We welcome contributions! Here's how you can help:
-
-### Reporting Bugs
-
-- Use the issue tracker to report bugs.
-- Describe the bug in detail, including steps to reproduce.
-- Include screenshots or logs if possible.
-
-### Suggesting Enhancements
-
-- Use the issue tracker to suggest enhancements.
-- describe the feature you'd like to see and why it would be useful.
-
-### Pull Requests
-
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix: `git checkout -b feature/my-new-feature` or `git checkout -b fix/my-bug-fix`.
-3. Make your changes and commit them with descriptive messages.
-4. Push your changes to your fork: `git push origin feature/my-new-feature`.
-5. Submit a pull request to the main repository.
+1. **Backend**: Requires PHP 8.1+ and SQLite/MySQL.
+2. **Frontend**: No build step required (Vanilla JS).
+3. **Environment**: Copy `.env.example` to `.env` and configure accordingly.
 
 ## Coding Standards
 
-- Follow the existing code style.
-- Write clean, readable code.
-- Add comments where necessary.
-- Write tests for new features or bug fixes.
+- **PHP**: Follow PSR-12 coding standards.
+- **JS**: Use ES6+ modules. Avoid external libraries unless approved.
+- **CSS**: Use established design tokens in `main.css`.
 
-## License
+## Branching & PRs
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/your-feature`.
+3. Commit with descriptive messages.
+4. Open a PR with a clear description and screenshots for UI changes.
+
+## Security
+
+Please report security vulnerabilities directly to the maintainers rather than opening a public issue.
