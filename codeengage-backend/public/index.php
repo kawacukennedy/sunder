@@ -1,5 +1,8 @@
 <?php
 
+// Start latency tracking
+$startTime = microtime(true);
+
 // API Entry Point for CodeEngage
 header_remove('X-Powered-By');
 
@@ -14,7 +17,7 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
 }
 
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, X-CSRF-TOKEN');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -54,6 +57,16 @@ set_exception_handler(function($exception) {
             'message' => 'Internal server error'
         ], JSON_THROW_ON_ERROR);
     }
+
+    
+    // Log exception
+    $duration = microtime(true) - $startTime;
+    \App\Helpers\Logger::error("API Exception", [
+        'message' => $exception->getMessage(),
+        'duration_ms' => round($duration * 1000, 2),
+        'file' => $exception->getFile(),
+        'line' => $exception->getLine()
+    ]);
 });
 
 // Load environment variables
@@ -107,13 +120,13 @@ try {
             touch($dbPath);
         }
 
-        $db = new PDO($dsn, null, null, $databaseConfig['options']);
+        $db = new \App\Services\LoggedPDO($dsn, null, null, $databaseConfig['options']);
         // SQLite specific pragmas for performance/constraints
         $db->exec("PRAGMA foreign_keys = ON;");
     } else {
         // MySQL Connection
         $dsn = "mysql:host={$databaseConfig['host']};dbname={$databaseConfig['name']};charset={$databaseConfig['charset']}";
-        $db = new PDO($dsn, $databaseConfig['user'], $databaseConfig['pass'], $databaseConfig['options']);
+        $db = new \App\Services\LoggedPDO($dsn, $databaseConfig['user'], $databaseConfig['pass'], $databaseConfig['options']);
     }
 } catch (PDOException $e) {
     http_response_code(500);
@@ -126,9 +139,32 @@ try {
 
 // Parse request
 $method = $_SERVER['REQUEST_METHOD'];
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$uri = str_replace('/api', '', $uri); // Remove /api prefix
+$requestUri = $_SERVER['REQUEST_URI'];
+$path = parse_url($requestUri, PHP_URL_PATH);
+
+// Check if API request
+if (strpos($path, '/api') !== 0) {
+    // Web/SSR Routing
+    require_once __DIR__ . '/../app/Controllers/WebController.php';
+    $webController = new \App\Controllers\WebController($db);
+    $webController->handle($path);
+    exit;
+}
+
+// API processing continues below
+$uri = str_replace('/api', '', $path);
 $uriParts = explode('/', trim($uri, '/'));
+
+// Global Middleware
+$securityHeaders = new \App\Middleware\SecurityHeadersMiddleware();
+$securityHeaders->handle();
+
+$rateLimiter = new \App\Middleware\RateLimitMiddleware();
+$rateLimiter->handle();
+
+// CSRF Protection
+$csrf = new \App\Middleware\CsrfMiddleware();
+$csrf->handle();
 
 // Route to appropriate controller
 try {
@@ -142,7 +178,9 @@ try {
         'analysis' => 'Analysis',
         'collaboration' => 'Collaboration',
         'export' => 'Export',
-        'tags' => 'Tag'
+        'tags' => 'Tag',
+        'organizations' => 'Organization',
+        'api-keys' => 'ApiKey'
     ];
 
     // Special routing for snippets (default)
@@ -172,15 +210,35 @@ try {
     elseif ($uriParts[0] === 'users' && isset($uriParts[1]) && $uriParts[1] === 'me') {
         $controllerName = 'User';
         // /users/me -> show, /users/me/snippets -> snippets, /users/me/activity -> activity, etc.
-        $action = isset($uriParts[2]) ? $uriParts[2] : 'me';
+        if (isset($uriParts[2]) && $uriParts[2] === 'avatar') {
+            $action = 'uploadAvatar';
+        } else {
+            $action = isset($uriParts[2]) ? $uriParts[2] : 'me';
+        }
         $params = array_slice($uriParts, 3);
     }
+    // Generic routing for resources (admin, organizations, etc)
     else {
         // Use mapping or capitalize first letter
         $rawController = strtolower($uriParts[0] ?? 'auth');
         $controllerName = $controllerMap[$rawController] ?? ucfirst($rawController);
-        $action = $uriParts[1] ?? 'index';
-        $params = array_slice($uriParts, 2);
+        
+        // Check if second part is ID (e.g. /organizations/1)
+        if (isset($uriParts[1]) && is_numeric($uriParts[1])) {
+             if (isset($uriParts[2])) {
+                 // /organizations/1/members
+                 $action = $uriParts[2];
+             } else {
+                 // /organizations/1
+                 $action = 'show';
+             }
+             $params = [$uriParts[1]];
+        } else {
+            $rawAction = $uriParts[1] ?? 'index';
+            // Convert kebab-case to camelCase
+            $action = lcfirst(str_replace('-', '', ucwords($rawAction, '-')));
+            $params = array_slice($uriParts, 2);
+        }
     }
     
     // Include controller files
@@ -220,6 +278,16 @@ try {
     
     // Call the action
     $controller->$action($method, $params);
+    
+    // Log successful request
+    $duration = microtime(true) - $startTime;
+    \App\Helpers\Logger::info("API Request", [
+        'method' => $method,
+        'path' => $path,
+        'duration_ms' => round($duration * 1000, 2),
+        'status' => http_response_code(),
+        'user_id' => $_SESSION['user_id'] ?? null
+    ]);
     
 } catch (App\Exceptions\ApiException $e) {
     http_response_code($e->getStatusCode());
