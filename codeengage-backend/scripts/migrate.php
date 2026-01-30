@@ -65,8 +65,14 @@ try {
             $stmt = $pdo->prepare("INSERT INTO migrations (migration) VALUES (?)");
             $stmt->execute([$name]);
             echo "DONE\n";
+        } elseif (is_array($migration) && isset($migration['up']) && is_callable($migration['up'])) {
+            $migration['up']($pdo);
+            
+            $stmt = $pdo->prepare("INSERT INTO migrations (migration) VALUES (?)");
+            $stmt->execute([$name]);
+            echo "DONE\n";
         } else {
-            echo "FAILED (Not callable)\n";
+            echo "FAILED (Not callable or valid array)\n";
         }
     }
     
