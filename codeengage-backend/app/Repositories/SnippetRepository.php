@@ -22,7 +22,14 @@ class SnippetRepository
 
     public function findById(int $id): ?Snippet
     {
-        return Snippet::findById($this->db, $id);
+        $snippet = new Snippet($this->db);
+        $data = $snippet->findById($id);
+        
+        if (!$data) {
+            return null;
+        }
+
+        return Snippet::fromData($this->db, $data);
     }
 
     public function create(array $data, string $code): Snippet
@@ -96,9 +103,13 @@ class SnippetRepository
             throw new \Exception('Failed to update snippet');
         }
 
-        // Create new version if code is provided
+        // Create new version only if code has changed
         if ($code !== null && $editorId !== null) {
-            $this->createVersion($id, $code, $editorId, $data['change_summary'] ?? 'Updated');
+            $latestVersion = $this->getLatestVersion($id);
+            if (!$latestVersion || $latestVersion->getCode() !== $code) {
+                // Calculate checksum logic can be here or just string compare as above
+                $this->createVersion($id, $code, $editorId, $data['change_summary'] ?? 'Updated');
+            }
         }
 
         // Handle tags if provided
@@ -129,47 +140,60 @@ class SnippetRepository
 
         // Apply search filter
         if (!empty($filters['search'])) {
-            $sql .= " AND (s.title LIKE :search OR s.description LIKE :search)";
-            $params[':search'] = "%{$filters['search']}%";
+            $sql .= " AND (s.title LIKE ? OR s.description LIKE ?)";
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
         }
 
         // Apply language filter
         if (!empty($filters['language'])) {
-            $sql .= " AND s.language = :language";
-            $params[':language'] = $filters['language'];
+            $sql .= " AND s.language = ?";
+            $params[] = $filters['language'];
         }
 
         // Apply author filter
         if (!empty($filters['author_id'])) {
-            $sql .= " AND s.author_id = :author_id";
-            $params[':author_id'] = $filters['author_id'];
+            $sql .= " AND s.author_id = ?";
+            $params[] = $filters['author_id'];
         }
 
         // Apply organization filter
         if (!empty($filters['organization_id'])) {
-            $sql .= " AND s.organization_id = :organization_id";
-            $params[':organization_id'] = $filters['organization_id'];
+            $sql .= " AND s.organization_id = ?";
+            $params[] = $filters['organization_id'];
         }
 
         // Apply template filter
         if (isset($filters['is_template'])) {
-            $sql .= " AND s.is_template = :is_template";
-            $params[':is_template'] = $filters['is_template'] ? 1 : 0;
+            $sql .= " AND s.is_template = ?";
+            $params[] = $filters['is_template'] ? 1 : 0;
         }
 
         // Add tag filter
         if (!empty($filters['tags'])) {
+            $placeholders = implode(',', array_fill(0, count($filters['tags']), '?'));
             $sql .= " AND EXISTS (
                 SELECT 1 FROM snippet_tags st 
                 JOIN tags t ON st.tag_id = t.id 
-                WHERE st.snippet_id = s.id AND t.slug IN (" . implode(',', array_fill(0, count($filters['tags']), '?')) . ")
+                WHERE st.snippet_id = s.id AND t.slug IN ($placeholders)
             )";
-            $params = array_merge($params, $filters['tags']);
+            foreach ($filters['tags'] as $tag) {
+                $params[] = $tag;
+            }
         }
 
         // Order by
         $orderBy = $filters['order_by'] ?? 'created_at';
-        $order = $filters['order'] ?? 'DESC';
+        $allowedSorts = ['created_at', 'updated_at', 'view_count', 'star_count', 'title'];
+        if (!in_array($orderBy, $allowedSorts)) {
+            $orderBy = 'created_at';
+        }
+        
+        $order = strtoupper($filters['order'] ?? 'DESC');
+        if (!in_array($order, ['ASC', 'DESC'])) {
+            $order = 'DESC';
+        }
+        
         $sql .= " ORDER BY s.{$orderBy} {$order}";
 
         // Pagination
@@ -200,19 +224,20 @@ class SnippetRepository
 
         // Apply search filter
         if (!empty($filters['search'])) {
-            $sql .= " AND (s.title LIKE :search OR s.description LIKE :search)";
-            $params[':search'] = "%{$filters['search']}%";
+            $sql .= " AND (s.title LIKE ? OR s.description LIKE ?)";
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
         }
 
         // Apply other filters (similar to findMany)
         if (!empty($filters['language'])) {
-            $sql .= " AND s.language = :language";
-            $params[':language'] = $filters['language'];
+            $sql .= " AND s.language = ?";
+            $params[] = $filters['language'];
         }
 
         if (!empty($filters['author_id'])) {
-            $sql .= " AND s.author_id = :author_id";
-            $params[':author_id'] = $filters['author_id'];
+            $sql .= " AND s.author_id = ?";
+            $params[] = $filters['author_id'];
         }
 
         $stmt = $this->db->prepare($sql);
@@ -238,7 +263,9 @@ class SnippetRepository
             return false;
         }
 
-        return $snippet->toggleStar(0); // Use a placeholder user ID
+        $sql = "UPDATE snippets SET star_count = star_count + 1 WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
     }
 
     public function fork(int $id, int $authorId, ?string $title = null): Snippet
@@ -333,14 +360,15 @@ class SnippetRepository
     {
         $language = CodeHelper::detectLanguage($code);
         
-        return [
-            'complexity_score' => CodeHelper::calculateComplexity($code),
-            'security_issues' => CodeHelper::detectSecurityIssues($code, $language),
-            'functions' => CodeHelper::extractFunctions($code, $language),
-            'language' => $language,
-            'lines_of_code' => substr_count($code, "\n") + 1,
-            'character_count' => strlen($code),
-        ];
+        // Use AnalysisService for consistency
+        $analysisService = new \App\Services\AnalysisService($this->db);
+        $results = $analysisService->analyze($code, $language);
+        
+        // Additional info for snapshot
+        $results['functions'] = CodeHelper::extractFunctions($code, $language);
+        $results['character_count'] = strlen($code);
+        
+        return $results;
     }
 
     private function updateTags(int $snippetId, array $tagNames): void
@@ -692,6 +720,34 @@ class SnippetRepository
         return $results;
     }
 
+    public function restore(int $id): bool
+    {
+        $sql = "UPDATE snippets SET deleted_at = NULL WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function forceDelete(int $id): bool
+    {
+        // Delete related tags first (or rely on CASCADE in DB)
+        $this->detachAllTags($id);
+        
+        $sql = "DELETE FROM snippets WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function transferOwnership(int $snippetId, int $newOwnerId): bool
+    {
+        $sql = "UPDATE snippets SET author_id = :new_owner_id WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':new_owner_id' => $newOwnerId, 
+            ':id' => $snippetId
+        ]);
+    }
+
+    // Existing findTrending method
     public function findTrending(string $timeframe, int $limit): array
     {
             $sql = "
@@ -732,5 +788,50 @@ class SnippetRepository
         }
         
         return $results;
+    }
+
+    public function rollback(int $snippetId, int $versionNumber, int $userId): bool
+    {
+        // Find the specific version
+        $sql = "SELECT * FROM snippet_versions WHERE snippet_id = :id AND version_number = :version";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $snippetId, ':version' => $versionNumber]);
+        $targetVersionData = $stmt->fetch();
+        
+        if (!$targetVersionData) {
+            throw new NotFoundException('Version');
+        }
+        
+        $targetVersion = SnippetVersion::fromData($this->db, $targetVersionData);
+        
+        $summary = "Rollback to version {$versionNumber}";
+        $this->createVersion($snippetId, $targetVersion->getCode(), $userId, $summary);
+        
+        return true;
+    }
+
+    public function findRelated(int $snippetId, string $language, array $tagIds = [], int $limit = 5): array
+    {
+        $sql = "SELECT DISTINCT s.*, 
+                (CASE WHEN s.language = :language THEN 2 ELSE 0 END + 
+                 (SELECT COUNT(*) FROM snippet_tags st WHERE st.snippet_id = s.id AND st.tag_id IN (" . (empty($tagIds) ? '0' : implode(',', $tagIds)) . "))
+                ) as relevance
+                FROM snippets s
+                LEFT JOIN snippet_tags st ON s.id = st.snippet_id
+                WHERE s.deleted_at IS NULL
+                AND s.visibility = 'public'
+                AND s.id != :id
+                AND (s.language = :language" . (!empty($tagIds) ? " OR st.tag_id IN (" . implode(',', $tagIds) . ")" : "") . ")
+                ORDER BY relevance DESC, s.view_count DESC
+                LIMIT :limit";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $snippetId, ':language' => $language, ':limit' => $limit]);
+        
+        $snippets = [];
+        while ($data = $stmt->fetch()) {
+             $snippets[] = Snippet::fromData($this->db, $data);
+        }
+        return $snippets;
     }
 }

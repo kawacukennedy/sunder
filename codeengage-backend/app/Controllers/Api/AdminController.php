@@ -132,4 +132,65 @@ class AdminController
             'logs' => $stmt->fetchAll()
         ]);
     }
+
+    public function updateUser($method, $params)
+    {
+        $admin = $this->ensureAdmin();
+        $userId = $params[0] ?? null;
+        
+        if ($method !== 'PUT' || !$userId) {
+            ApiResponse::error('Invalid request', 400);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (isset($input['role'])) {
+            // Prevent self-demotion if not super admin, simple check
+            if ($userId == $admin['id']) {
+                 ApiResponse::error('Cannot change your own role', 403);
+            }
+            
+            $stmt = $this->pdo->prepare("UPDATE users SET role = ? WHERE id = ?");
+            $stmt->execute([$input['role'], $userId]);
+        }
+        
+        if (isset($input['status'])) { // active, suspended, banned
+             // This assumes we have a status column or use deleted_at for ban
+             if ($input['status'] === 'banned') {
+                 $stmt = $this->pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE id = ?");
+                 $stmt->execute([$userId]);
+             } elseif ($input['status'] === 'active') {
+                 $stmt = $this->pdo->prepare("UPDATE users SET deleted_at = NULL WHERE id = ?");
+                 $stmt->execute([$userId]);
+             }
+        }
+
+        ApiResponse::success(null, 'User updated');
+    }
+
+    public function maintenance($method, $params)
+    {
+        $this->ensureAdmin();
+        
+        $action = $params[0] ?? null;
+        
+        if ($action === 'clear-cache') {
+            // Placeholder: Clear OPcache or Application cache if implemented
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+            // If file cache exists, clear it
+            $files = glob(__DIR__ . '/../../cache/*'); 
+            foreach($files as $file){ 
+              if(is_file($file)) unlink($file); 
+            }
+            
+            ApiResponse::success(null, 'Cache cleared');
+        } elseif ($action === 'health-check') {
+             // More detailed check
+             ApiResponse::success(['status' => 'OK', 'timestamp' => time()]);
+        } else {
+             ApiResponse::error('Unknown maintenance action', 400);
+        }
+    }
 }

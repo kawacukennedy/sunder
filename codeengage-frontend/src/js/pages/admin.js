@@ -462,6 +462,17 @@ export class Admin {
                     </div>
                 </section>
                 
+                <section class="settings-section">
+                    <h3>Cache Management</h3>
+                    <p class="text-gray-400 text-sm mb-4">Manage application cache to free up space or resolve sync issues.</p>
+                    
+                    <div class="flex space-x-4">
+                        <button type="button" class="btn btn-warning" id="clear-cache-btn">
+                            <i class="icon-refresh"></i> Clear System Cache
+                        </button>
+                    </div>
+                </section>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Save Settings</button>
                 </div>
@@ -505,6 +516,31 @@ export class Admin {
         const content = document.getElementById('admin-content');
         if (content) {
             content.innerHTML = this.renderSection(section);
+
+            if (section === 'settings') {
+                const clearCacheBtn = document.getElementById('clear-cache-btn');
+                if (clearCacheBtn) {
+                    clearCacheBtn.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to clear the system cache? This may temporarily impact performance.')) {
+                            try {
+                                await this.app.apiClient.post('/admin/maintenance/clear-cache');
+                                this.app.showSuccess('System cache cleared successfully');
+                            } catch (e) {
+                                this.app.showError('Failed to clear cache');
+                            }
+                        }
+                    });
+                }
+
+                // Form handler
+                const form = document.getElementById('admin-settings-form');
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.saveSettings(new FormData(form));
+                    });
+                }
+            }
         }
     }
 

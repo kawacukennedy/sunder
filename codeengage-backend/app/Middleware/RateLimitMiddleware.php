@@ -2,115 +2,79 @@
 
 namespace App\Middleware;
 
-use App\Helpers\SecurityHelper;
 use App\Helpers\ApiResponse;
 
 class RateLimitMiddleware
 {
-    private array $config;
-    private string $keyPrefix;
+    private $storagePath;
+    private $limit = 60; // requests per minute
+    private $window = 60; // seconds
 
-    public function __construct(array $config = [])
+    public function __construct()
     {
-        $this->config = array_merge([
-            'requests_per_minute' => 60,
-            'requests_per_hour' => 1000,
-            'requests_per_day' => 10000,
-            'burst_limit' => 10,
-            'whitelist' => [],
-            'blacklist' => []
-        ], $config);
-
-        $this->keyPrefix = 'rate_limit:';
+        $this->storagePath = __DIR__ . '/../../storage/cache/ratelimit/';
+        if (!is_dir($this->storagePath)) {
+            mkdir($this->storagePath, 0777, true);
+        }
     }
 
-    public function handle(string $key = null): void
+    public function handle()
     {
-        $ip = SecurityHelper::getIpAddress();
-        $key = $key ?: $ip;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-        // Check blacklist
-        if (in_array($ip, $this->config['blacklist'])) {
-            ApiResponse::error('IP address blocked', 403);
+        // IP Reputation Check (Blacklist)
+        if ($this->isIpBlacklisted($ip)) {
+            ApiResponse::error('Your IP has been flagged for suspicious activity', 403);
         }
 
-        // Check whitelist
-        if (in_array($ip, $this->config['whitelist'])) {
-            return;
-        }
-
-        // Check various rate limits
-        $this->checkRateLimit($key, 'minute', $this->config['requests_per_minute'], 60);
-        $this->checkRateLimit($key, 'hour', $this->config['requests_per_hour'], 3600);
-        $this->checkRateLimit($key, 'day', $this->config['requests_per_day'], 86400);
+        // Simple sanitization for filename
+        $ipHash = md5($ip);
+        $file = $this->storagePath . $ipHash . '.json';
         
-        // Check burst limit
-        $this->checkBurstLimit($key);
-    }
-
-    private function checkRateLimit(string $key, string $period, int $limit, int $window): void
-    {
-        $cacheKey = $this->keyPrefix . "{$key}:{$period}";
+        $data = ['count' => 0, 'start_time' => time()];
         
-        if (!SecurityHelper::rateLimitCheck($cacheKey, $limit, $window)) {
-            $this->handleRateLimitExceeded($period, $limit, $window);
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            if ($json) {
+                $data = json_decode($json, true) ?? $data;
+            }
         }
-    }
 
-    private function checkBurstLimit(string $key): void
-    {
-        $cacheKey = $this->keyPrefix . "{$key}:burst";
+        $currentTime = time();
         
-        if (!SecurityHelper::rateLimitCheck($cacheKey, $this->config['burst_limit'], 10)) {
-            ApiResponse::error('Too many requests in short time. Please wait a moment.', 429);
-        }
-    }
-
-    private function handleRateLimitExceeded(string $period, int $limit, int $window): void
-    {
-        $headers = [
-            'X-RateLimit-Limit' => $limit,
-            'X-RateLimit-Window' => $window,
-            'X-RateLimit-Period' => $period,
-            'Retry-After' => $window
-        ];
-
-        foreach ($headers as $name => $value) {
-            header("{$name}: {$value}");
+        // Reset if window passed
+        if ($currentTime - $data['start_time'] > $this->window) {
+            $data['count'] = 0;
+            $data['start_time'] = $currentTime;
         }
 
-        ApiResponse::error("Rate limit exceeded. Maximum {$limit} requests per {$period}.", 429);
+        $data['count']++;
+
+        file_put_contents($file, json_encode($data));
+
+        if ($data['count'] > $this->limit) {
+            $retryAfter = $this->window - ($currentTime - $data['start_time']);
+            header('Retry-After: ' . $retryAfter);
+            header('X-RateLimit-Limit: ' . $this->limit);
+            header('X-RateLimit-Remaining: 0');
+            header('X-RateLimit-Reset: ' . ($data['start_time'] + $this->window));
+            ApiResponse::error('Too Many Requests', 429);
+        }
+        
+        // Add headers for valid requests
+        header('X-RateLimit-Limit: ' . $this->limit);
+        header('X-RateLimit-Remaining: ' . max(0, $this->limit - $data['count']));
+        header('X-RateLimit-Reset: ' . ($data['start_time'] + $this->window));
     }
 
-    public function getRemainingRequests(string $key = null, string $period = 'minute'): array
+    private function isIpBlacklisted(string $ip): bool
     {
-        $key = $key ?: SecurityHelper::getIpAddress();
-        $cacheKey = $this->keyPrefix . "{$key}:{$period}";
+        $blacklistFile = __DIR__ . '/../../storage/security/ip_blacklist.json';
+        if (!file_exists($blacklistFile)) {
+            return false;
+        }
 
-        // This would need to be implemented based on your cache storage
-        // For now, return estimated values
-        return [
-            'limit' => $this->config["requests_per_{$period}"],
-            'remaining' => max(0, $this->config["requests_per_{$period}"] - $this->getCurrentUsage($cacheKey)),
-            'reset_time' => time() + $this->getWindowSeconds($period)
-        ];
-    }
-
-    private function getCurrentUsage(string $cacheKey): int
-    {
-        // Implementation depends on cache storage
-        // This is a placeholder
-        return 0;
-    }
-
-    private function getWindowSeconds(string $period): int
-    {
-        $windows = [
-            'minute' => 60,
-            'hour' => 3600,
-            'day' => 86400
-        ];
-
-        return $windows[$period] ?? 60;
+        $blacklist = json_decode(file_get_contents($blacklistFile), true) ?? [];
+        return in_array($ip, $blacklist);
     }
 }

@@ -27,7 +27,19 @@ class SnippetController
                 'author_id' => $_GET['author_id'] ?? null,
                 'organization_id' => $_GET['organization_id'] ?? null
             ];
-            $snippets = $this->snippetService->list($filters);
+            
+            // Generate cache key based on filters
+            $cacheKey = 'snippets_list_' . md5(json_encode($filters));
+            
+            // Try to get from cache
+            $snippets = \App\Helpers\CacheHelper::get($cacheKey);
+            
+            if ($snippets === null) {
+                $snippets = $this->snippetService->list($filters);
+                // Cache for 1 minute (short TTL for lists)
+                \App\Helpers\CacheHelper::set($cacheKey, $snippets, 60);
+            }
+            
             ApiResponse::success($snippets);
         } elseif ($method === 'POST') {
             $this->create();
@@ -61,6 +73,9 @@ class SnippetController
             }
         }
 
+        // Increment view count (debounced by session)
+        $this->incrementViewCountDebounced($id);
+
         ApiResponse::success($snippet);
     }
 
@@ -71,8 +86,7 @@ class SnippetController
         $input = json_decode(file_get_contents('php://input'), true);
         $result = $this->snippetService->create($input, $_SESSION['user_id']);
         
-        // Gamification hook
-        $this->awardPoints('snippet.create');
+        $this->triggerGamification($_SESSION['user_id'], 'snippet.create');
         
         ApiResponse::success($result, 'Snippet created', 201);
     }
@@ -119,8 +133,7 @@ class SnippetController
 
         $result = $this->snippetService->star($id, $_SESSION['user_id']);
         
-        // Gamification hook
-        $this->awardPoints('snippet.star');
+        $this->triggerGamification($_SESSION['user_id'], 'snippet.star');
         
         ApiResponse::success($result, 'Snippet starred');
     }
@@ -152,8 +165,7 @@ class SnippetController
         $input = json_decode(file_get_contents('php://input'), true);
         $result = $this->snippetService->fork($id, $_SESSION['user_id'], $input['title'] ?? null);
         
-        // Gamification hook
-        $this->awardPoints('snippet.fork');
+        $this->triggerGamification($_SESSION['user_id'], 'snippet.fork');
         
         ApiResponse::success($result, 'Snippet forked', 201);
     }
@@ -185,6 +197,78 @@ class SnippetController
 
         $versions = $this->snippetService->getVersions($id);
         ApiResponse::success($versions);
+    }
+
+    public function restore($method, $params)
+    {
+        if ($method !== 'POST') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+        $this->ensureAuth();
+        $id = $params[0] ?? null;
+        
+        $this->snippetService->restore($id, $_SESSION['user_id']);
+        ApiResponse::success(null, 'Snippet restored');
+    }
+    
+    public function transfer($method, $params)
+    {
+        if ($method !== 'POST') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+        $this->ensureAuth();
+        $id = $params[0] ?? null;
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        $this->snippetService->transferOwnership($id, $_SESSION['user_id'], $input['new_owner_id']);
+        ApiResponse::success(null, 'Ownership transferred');
+    }
+    
+    public function forceDelete($method, $params)
+    {
+        if ($method !== 'DELETE') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+        $this->ensureAuth();
+        $id = $params[0] ?? null;
+        
+        // Admin check (simple role check for now)
+        $isAdmin = ($_SESSION['user_role'] ?? 'member') === 'admin';
+        
+        $this->snippetService->forceDelete($id, $_SESSION['user_id'], $isAdmin);
+        ApiResponse::success(null, 'Snippet permanently deleted');
+    }
+
+    public function rollback($method, $params)
+    {
+        if ($method !== 'POST') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+        $this->ensureAuth();
+        $id = $params[0] ?? null;
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $version = $input['version'] ?? null;
+        
+        if (!$version) {
+            ApiResponse::error('Version number required', 400);
+        }
+        
+        $this->snippetService->rollback($id, (int)$version, $_SESSION['user_id']);
+        ApiResponse::success(null, 'Snippet rolled back');
+    }
+
+    public function related($method, $params)
+    {
+        if ($method !== 'GET') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+        
+        $id = $params[0] ?? null;
+        if (!$id) ApiResponse::error('Snippet ID required', 400);
+        
+        $result = $this->snippetService->getRelated($id);
+        ApiResponse::success($result);
     }
 
     private function ensureAuth()
@@ -227,6 +311,21 @@ class SnippetController
         }
     }
 
+    private function incrementViewCountDebounced($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $viewedSnippets = $_SESSION['viewed_snippets'] ?? [];
+        $lastViewed = $viewedSnippets[$id] ?? 0;
+        
+        // 1 hour debounce
+        if (time() - $lastViewed > 3600) {
+            $this->snippetService->incrementViewCount($id);
+            $viewedSnippets[$id] = time();
+            $_SESSION['viewed_snippets'] = $viewedSnippets;
+        }
+    }
+
     public function __call($name, $arguments)
     {
         if (is_numeric($name)) {
@@ -246,5 +345,30 @@ class SnippetController
         }
         
         ApiResponse::error('Action not found: ' . $name, 404);
+    }
+    private function triggerGamification($userId, $action, $context = [])
+    {
+        // Manual DI for now as quick fix, ideally injected in constructor
+        try {
+            $userRepo = new \App\Repositories\UserRepository($this->pdo);
+            $achievementRepo = new \App\Repositories\AchievementRepository($this->pdo);
+            $auditRepo = new \App\Repositories\AuditRepository($this->pdo);
+            $notificationRepo = new \App\Repositories\NotificationRepository($this->pdo);
+            
+            $emailService = new \App\Services\EmailService();
+            $notificationService = new \App\Services\NotificationService($notificationRepo, $userRepo, $emailService);
+            
+            $gamification = new \App\Services\GamificationService(
+                $userRepo,
+                $achievementRepo,
+                $auditRepo,
+                new \App\Helpers\SecurityHelper(),
+                $notificationService
+            );
+            
+            $gamification->awardPoints($userId, $action, $context);
+        } catch (\Exception $e) {
+            // Log but don't fail request
+        }
     }
 }

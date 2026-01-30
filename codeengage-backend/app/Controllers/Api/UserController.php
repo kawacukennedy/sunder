@@ -132,15 +132,7 @@ class UserController
             $snippets = $this->userRepository->findSnippetsByUser($id, $filters, $limit, $offset);
             $total = $this->userRepository->countSnippetsByUser($id, $filters);
 
-            ApiResponse::success([
-                'snippets' => $snippets,
-                'total' => $total,
-                'page' => ($offset / $limit) + 1,
-                'limit' => $limit,
-                'stats' => [
-                    'total_snippets' => $total
-                ]
-            ]);
+            ApiResponse::success($snippets);
 
         } catch (\Exception $e) {
             ApiResponse::success([
@@ -258,6 +250,28 @@ class UserController
             $snippets = $this->userRepository->findSnippetsByUser($id, [], 1000); // Higher limit for stats
             $achievements = $this->userRepository->getAchievements($id);
 
+
+            // Calculate language stats
+            $languageCounts = [];
+            foreach ($snippets as $snippet) {
+                $lang = $snippet['language'];
+                if (!isset($languageCounts[$lang])) {
+                    $languageCounts[$lang] = 0;
+                }
+                $languageCounts[$lang]++;
+            }
+            
+            $languagesFormatted = [];
+            foreach ($languageCounts as $lang => $count) {
+                $languagesFormatted[] = [
+                    'name' => $lang,
+                    'count' => $count
+                ];
+            }
+            
+            // Sort by count descending
+            usort($languagesFormatted, fn($a, $b) => $b['count'] - $a['count']);
+
             $stats = [
                 'total_snippets' => count($snippets),
                 'public_snippets' => count(array_filter($snippets, fn($s) => ($s['visibility'] ?? 'public') === 'public')),
@@ -266,7 +280,11 @@ class UserController
                 'total_stars' => array_sum(array_column($snippets, 'star_count')),
                 'total_achievements' => count($achievements),
                 'achievement_points' => $currentUser->getAchievementPoints(),
-                'languages_used' => array_values(array_unique(array_column($snippets, 'language'))),
+                'languages' => $languagesFormatted, // Updated key to match frontend usage, or keep languages_used if mapped? 
+                // profile.js uses stats.languages (line 227). 
+                // So I should use 'languages' key. 
+                // Previous code used 'languages_used'.
+                'languages_used' => array_values(array_unique(array_column($snippets, 'language'))), // Keep for backward compatibility if needed
                 'join_date' => $currentUser->getCreatedAt()?->format('Y-m-d'),
                 'last_active' => $currentUser->getLastActiveAt()?->format('Y-m-d H:i:s')
             ];
@@ -283,6 +301,11 @@ class UserController
      */
     public function me(string $method, array $params): void
     {
+        if ($method === 'PUT') {
+            $this->update($method, $params);
+            return;
+        }
+
         if ($method !== 'GET') {
             ApiResponse::error('Method not allowed', 405);
         }
@@ -355,14 +378,35 @@ class UserController
             // Get recent activity from audit logs
             $activities = $this->userRepository->getRecentActivity($currentUser->getId(), $limit);
             
-            ApiResponse::success([
-                'activities' => $activities
-            ]);
+            ApiResponse::success($activities);
 
         } catch (\Exception $e) {
-            ApiResponse::success([
-                'activities' => []
-            ]);
+            ApiResponse::success([]);
+        }
+    }
+
+    public function uploadAvatar(string $method, array $params): void
+    {
+        if ($method !== 'POST') {
+            ApiResponse::error('Method not allowed', 405);
+        }
+
+        $currentUser = $this->auth->handle();
+
+        if (!isset($_FILES['avatar'])) {
+            ApiResponse::error('No file uploaded', 400);
+        }
+
+        try {
+            $url = \App\Helpers\UploadHelper::uploadImage($_FILES['avatar']);
+            
+            // Update user profile
+            $this->userRepository->update($currentUser->getId(), ['avatar_url' => $url]);
+            
+            ApiResponse::success(['avatar_url' => $url], 'Avatar uploaded successfully');
+            
+        } catch (\Exception $e) {
+            ApiResponse::error($e->getMessage(), 400);
         }
     }
 }

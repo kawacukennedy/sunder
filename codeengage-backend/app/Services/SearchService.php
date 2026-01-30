@@ -232,6 +232,11 @@ class SearchService
         $contentSimilarity = $this->calculateTextSimilarity($content1, $content2);
         $similarity += $contentSimilarity * 0.3;
 
+        // Author Affinity (Bonus: 0.1)
+        if (($snippet1['author_id'] ?? 0) === ($snippet2['author_id'] ?? -1)) {
+            $similarity += 0.1;
+        }
+
         return $similarity;
     }
 

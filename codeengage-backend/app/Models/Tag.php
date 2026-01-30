@@ -49,12 +49,18 @@ class Tag
         
         $stmt = $this->db->prepare($sql);
         
-        return $stmt->execute([
+        $result = $stmt->execute([
             ':name' => $this->name,
             ':slug' => $this->slug,
             ':description' => $this->description,
             ':usage_count' => $this->usageCount
         ]);
+
+        if ($result) {
+            $this->id = (int)$this->db->lastInsertId();
+        }
+
+        return $result;
     }
 
     private function update(): bool

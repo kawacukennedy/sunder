@@ -22,7 +22,7 @@ class RoleMiddleware
      */
     public function handle(array $allowedRoles): void
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
+        // Session started by index.php
 
         if (!isset($_SESSION['user_id'])) {
             ApiResponse::error('Unauthorized', 401);
