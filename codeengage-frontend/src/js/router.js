@@ -27,16 +27,16 @@ class Router {
             if (match) {
                 const params = {};
                 const paramNames = this.extractParamNames(route.name);
-                
+
                 // Extract named parameters from regex groups
                 paramNames.forEach((name, index) => {
                     params[name] = match[index + 1];
                 });
-                
+
                 return { handler: route.handler, params };
             }
         }
-        
+
         return null;
     }
 
@@ -50,42 +50,42 @@ class Router {
         const pathParts = path.split('/').filter(Boolean);
         const matchedParts = matchedPath.split('/').filter(Boolean);
         const params = {};
-        
+
         matchedParts.forEach((part, index) => {
             if (part.startsWith(':')) {
                 const paramName = part.substring(1);
                 params[paramName] = pathParts[index] || '';
             }
         });
-        
+
         return params;
     }
 
     async navigate(path, state = {}) {
         // Update browser history
         history.pushState(state, '', path);
-        
+
         // Update current route
         this.currentPath = path;
-        
+
         // Handle the route
         await this.handleRoute(path);
     }
 
     async handleRoute(path) {
         let match = this.matchRoute(path);
-        
+
         if (!match) {
             if (this.notFoundHandler) {
                 return this.notFoundHandler();
             }
             return;
         }
-        
+
         // Extract params properly
         const params = this.extractParamsFromUrl(path, this.getOriginalPath(match.handler));
         this.currentParams = params;
-        
+
         try {
             await match.handler(params);
         } catch (error) {
@@ -111,28 +111,58 @@ class Router {
     start() {
         // Handle initial route
         this.handleRoute(window.location.pathname);
-        
+
         // Handle browser navigation
         window.addEventListener('popstate', (e) => {
             this.currentPath = window.location.pathname;
             this.handleRoute(window.location.pathname);
         });
-        
+
         // Handle navigation links
         document.addEventListener('click', (e) => {
             const link = e.target.closest('a');
             if (link && link.hostname === window.location.hostname && link.getAttribute('href')) {
                 const href = link.getAttribute('href');
-                
+
                 // Skip if it's a hash link, external link, or has target="_blank"
                 if (href.startsWith('#') || href.startsWith('http') || link.target === '_blank') {
                     return;
                 }
-                
+
                 e.preventDefault();
                 this.navigate(href);
             }
         });
+
+        // Predictive Prefetch: Detect hover on links
+        document.addEventListener('mouseover', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.hostname === window.location.hostname && link.getAttribute('href')) {
+                const href = link.getAttribute('href');
+                if (!href.startsWith('#') && !href.startsWith('http')) {
+                    this.prefetch(href);
+                }
+            }
+        });
+    }
+
+    async prefetch(path) {
+        // Only prefetch once every 30 seconds for the same path
+        this.prefetches = this.prefetches || new Map();
+        const now = Date.now();
+        if (this.prefetches.has(path) && (now - this.prefetches.get(path)) < 30000) {
+            return;
+        }
+
+        this.prefetches.set(path, now);
+        console.log(`[Router] Prefetching ${path}...`);
+
+        // Match the route
+        let match = this.matchRoute(path);
+        if (match && match.handler.prefetch) {
+            // Some handlers might have a dedicated prefetch method
+            match.handler.prefetch(match.params);
+        }
     }
 
     setNotFoundHandler(handler) {
