@@ -1,0 +1,233 @@
+<div class="h-full flex flex-col">
+    <!-- Header -->
+    <header class="glass-strong border-b border-gray-800 p-6 flex justify-between items-center z-10">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight" id="org-page-title">Organizations</h1>
+            <p class="text-gray-400 text-sm mt-1" id="org-page-subtitle">Manage your teams and collaborations</p>
+        </div>
+        <div id="org-actions">
+            <!-- Dynamic Actions -->
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-6 relative">
+        <div class="absolute inset-0 bg-[url('/assets/svg/grid-pattern.svg')] opacity-5 pointer-events-none"></div>
+
+        <!-- Loading State -->
+        <div id="org-loading" class="hidden flex items-center justify-center h-64">
+            <div class="animate-spin h-8 w-8 border-2 border-neon-blue border-t-transparent rounded-full"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="org-empty" class="hidden flex flex-col items-center justify-center h-96 text-center">
+            <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-medium text-white mb-2">No organizations yet</h3>
+            <p class="text-gray-400 max-w-sm mb-6">Create an organization to collaborate with your team and share
+                snippets privately.</p>
+            <button class="btn-primary py-2 px-4 rounded-lg flex items-center"
+                onclick="window.app.router.navigate('/organizations/new')">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create Organization
+            </button>
+        </div>
+
+        <!-- Organization List (Grid) -->
+        <div id="org-list" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Template for Org Card -->
+        </div>
+
+        <!-- Create Form -->
+        <div id="org-create-form" class="hidden max-w-2xl mx-auto">
+            <div class="glass p-8 rounded-2xl">
+                <form id="create-org-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Organization Name</label>
+                        <input type="text" name="name" required
+                            class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue outline-none transition-all"
+                            placeholder="Acme Corp">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">URL Slug</label>
+                        <div class="flex">
+                            <span
+                                class="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-700 bg-gray-800 text-gray-400 text-sm">codeengage.app/orgs/</span>
+                            <input type="text" name="slug" required
+                                class="flex-1 bg-gray-900/50 border border-gray-700 rounded-r-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue outline-none transition-all"
+                                placeholder="acme-corp">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                        <textarea name="description" rows="3"
+                            class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue outline-none transition-all"
+                            placeholder="What is this organization about?"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-4 pt-4">
+                        <button type="button" class="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                            onclick="history.back()">Cancel</button>
+                        <button type="submit" class="btn-primary py-2 px-6 rounded-lg font-medium">Create
+                            Organization</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Organization Details -->
+        <div id="org-details" class="hidden space-y-8">
+            <!-- Banner/Info -->
+            <div class="glass p-8 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="flex items-center space-x-6">
+                    <div
+                        class="w-20 h-20 bg-gradient-to-br from-neon-blue to-neon-purple rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-neon">
+                        <span id="detail-icon">O</span>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-bold text-white mb-2" id="detail-name">Org Name</h2>
+                        <a href="#"
+                            class="text-neon-blue hover:text-neon-purple transition-colors text-sm flex items-center"
+                            id="detail-slug">
+                            @slug
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14">
+                                </path>
+                            </svg>
+                        </a>
+                        <p class="text-gray-400 mt-2 max-w-2xl" id="detail-desc">Description goes here...</p>
+                    </div>
+                </div>
+                <div class="mt-6 md:mt-0 flex flex-col items-end space-y-2">
+                    <span
+                        class="px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded-full text-xs font-medium uppercase tracking-wider"
+                        id="user-role-badge">Member</span>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-gray-800">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button
+                        class="tab-btn border-neon-blue text-neon-blue whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                        data-tab="members">
+                        Members
+                    </button>
+                    <button
+                        class="tab-btn border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                        data-tab="settings">
+                        Settings
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Members Tab -->
+            <div id="tab-members" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Team Members</h3>
+                    <button id="add-member-btn" class="btn-secondary py-2 px-4 rounded-lg text-sm hidden">Add
+                        Member</button>
+                </div>
+                <div class="bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-800">
+                        <thead class="bg-gray-800/50">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                    User</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                    Role</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                    Joined</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                    Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="members-table-body" class="divide-y divide-gray-800">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="tab-settings" class="tab-content hidden">
+                <div class="max-w-xl">
+                    <form id="org-settings-form" class="space-y-6">
+                        <!-- Re-use create form fields roughly -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Display Name</label>
+                            <input type="text" id="edit-name"
+                                class="mt-1 block w-full bg-gray-800 border-gray-700 rounded-md text-white px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Description</label>
+                            <textarea id="edit-desc" rows="3"
+                                class="mt-1 block w-full bg-gray-800 border-gray-700 rounded-md text-white px-3 py-2"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary py-2 px-4 rounded-lg">Save Changes</button>
+                    </form>
+
+                    <div class="mt-12 pt-8 border-t border-gray-800">
+                        <h4 class="text-red-400 font-medium mb-4">Danger Zone</h4>
+                        <button
+                            class="border border-red-900 text-red-500 hover:bg-red-900/20 px-4 py-2 rounded-lg text-sm transition-colors">
+                            Delete Organization
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Add Member Modal -->
+<div id="add-member-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+            class="inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-700">
+            <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">Add Team Member</h3>
+                <div class="mt-4">
+                    <p class="text-sm text-gray-400 mb-4">Enter the User ID of the person you want to invite (Email
+                        search coming soon).</p>
+                    <form id="add-member-form">
+                        <input type="number" name="user_id" placeholder="User ID"
+                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-neon-blue focus:border-neon-blue"
+                            required>
+                        <div class="mt-4 flex space-x-4">
+                            <select name="role"
+                                class="bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="bg-gray-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-700">
+                <button type="button" id="confirm-add-member"
+                    class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-neon-blue text-base font-medium text-white hover:bg-blue-600 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                    Add
+                </button>
+                <button type="button" id="cancel-add-member"
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-base font-medium text-gray-300 hover:bg-gray-600 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
