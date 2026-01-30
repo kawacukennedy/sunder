@@ -151,7 +151,7 @@ export default class Signup {
 
         this.form = div.querySelector('#signup-form');
         this.setupEventListeners();
-        
+
         return div;
     }
 
@@ -312,7 +312,7 @@ export default class Signup {
 
             if (response.success) {
                 this.app.showSuccess('Account created successfully!');
-                
+
                 // Store auth token if provided
                 if (response.data.token) {
                     localStorage.setItem('auth_token', response.data.token);
@@ -321,9 +321,14 @@ export default class Signup {
 
                 // Update current user
                 await this.app.checkAuth();
-                
+
+                // Trigger confetti
+                this.triggerConfetti();
+
                 // Redirect to dashboard
-                this.app.router.navigate('/dashboard');
+                setTimeout(() => {
+                    this.app.router.navigate('/dashboard');
+                }, 2000);
             } else {
                 this.showError(response.message || 'Registration failed');
             }
@@ -406,10 +411,10 @@ export default class Signup {
     showError(message) {
         const errorDiv = this.form.querySelector('#error-message');
         const errorText = this.form.querySelector('#error-text');
-        
+
         errorText.textContent = message;
         errorDiv.classList.remove('hidden');
-        
+
         // Hide error after 10 seconds
         setTimeout(() => this.hideError(), 10000);
     }
@@ -418,6 +423,38 @@ export default class Signup {
         const errorDiv = this.form.querySelector('#error-message');
         if (errorDiv) {
             errorDiv.classList.add('hidden');
+        }
+    }
+
+    triggerConfetti() {
+        const colors = ['#7000FF', '#00F0FF', '#00ff9d', '#ffb800', '#ff0055'];
+        const container = document.body;
+
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'confetti-particle';
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            particle.style.left = Math.random() * 100 + 'vw';
+            particle.style.top = '-10px';
+            particle.style.width = Math.random() * 8 + 4 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.position = 'fixed';
+            particle.style.zIndex = '9999';
+            particle.style.borderRadius = '2px';
+            particle.style.transform = `rotate(${Math.random() * 360}deg)`;
+
+            container.appendChild(particle);
+
+            const animation = particle.animate([
+                { transform: `translate3d(0, 0, 0) rotate(0deg)`, opacity: 1 },
+                { transform: `translate3d(${(Math.random() - 0.5) * 200}px, 100vh, 0) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+            ], {
+                duration: 1500 + Math.random() * 1500,
+                easing: 'cubic-bezier(0, .9, .57, 1)',
+                delay: Math.random() * 500
+            });
+
+            animation.onfinish = () => particle.remove();
         }
     }
 

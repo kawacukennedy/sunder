@@ -10,18 +10,20 @@ class CodeHelper
         
         // Count control structures
         $patterns = [
-            '/\bif\b/' => 1,
-            '/\belse\s+if\b/' => 1,
-            '/\belse\b/' => 0,
-            '/\bwhile\b/' => 1,
-            '/\bfor\b/' => 1,
-            '/\bforeach\b/' => 1,
-            '/\bswitch\b/' => 1,
-            '/\bcase\b/' => 1,
-            '/\bcatch\b/' => 1,
+            '/\bif\b/i' => 1,
+            '/\belse\s+if\b/i' => 1,
+            '/\belse\b/i' => 0, // else doesn't add cyclomatic complexity usually, but branching yes
+            '/\bwhile\b/i' => 1,
+            '/\bfor\b/i' => 1,
+            '/\bforeach\b/i' => 1,
+            '/\bswitch\b/i' => 1,
+            '/\bcase\b/i' => 1, // case adds branching
+            '/\bcatch\b/i' => 1,
             '/\b\?\s*:/' => 1, // ternary operator
-            '/\|\|/' => 0.5,
+            '/\|\|/' => 0.5, // Boolean operators
             '/&&/' => 0.5,
+            '/\band\b/i' => 0.5,
+            '/\bor\b/i' => 0.5,
         ];
         
         foreach ($patterns as $pattern => $weight) {
@@ -33,121 +35,118 @@ class CodeHelper
         return round($complexity, 2);
     }
 
-    public static function detectLanguage(string $code): string
-    {
-        $languages = [
-            'php' => ['<?php', 'function', 'class', 'echo', 'var_dump'],
-            'javascript' => ['function', 'const', 'let', 'var', 'console.log', '=>'],
-            'python' => ['def', 'import', 'print', 'class', 'if __name__'],
-            'java' => ['public class', 'private', 'public static void main', 'System.out'],
-            'cpp' => ['#include', 'int main', 'cout', 'cin', 'std::'],
-            'csharp' => ['using System', 'public class', 'Console.WriteLine', 'namespace'],
-            'go' => ['package main', 'func main', 'fmt.Println', 'import'],
-            'rust' => ['fn main', 'use std', 'println!', 'extern crate'],
-            'ruby' => ['def ', 'require', 'puts', 'class', 'module'],
-            'html' => ['<!DOCTYPE', '<html', '<div', '<script'],
-            'css' => ['{', '}', 'margin:', 'padding:', '.class', '#id'],
-            'sql' => ['SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE'],
-            'json' => ['{', '}', '"', ':', '[', ']'],
-            'xml' => ['<?xml', '<', '</', '>'],
-            'yaml' => ['---', ':', '- ', 'key: value'],
-            'bash' => ['#!/bin/bash', 'echo', 'export', 'function', 'if ['],
-        ];
-        
-        $scores = [];
-        
-        foreach ($languages as $lang => $keywords) {
-            $score = 0;
-            foreach ($keywords as $keyword) {
-                $score += substr_count(strtolower($code), strtolower($keyword));
-            }
-            $scores[$lang] = $score;
-        }
-        
-        arsort($scores);
-        return key($scores) ?: 'text';
-    }
-
-    public static function extractFunctions(string $code, string $language): array
-    {
-        $functions = [];
-        
-        switch ($language) {
-            case 'php':
-                preg_match_all('/function\s+(\w+)\s*\([^)]*\)/', $code, $matches);
-                $functions = $matches[1] ?? [];
-                break;
-            case 'javascript':
-                preg_match_all('/(?:function\s+(\w+)|const\s+(\w+)\s*=\s*\([^)]*\)\s*=>)/', $code, $matches);
-                $functions = array_filter(array_merge($matches[1] ?? [], $matches[2] ?? []));
-                break;
-            case 'python':
-                preg_match_all('/def\s+(\w+)\s*\([^)]*\)/', $code, $matches);
-                $functions = $matches[1] ?? [];
-                break;
-            case 'java':
-            case 'csharp':
-                preg_match_all('/(?:public|private|protected)?\s*(?:static)?\s*(?:\w+\s+)?(\w+)\s*\([^)]*\)\s*{/', $code, $matches);
-                $functions = $matches[1] ?? [];
-                break;
-        }
-        
-        return array_unique($functions);
-    }
-
     public static function detectSecurityIssues(string $code, string $language): array
     {
         $issues = [];
         
-        // Common security patterns
-        $securityPatterns = [
-            'SQL Injection' => [
-                '/\$_GET\[.*\].*mysql_query/',
-                '/\$_POST\[.*\].*mysql_query/',
-                '/\$_REQUEST\[.*\].*mysql_query/',
-                '/mysqli_query.*\$_/',
-                '/PDO.*prepare.*\$_/',
+        $commonPatterns = [
+             'SQL Injection' => [
+                '/(mysqli_|mysql_|pg_).*(query|execute).*\$.*/i' => 'Potential SQL injection using unsecured variable in query.',
+                '/PDO::prepare.*\$.*/i' => 'Verify variable usage in PDO prepare statement.',
             ],
             'XSS' => [
-                '/echo\s*\$_GET/',
-                '/echo\s*\$_POST/',
-                '/echo\s*\$_REQUEST/',
-                '/innerHTML\s*=.*\$_/',
-                '/document\.write.*\$_/',
+                '/echo.*\$_GET/i' => 'Direct echo of $_GET variable may lead to XSS.',
+                '/echo.*\$_POST/i' => 'Direct echo of $_POST variable may lead to XSS.',
+                '/(innerHTML|outerHTML)\s*=\s*.*(\$|window\.location|document\.cookie)/i' => 'Unsafe DOM assignment detected.',
             ],
-            'Path Traversal' => [
-                '/include.*\$_GET/',
-                '/require.*\$_GET/',
-                '/fopen.*\$_GET/',
-                '/file_get_contents.*\$_GET/',
+            'Command Injection' => [
+                '/(system|exec|passthru|shell_exec|popen)\s*\(.*\$.*\)/i' => 'Potential command injection via variable execution.',
+                '/eval\s*\(.*\)/i' => 'Use of eval() is highly dangerous and should be avoided.',
             ],
-            'Hardcoded Credentials' => [
-                '/password\s*=\s*["\'][^"\']+["\']/',
-                '/secret\s*=\s*["\'][^"\']+["\']/',
-                '/api_key\s*=\s*["\'][^"\']+["\']/',
-                '/token\s*=\s*["\'][^"\']+["\']/',
-            ],
-            'Eval Usage' => [
-                '/eval\s*\(/',
-                '/assert\s*\(/',
-                '/create_function\s*\(/',
-                '/preg_replace.*\/e/',
-            ],
+             'Weak Cryptography' => [
+                '/md5\s*\(.*\)/i' => 'MD5 is considered weak for hashing passwords.',
+                '/sha1\s*\(.*\)/i' => 'SHA1 is considered weak.',
+            ]
         ];
-        
-        foreach ($securityPatterns as $type => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (preg_match($pattern, $code)) {
-                    $issues[] = [
-                        'type' => $type,
-                        'severity' => 'high',
-                        'description' => "Potential {$type} vulnerability detected",
-                    ];
-                }
-            }
+
+        foreach ($commonPatterns as $type => $rules) {
+             foreach ($rules as $pattern => $message) {
+                 if (preg_match($pattern, $code)) {
+                     $issues[] = [
+                         'type' => $type,
+                         'severity' => 'high',
+                         'description' => $message
+                     ];
+                 }
+             }
         }
         
         return $issues;
+    }
+    
+    public static function detectPerformanceIssues(string $code): array
+    {
+        $issues = [];
+        
+        if (preg_match_all('/\bfor\b/i', $code) > 3) {
+             if (preg_match('/for\s*\(.*for\s*\(/s', $code)) {
+                 $issues[] = 'Nested loops detected, which may cause O(n^2) or worse performance.';
+             }
+        }
+        
+        if (substr_count($code, "\n") > 500) {
+            $issues[] = 'File length exceeds 500 lines. Consider refactoring into smaller modules.';
+        }
+        
+        if (preg_match('/SELECT\s+\*\s+FROM/i', $code)) {
+            $issues[] = 'Avoid "SELECT *" in SQL queries to reduce data load.';
+        }
+        
+        return $issues;
+    }
+
+    public static function detectDuplicates(string $code): array
+    {
+        $duplicates = [];
+        $lines = explode("\n", $code);
+        $lineCount = count($lines);
+        
+        if ($lineCount < 10) return [];
+        
+        $blocks = [];
+        $blockSize = 5; // Minimum lines to consider a duplicate
+        
+        for ($i = 0; $i <= $lineCount - $blockSize; $i++) {
+            $block = trim(implode("\n", array_slice($lines, $i, $blockSize)));
+            if (strlen($block) < 50) continue; 
+            
+            if (isset($blocks[$block])) {
+                $blocks[$block][] = $i + 1;
+            } else {
+                $blocks[$block] = [$i + 1];
+            }
+        }
+        
+        foreach ($blocks as $block => $lineNumbers) {
+            if (count($lineNumbers) > 1) {
+                $duplicates[] = [
+                    'lines' => $lineNumbers,
+                    'content_summary' => substr($block, 0, 100) . '...'
+                ];
+            }
+        }
+        
+        return $duplicates;
+    }
+
+    public static function detectCodeSmells(string $code): array
+    {
+        $smells = [];
+        $lines = explode("\n", $code);
+        
+        if (count($lines) > 100) {
+            $smells[] = 'Large code block detected. Consider breaking into smaller modules.';
+        }
+        
+        if (preg_match_all('/function.*\(([^)]+,[^)]+,[^)]+,[^)]+)\)/', $code, $matches)) {
+            $smells[] = 'Function with too many parameters detected.';
+        }
+        
+        if (preg_match('/(\s+){8,}/', $code)) {
+            $smells[] = 'Deep nesting detected. Consider using guard clauses.';
+        }
+
+        return $smells;
     }
 
     public static function formatCode(string $code, string $language): string
