@@ -32,11 +32,12 @@ export class Profile {
      */
     async loadProfileData() {
         try {
-            const [userResponse, snippetsResponse, achievementsResponse, statsResponse] = await Promise.all([
+            const [userResponse, snippetsResponse, achievementsResponse, statsResponse, activityResponse] = await Promise.all([
                 this.app.apiClient.get('/users/me'),
                 this.app.apiClient.get('/users/me/snippets'),
                 this.app.apiClient.get('/users/me/achievements'),
-                this.app.apiClient.get('/users/me/stats')
+                this.app.apiClient.get('/users/me/stats'),
+                this.app.apiClient.get('/users/me/activity')
             ]);
 
             this.data.user = userResponse.data;
@@ -51,6 +52,7 @@ export class Profile {
 
             this.data.achievements = achievementsResponse.data?.achievements || [];
             this.data.stats = statsResponse.data;
+            this.data.activity = activityResponse.data || [];
         } catch (error) {
             console.error('Failed to load profile data:', error);
             this.app.showError('Failed to load profile');
@@ -83,6 +85,14 @@ export class Profile {
         }
     }
 
+    editSnippet(id, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        this.app.router.navigate(`/editor/${id}`);
+    }
+
     /**
      * Render the profile page
      */
@@ -111,12 +121,17 @@ export class Profile {
                     <div class="profile-main">
                         <div class="profile-tabs">
                             <button class="tab-btn active" data-tab="snippets">My Snippets</button>
+                            <button class="tab-btn" data-tab="activity">Activity</button>
                             <button class="tab-btn" data-tab="achievements">Achievements</button>
                             <button class="tab-btn" data-tab="settings">Settings</button>
                         </div>
                         
                         <div class="tab-content" id="snippets-tab">
                             ${this.renderSnippetsTab()}
+                        </div>
+
+                        <div class="tab-content hidden" id="activity-tab">
+                            ${this.renderActivityTab()}
                         </div>
                         
                         <div class="tab-content hidden" id="achievements-tab">
@@ -250,6 +265,106 @@ export class Profile {
         `;
     }
 
+    renderActivityTab() {
+        if (!this.data.activity || !this.data.activity.length) {
+            return `
+                <div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+                    <div class="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center mb-6">
+                        <i class="ph ph-clock-counter-clockwise text-neon-purple text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">No recent activity</h3>
+                    <p class="text-gray-400">Your recent actions will appear here.</p>
+                </div>
+            `;
+        }
+
+        return `
+        return `
+            < div class="space-y-6 animate-slideUp" >
+                < !--Activity Heatmap-- >
+                <div class="glass-panel p-6 rounded-2xl border border-gray-700/50">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="ph ph-squares-four text-neon-blue"></i>
+                        Contribution Graph
+                    </h3>
+                    ${this.renderHeatmap()}
+                </div>
+
+                <!--Activity List-- >
+            <div class="space-y-4">
+                ${this.data.activity.map(item => `
+                        <div class="glass-panel p-4 flex items-center gap-4 hover:border-gray-600 transition-colors">
+                            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center shrink-0">
+                                ${this.getActivityIcon(item.type)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-white font-medium truncate">${this.escapeHtml(item.description)}</p>
+                                <p class="text-xs text-gray-500">${this.formatDate(item.created_at)}</p>
+                            </div>
+                            ${item.entity_id ? `
+                                <a href="/snippet/${item.entity_id}" class="text-neon-blue hover:text-white text-sm font-medium">View</a>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+            </div>
+            </div >
+            `;
+    }
+
+    renderHeatmap() {
+        // Mock data or real aggregation
+        // Generate last 365 days
+        const days = 365;
+        const today = new Date();
+        const activityMap = {};
+        
+        // Aggregate actual activity
+        this.data.activity.forEach(a => {
+            const date = new Date(a.created_at).toISOString().split('T')[0];
+            activityMap[date] = (activityMap[date] || 0) + 1;
+        });
+
+        let squares = '';
+        for (let i = days; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const count = activityMap[dateStr] || 0;
+            
+            // Color scale
+            let colorClass = 'bg-gray-800';
+            if (count > 0) colorClass = 'bg-green-900/40';
+            if (count > 2) colorClass = 'bg-green-700/60';
+            if (count > 4) colorClass = 'bg-green-500';
+            
+            squares += `< div class="w-3 h-3 rounded-sm ${colorClass}" title = "${dateStr}: ${count} actions" ></div > `;
+        }
+
+        return `
+            < div class="flex flex-wrap gap-1 justify-center max-w-full overflow-hidden" style = "max-height: 140px;" >
+                ${ squares }
+            </div >
+            <div class="flex justify-end items-center gap-2 mt-2 text-xs text-gray-500">
+                <span>Less</span>
+                <div class="w-3 h-3 bg-gray-800 rounded-sm"></div>
+                <div class="w-3 h-3 bg-green-900/40 rounded-sm"></div>
+                <div class="w-3 h-3 bg-green-700/60 rounded-sm"></div>
+                <div class="w-3 h-3 bg-green-500 rounded-sm"></div>
+                <span>More</span>
+            </div>
+        `;
+    }
+
+    getActivityIcon(type) {
+        switch (type) {
+            case 'snippet_created': return '<i class="ph ph-plus text-green-400"></i>';
+            case 'snippet_updated': return '<i class="ph ph-pencil text-blue-400"></i>';
+            case 'snippet_starred': return '<i class="ph ph-star text-yellow-400"></i>';
+            case 'snippet_deleted': return '<i class="ph ph-trash text-red-400"></i>';
+            default: return '<i class="ph ph-activity text-gray-400"></i>';
+        }
+    }
+
     /**
      * Render snippets tab content
      */
@@ -259,7 +374,7 @@ export class Profile {
     renderSnippetsTab() {
         if (!this.data.snippets.length) {
             return `
-                <div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+            < div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in" >
                     <div class="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center mb-6">
                         <i class="ph ph-code text-neon-blue text-3xl"></i>
                     </div>
@@ -268,15 +383,15 @@ export class Profile {
                     <a href="/new" class="px-6 py-3 rounded-xl bg-gradient-to-r from-neon-blue to-neon-purple text-white font-bold shadow-neon hover:opacity-90 transition-all flex items-center gap-2">
                         <i class="ph ph-plus"></i> Create Snippet
                     </a>
-                </div>
+                </div >
             `;
         }
 
         return `
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slideUp">
-                ${this.data.snippets.map(snippet => this.renderSnippetCard(snippet)).join('')}
-            </div>
-        `;
+            < div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slideUp" >
+                ${ this.data.snippets.map(snippet => this.renderSnippetCard(snippet)).join('') }
+            </div >
+            `;
     }
 
     /**
@@ -284,7 +399,7 @@ export class Profile {
      */
     renderSnippetCard(snippet) {
         return `
-            <div class="glass-panel group hover:border-gray-600 transition-all duration-300 cursor-pointer relative overflow-hidden" data-id="${snippet.id}">
+            < div class="glass-panel group hover:border-gray-600 transition-all duration-300 cursor-pointer relative overflow-hidden" data - id="${snippet.id}" >
                 <div class="absolute inset-0 bg-gradient-to-br from-neon-blue/5 to-neon-purple/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div class="p-6 relative z-10">
                     <div class="flex justify-between items-start mb-4">
@@ -313,8 +428,13 @@ export class Profile {
                             <span class="flex items-center gap-1.5 hover:text-yellow-400 transition-colors">
                                 <i class="ph ph-star-fill text-yellow-500"></i> ${snippet.star_count || 0}
                             </span>
+                            <button class="text-gray-500 hover:text-blue-400 transition-colors z-20 relative p-1 mr-1" 
+                                    onclick="window.app.currentPage.editSnippet(${snippet.id}, event)"
+                                    title="Edit Snippet">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
                             <button class="text-gray-500 hover:text-red-400 transition-colors z-20 relative p-1" 
-                                    onclick="window.app.router.currentPage.deleteSnippet(${snippet.id}, event)"
+                                    onclick="window.app.currentPage.deleteSnippet(${snippet.id}, event)"
                                     title="Delete Snippet">
                                 <i class="ph ph-trash"></i>
                             </button>
@@ -324,8 +444,8 @@ export class Profile {
                         </span>
                     </div>
                 </div>
-            </div>
-        `;
+            </div >
+            `;
     }
 
     getLanguageColor(lang) {
@@ -346,21 +466,22 @@ export class Profile {
     renderAchievementsTab() {
         if (!this.data.achievements || !this.data.achievements.length) {
             return `
-                <div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+            < div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in" >
                     <div class="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center mb-6">
                         <i class="ph ph-trophy text-yellow-500 text-3xl"></i>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-2">No achievements found</h3>
                     <p class="text-gray-400">Something went wrong loading achievements.</p>
-                </div>
+                </div >
             `;
         }
 
         return `
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slideUp">
-                ${this.data.achievements.map(achievement => {
-            const isUnlocked = achievement.unlocked;
-            return `
+            < div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slideUp" >
+                ${
+                    this.data.achievements.map(achievement => {
+                        const isUnlocked = achievement.unlocked;
+                        return `
                     <div class="glass-panel p-6 text-center group hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden ${isUnlocked ? 'border-yellow-500/30' : 'opacity-60 grayscale'}">
                         ${isUnlocked ? '<div class="absolute inset-0 bg-yellow-500/5 blur-xl"></div>' : ''}
                         
@@ -385,9 +506,10 @@ export class Profile {
                         </div>
                     </div>
                     `;
-        }).join('')}
-            </div>
-        `;
+                    }).join('')
+        }
+            </div >
+            `;
     }
 
     getBadgeIcon(iconName) {
@@ -408,7 +530,7 @@ export class Profile {
      */
     renderSettingsTab() {
         return `
-            <div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+            < div class="flex flex-col items-center justify-center py-20 text-center animate-fade-in" >
                 <div class="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center mb-6">
                     <i class="ph ph-gear text-gray-400 text-3xl"></i>
                 </div>
@@ -419,8 +541,8 @@ export class Profile {
                 <a href="/settings" class="px-6 py-3 rounded-xl bg-gray-800 text-white font-medium hover:bg-gray-700 transition-colors flex items-center gap-2">
                      Go to Settings <i class="ph ph-arrow-right"></i>
                 </a>
-            </div>
-        `;
+            </div >
+            `;
     }
 
     /**
@@ -443,7 +565,7 @@ export class Profile {
             card.addEventListener('click', (e) => {
                 if (!e.target.matches('a')) {
                     const snippetId = card.dataset.id;
-                    window.location.href = `/snippet/${snippetId}`;
+                    window.location.href = `/ snippet / ${ snippetId } `;
                 }
             });
         });
@@ -463,7 +585,7 @@ export class Profile {
             content.classList.add('hidden');
         });
 
-        const activeTab = document.getElementById(`${tabName}-tab`);
+        const activeTab = document.getElementById(`${ tabName } -tab`);
         if (activeTab) {
             activeTab.classList.remove('hidden');
         }
