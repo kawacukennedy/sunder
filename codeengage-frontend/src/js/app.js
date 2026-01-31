@@ -806,7 +806,7 @@ class App {
     }
 
     /**
-     * Get or create session ID for error tracking
+     * Get session ID for error tracking
      */
     getSessionId() {
         let sessionId = sessionStorage.getItem('sessionId');
@@ -814,6 +814,79 @@ class App {
             sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             sessionStorage.setItem('sessionId', sessionId);
         }
+        return sessionId;
+    }
+
+    /**
+     * Handle async errors from AsyncErrorBoundary
+     * @param {Error} error - The async error
+     * @param {object} context - Error context
+     */
+    handleAsyncError(error, context) {
+        // Log additional context for async errors
+        const enhancedContext = {
+            ...context,
+            currentPage: this.currentPage?.constructor?.name || 'unknown',
+            route: window.location.pathname,
+            timestamp: new Date().toISOString()
+        };
+
+        // Use existing error handling infrastructure
+        this.handleGlobalError(error, enhancedContext);
+    }
+
+    /**
+     * Wrap async operations with error boundary
+     * @param {Function} fn - Async function to wrap
+     * @param {object} context - Additional context
+     * @returns {Function} Wrapped function
+     */
+    wrapAsync(fn, context = {}) {
+        return this.asyncErrorBoundary.wrap(fn, {
+            ...context,
+            sessionId: this.getSessionId(),
+            userId: this.auth.user?.id
+        });
+    }
+
+    /**
+     * Get comprehensive error statistics
+     * @returns {object} Error statistics
+     */
+    getErrorStatistics() {
+        const asyncStats = this.asyncErrorBoundary.getErrorStats();
+        const apiLogs = this.apiClient.getRequestLogs();
+        const frontendErrors = JSON.parse(localStorage.getItem('frontend_errors') || '[]');
+
+        return {
+            async: asyncStats,
+            api: {
+                totalRequests: apiLogs.length,
+                errorRate: apiLogs.filter(log => !log.success).length / apiLogs.length,
+                averageResponseTime: apiLogs.reduce((sum, log) => sum + log.duration, 0) / apiLogs.length,
+                recentErrors: apiLogs.filter(log => !log.success).slice(-10)
+            },
+            frontend: {
+                totalErrors: frontendErrors.length,
+                byType: this.groupErrorsByType(frontendErrors),
+                recentErrors: frontendErrors.slice(-10)
+            },
+            generatedAt: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Group errors by type
+     * @param {Array} errors - Array of errors
+     * @returns {object} Grouped errors
+     */
+    groupErrorsByType(errors) {
+        return errors.reduce((groups, error) => {
+            const type = error.context?.type || error.name || 'unknown';
+            groups[type] = (groups[type] || 0) + 1;
+            return groups;
+        }, {});
+    }
         return sessionId;
     }
 
