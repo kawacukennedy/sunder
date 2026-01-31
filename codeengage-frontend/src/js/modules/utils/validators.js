@@ -4,6 +4,55 @@
  * Common validation functions for forms and data.
  */
 
+// Track validation errors for debugging
+const VALIDATION_ERRORS = [];
+
+/**
+ * Track validation errors
+ * @param {string} field - Field name
+ * @param {string} value - Field value
+ * @param {Array} errors - Validation errors
+ */
+function trackValidationError(field, value, errors) {
+    const errorInfo = {
+        field,
+        value,
+        errors,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href
+    };
+
+    VALIDATION_ERRORS.push(errorInfo);
+    
+    // Keep only last 50 validation errors
+    if (VALIDATION_ERRORS.length > 50) {
+        VALIDATION_ERRORS.splice(0, VALIDATION_ERRORS.length - 50);
+    }
+
+    // Log for debugging
+    console.warn('Validation Error:', errorInfo);
+}
+
+/**
+ * Get validation error statistics
+ * @returns {object} Validation statistics
+ */
+export function getValidationStats() {
+    const fieldCounts = {};
+    
+    VALIDATION_ERRORS.forEach(error => {
+        fieldCounts[error.field] = (fieldCounts[error.field] || 0) + 1;
+    });
+
+    return {
+        totalErrors: VALIDATION_ERRORS.length,
+        byField: fieldCounts,
+        recentErrors: VALIDATION_ERRORS.slice(-10),
+        generatedAt: new Date().toISOString()
+    };
+}
+
 /**
  * Validate an email address
  * @param {string} email - Email to validate
@@ -25,7 +74,7 @@ export function validateUsername(username) {
     const errors = [];
 
     if (!username) {
-        errors.push('Username is required');
+        trackValidationError('username', username, ['Username is required']);
         return { isValid: false, errors };
     }
 
