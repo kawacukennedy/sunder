@@ -187,7 +187,8 @@ try {
         'tags' => 'Tag',
         'organizations' => 'Organization',
         'api-keys' => 'ApiKey',
-        'errors' => 'Error'
+        'errors' => 'Error',
+        'analytics' => 'ErrorAnalytics'
     ];
 
     // Special routing for snippets (default)
