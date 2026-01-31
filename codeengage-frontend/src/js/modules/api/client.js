@@ -483,20 +483,24 @@ export class ApiClient {
         };
 
         // Log to console in development
-        if (process.env.NODE_ENV === 'development') {
+        if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
             console.log('API Request:', logData);
         }
 
         // Store in localStorage for debugging
-        const logs = JSON.parse(localStorage.getItem('api_logs') || '[]');
-        logs.push(logData);
-        
-        // Keep only last 100 logs
-        if (logs.length > 100) {
-            logs.splice(0, logs.length - 100);
+        try {
+            const logs = JSON.parse(localStorage.getItem('api_logs') || '[]');
+            logs.push(logData);
+            
+            // Keep only last 100 logs
+            if (logs.length > 100) {
+                logs.splice(0, logs.length - 100);
+            }
+            
+            localStorage.setItem('api_logs', JSON.stringify(logs));
+        } catch (e) {
+            console.warn('Failed to store API logs:', e.message);
         }
-        
-        localStorage.setItem('api_logs', JSON.stringify(logs));
     }
 
     /**
