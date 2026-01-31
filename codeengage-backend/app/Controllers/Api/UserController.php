@@ -9,15 +9,14 @@ use App\Helpers\ApiResponse;
 use App\Helpers\ValidationHelper;
 use App\Middleware\AuthMiddleware;
 
-class UserController
+class UserController extends BaseController
 {
-    private PDO $db;
     private UserRepository $userRepository;
     private AuthMiddleware $auth;
 
     public function __construct(PDO $db)
     {
-        $this->db = $db;
+        parent::__construct($db);
         $this->userRepository = new UserRepository($db);
         $this->auth = new AuthMiddleware($db);
     }
