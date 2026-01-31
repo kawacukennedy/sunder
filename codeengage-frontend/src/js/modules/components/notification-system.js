@@ -57,7 +57,56 @@ export class NotificationSystem {
     }
 
     error(message, options = {}) {
-        return this.show(message, 'error', { ...options, duration: 10000, icon: '✕' });
+        // Enhanced error notification with details
+        const enhancedOptions = {
+            ...options,
+            details: options.error || {},
+            showDetails: true,
+            actions: options.actions || [
+                {
+                    label: 'Report',
+                    action: () => this.reportError(options.error, message)
+                }
+            ]
+        };
+
+        return this.show(message, 'error', enhancedOptions);
+    }
+
+    /**
+     * Report error to error tracking
+     * @param {Error} error - Error object
+     * @param {string} message - Error message
+     */
+    reportError(error, message) {
+        const errorData = {
+            message,
+            error: error ? {
+                name: error.name,
+                stack: error.stack,
+                message: error.message
+            } : null,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+            context: 'notification_report'
+        };
+
+        // Send to error reporting if available
+        if (window.app && window.app.reportError) {
+            window.app.reportError(error || new Error(message), errorData);
+        }
+
+        // Store locally for debugging
+        const reports = JSON.parse(localStorage.getItem('error_reports') || '[]');
+        reports.push(errorData);
+        
+        // Keep only last 20 reports
+        if (reports.length > 20) {
+            reports.splice(0, reports.length - 20);
+        }
+        
+        localStorage.setItem('error_reports', JSON.stringify(reports));
     }
 
     warning(message, options = {}) {
