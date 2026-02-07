@@ -10,7 +10,7 @@ export class NotificationSystem {
     createContainer() {
         const container = document.createElement('div');
         container.id = 'toast-container';
-        container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+        container.className = 'fixed top-6 right-6 z-[100] flex flex-col items-end gap-3 pointer-events-none';
         document.body.appendChild(container);
         return container;
     }
@@ -20,7 +20,6 @@ export class NotificationSystem {
         const duration = options.duration || this.defaultDuration;
         const persistent = options.persistent || false;
 
-        // Remove oldest notifications if we exceed the limit
         if (this.notifications.size >= this.maxNotifications) {
             const oldestId = this.notifications.keys().next().value;
             this.remove(oldestId);
@@ -29,211 +28,171 @@ export class NotificationSystem {
         const notification = this.createNotification(id, message, type, options);
         this.container.appendChild(notification);
 
-        // Track notification
         this.notifications.set(id, {
             element: notification,
             timer: null,
+            startTime: Date.now(),
+            duration: duration,
             persistent
         });
 
-        // Add enter animation
         requestAnimationFrame(() => {
             notification.classList.add('notification-enter');
         });
 
-        // Auto-remove if not persistent
         if (!persistent) {
-            const timer = setTimeout(() => {
-                this.remove(id);
-            }, duration);
-            this.notifications.get(id).timer = timer;
+            this.startTimer(id, duration);
         }
 
         return id;
     }
 
-    success(message, options = {}) {
-        return this.show(message, 'success', { ...options, icon: '✓' });
-    }
-
-    error(message, options = {}) {
-        // Enhanced error notification with details
-        const enhancedOptions = {
-            ...options,
-            details: options.error || {},
-            showDetails: true,
-            actions: options.actions || [
-                {
-                    label: 'Report',
-                    action: () => this.reportError(options.error, message)
-                }
-            ]
-        };
-
-        return this.show(message, 'error', enhancedOptions);
-    }
-
-    /**
-     * Report error to error tracking
-     * @param {Error} error - Error object
-     * @param {string} message - Error message
-     */
-    reportError(error, message) {
-        const errorData = {
-            message,
-            error: error ? {
-                name: error.name,
-                stack: error.stack,
-                message: error.message
-            } : null,
-            userAgent: navigator.userAgent,
-            url: window.location.href,
-            timestamp: new Date().toISOString(),
-            context: 'notification_report'
-        };
-
-        // Send to error reporting if available
-        if (window.app && window.app.reportError) {
-            window.app.reportError(error || new Error(message), errorData);
-        }
-
-        // Store locally for debugging
-        const reports = JSON.parse(localStorage.getItem('error_reports') || '[]');
-        reports.push(errorData);
-        
-        // Keep only last 20 reports
-        if (reports.length > 20) {
-            reports.splice(0, reports.length - 20);
-        }
-        
-        localStorage.setItem('error_reports', JSON.stringify(reports));
-    }
-
-    warning(message, options = {}) {
-        return this.show(message, 'warning', { ...options, icon: '⚠' });
-    }
-
-    info(message, options = {}) {
-        return this.show(message, 'info', { ...options, icon: 'ℹ' });
-    }
-
-    achievement(title, message, options = {}) {
-        return this.show(`
-            <div class="font-bold text-yellow-400 mb-1">${title}</div>
-            <div class="text-white">${message}</div>
-        `, 'achievement', { ...options, icon: '🏆', duration: 8000 });
-    }
-
     createNotification(id, message, type, options = {}) {
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type} bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4 min-w-[300px] max-w-md transition-all duration-300 transform`;
+        notification.className = `notification notification-${type} glass-strong border border-white/10 rounded-2xl shadow-2xl p-4 min-w-[320px] max-w-md transition-all duration-500 transform pointer-events-auto relative overflow-hidden group`;
         notification.dataset.id = id;
 
-        const typeStyles = {
-            success: 'border-green-500 text-green-400',
-            error: 'border-red-500 text-red-400',
-            warning: 'border-yellow-500 text-yellow-400',
-            info: 'border-blue-500 text-blue-400',
-            achievement: 'border-yellow-400 bg-gray-900 bg-opacity-95 shadow-yellow-500/20'
-        };
-
         const icons = {
-            success: options.icon || '✓',
-            error: options.icon || '✕',
-            warning: options.icon || '⚠',
-            info: options.icon || 'ℹ',
-            achievement: options.icon || '🏆'
+            success: '<i class="ph-bold ph-check-circle text-neon-blue"></i>',
+            error: '<i class="ph-bold ph-warning-octagon text-red-400"></i>',
+            warning: '<i class="ph-bold ph-warning text-yellow-400"></i>',
+            info: '<i class="ph-bold ph-info text-neon-blue"></i>',
+            achievement: '<i class="ph-bold ph-trophy text-yellow-400"></i>'
         };
-
-        notification.classList.add(...typeStyles[type].split(' '));
 
         notification.innerHTML = `
-            <div class="flex items-start space-x-3">
-                <div class="flex-shrink-0 text-xl">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 text-2xl mt-0.5 animate-pulse-slow">
                     ${icons[type]}
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-white text-sm leading-relaxed">${this.escapeHtml(message)}</p>
+                <div class="flex-1 min-w-0 pr-6">
+                    <p class="text-white text-sm leading-relaxed font-medium">${this.escapeHtml(message)}</p>
                     ${options.action ? this.createActionHTML(options.action) : ''}
                 </div>
-                </div>
-                <button class="notification-close flex-shrink-0 text-gray-400 hover:text-white transition-colors ml-2" onclick="window.app.notifications.remove('${id}')">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
+                <button class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1" onclick="window.app.notifications.remove('${id}')">
+                    <i class="ph ph-x text-lg"></i>
                 </button>
             </div>
+            ${!options.persistent ? `
+                <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-neon-blue to-neon-purple opacity-50 transition-all duration-100 ease-linear notification-progress-bar" style="width: 100%"></div>
+            ` : ''}
         `;
 
-        // Add hover effect for non-persistent notifications
         if (!options.persistent) {
-            notification.addEventListener('mouseenter', () => {
-                this.pauseTimer(id);
-            });
-
-            notification.addEventListener('mouseleave', () => {
-                this.resumeTimer(id);
-            });
+            notification.addEventListener('mouseenter', () => this.pauseTimer(id));
+            notification.addEventListener('mouseleave', () => this.resumeTimer(id));
         }
 
         return notification;
     }
 
-    createActionHTML(action) {
-        return `
-            <div class="mt-2 pt-2 border-t border-gray-700">
-                <button onclick="(${action.callback})()" class="btn btn-sm btn-primary">
-                    ${action.text}
-                </button>
-            </div>
-        `;
+    startTimer(id, duration) {
+        const notification = this.notifications.get(id);
+        if (!notification) return;
+
+        const startTime = Date.now();
+        const progressBar = notification.element.querySelector('.notification-progress-bar');
+
+        const updateProgress = () => {
+            const currentEntry = this.notifications.get(id);
+            if (!currentEntry || currentEntry.paused) return;
+
+            const elapsed = Date.now() - currentEntry.startTime;
+            const remaining = currentEntry.duration - elapsed;
+            const progress = (remaining / currentEntry.duration) * 100;
+
+            if (progressBar) {
+                progressBar.style.width = `${Math.max(0, progress)}%`;
+            }
+
+            if (remaining <= 0) {
+                this.remove(id);
+            } else {
+                currentEntry.animationFrame = requestAnimationFrame(updateProgress);
+            }
+        };
+
+        notification.startTime = startTime;
+        notification.animationFrame = requestAnimationFrame(updateProgress);
+    }
+
+    pauseTimer(id) {
+        const notification = this.notifications.get(id);
+        if (notification && !notification.persistent) {
+            notification.paused = true;
+            notification.remaining = notification.duration - (Date.now() - notification.startTime);
+            cancelAnimationFrame(notification.animationFrame);
+        }
+    }
+
+    resumeTimer(id) {
+        const notification = this.notifications.get(id);
+        if (notification && !notification.persistent && notification.paused) {
+            notification.paused = false;
+            notification.startTime = Date.now() - (notification.duration - notification.remaining);
+            const progressBar = notification.element.querySelector('.notification-progress-bar');
+
+            const updateProgress = () => {
+                const currentEntry = this.notifications.get(id);
+                if (!currentEntry || currentEntry.paused) return;
+
+                const elapsed = Date.now() - currentEntry.startTime;
+                const remaining = currentEntry.duration - elapsed;
+                const progress = (remaining / currentEntry.duration) * 100;
+
+                if (progressBar) {
+                    progressBar.style.width = `${Math.max(0, progress)}%`;
+                }
+
+                if (remaining <= 0) {
+                    this.remove(id);
+                } else {
+                    currentEntry.animationFrame = requestAnimationFrame(updateProgress);
+                }
+            };
+            notification.animationFrame = requestAnimationFrame(updateProgress);
+        }
     }
 
     remove(id) {
         const notification = this.notifications.get(id);
         if (!notification) return;
 
-        // Clear timer
-        if (notification.timer) {
-            clearTimeout(notification.timer);
+        if (notification.animationFrame) {
+            cancelAnimationFrame(notification.animationFrame);
         }
 
-        // Add exit animation
         notification.element.classList.add('notification-exit');
-
-        // Remove after animation
         setTimeout(() => {
             if (notification.element.parentNode) {
                 notification.element.parentNode.removeChild(notification.element);
             }
             this.notifications.delete(id);
-        }, 300);
+        }, 500);
     }
 
-    pauseTimer(id) {
-        const notification = this.notifications.get(id);
-        if (notification && notification.timer) {
-            clearTimeout(notification.timer);
-            notification.timer = null;
-        }
+    success(message, options = {}) {
+        return this.show(message, 'success', options);
     }
 
-    resumeTimer(id) {
-        const notification = this.notifications.get(id);
-        if (notification && !notification.persistent && !notification.timer) {
-            notification.timer = setTimeout(() => {
-                this.remove(id);
-            }, this.defaultDuration);
-        }
+    error(message, options = {}) {
+        return this.show(message, 'error', options);
     }
 
-    clear() {
-        const ids = Array.from(this.notifications.keys());
-        ids.forEach(id => this.remove(id));
+    warning(message, options = {}) {
+        return this.show(message, 'warning', options);
+    }
+
+    info(message, options = {}) {
+        return this.show(message, 'info', options);
+    }
+
+    achievement(message, options = {}) {
+        return this.show(message, 'achievement', { ...options, duration: 8000 });
     }
 
     generateId() {
-        return `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return `nt-${Math.random().toString(36).substr(2, 9)}`;
     }
 
     escapeHtml(text) {
@@ -242,97 +201,44 @@ export class NotificationSystem {
         return div.innerHTML;
     }
 
-    // Progress notifications
-    showProgress(message, progress = 0) {
-        const id = this.show(message, 'info', { persistent: true });
-        const notification = this.notifications.get(id);
-
-        // Add progress bar
-        const progressBar = document.createElement('div');
-        progressBar.className = 'mt-2 bg-gray-700 rounded-full h-1';
-        progressBar.innerHTML = `
-            <div class="bg-blue-500 h-1 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+    createActionHTML(action) {
+        const id = `action-${Math.random().toString(36).substr(2, 5)}`;
+        setTimeout(() => {
+            const btn = document.getElementById(id);
+            if (btn) btn.onclick = action.callback;
+        }, 0);
+        return `
+            <div class="mt-3">
+                <button id="${id}" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors">
+                    ${action.text}
+                </button>
+            </div>
         `;
-
-        notification.element.querySelector('.flex-1').appendChild(progressBar);
-        notification.progress = true;
-
-        return {
-            updateProgress: (newProgress) => {
-                const bar = progressBar.querySelector('.bg-blue-500');
-                if (bar) {
-                    bar.style.width = `${newProgress}%`;
-                }
-            },
-            complete: (message = 'Complete!') => {
-                this.update(id, message, 'success');
-                setTimeout(() => this.remove(id), 3000);
-            },
-            error: (message = 'Failed!') => {
-                this.update(id, message, 'error');
-                setTimeout(() => this.remove(id), 5000);
-            }
-        };
-    }
-
-    update(id, message, type) {
-        const notification = this.notifications.get(id);
-        if (!notification) return;
-
-        // Update message
-        const messageElement = notification.element.querySelector('p');
-        if (messageElement) {
-            messageElement.textContent = message;
-        }
-
-        // Update type classes
-        const typeStyles = {
-            success: 'border-green-500 text-green-400',
-            error: 'border-red-500 text-red-400',
-            warning: 'border-yellow-500 text-yellow-400',
-            info: 'border-blue-500 text-blue-400'
-        };
-
-        // Remove old type classes
-        Object.values(typeStyles).forEach(classes => {
-            classes.split(' ').forEach(cls => notification.element.classList.remove(cls));
-        });
-
-        // Add new type classes
-        notification.element.classList.add(...typeStyles[type].split(' '));
     }
 }
 
-// Add CSS for notifications
 const notificationStyles = `
 .notification {
     opacity: 0;
-    transform: translateX(100%) scale(0.9);
+    transform: translateX(30px) scale(0.95);
+    filter: blur(8px);
 }
 
 .notification-enter {
     opacity: 1;
     transform: translateX(0) scale(1);
+    filter: blur(0);
 }
 
 .notification-exit {
     opacity: 0;
-    transform: translateX(100%) scale(0.9);
-}
-
-.notification-close {
-    opacity: 0.7;
-}
-
-.notification-close:hover {
-    opacity: 1;
+    transform: translateX(30px) scale(0.95);
+    filter: blur(8px);
 }
 `;
 
-// Inject styles
 const styleSheet = document.createElement('style');
 styleSheet.textContent = notificationStyles;
 document.head.appendChild(styleSheet);
 
-// Export for use in other modules
 export default NotificationSystem;
