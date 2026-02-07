@@ -32,6 +32,7 @@ export class Dashboard {
 
         await this.loadDashboardData();
         this.render();
+        this.nav.postRender();
         this.setupEventListeners();
     }
 

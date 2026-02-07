@@ -42,7 +42,7 @@ export default class Navigation {
                             </a>
 
                             <!-- Mobile Menu Button -->
-                            <button class="md:hidden p-2 text-gray-400 hover:text-white">
+                            <button id="mobile-menu-btn" class="md:hidden p-2 text-gray-400 hover:text-white">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                             </button>
 
@@ -71,6 +71,18 @@ export default class Navigation {
                         </div>
                     </div>
                 </div>
+
+                <!-- Mobile Menu (Hidden by default) -->
+                <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 bg-gray-900/95 backdrop-blur-xl">
+                    <div class="px-2 pt-2 pb-3 space-y-1">
+                        ${this.renderMobileNavLink('/dashboard', 'Dashboard', 'home')}
+                        ${this.renderMobileNavLink('/snippets', 'Snippets', 'code')}
+                        ${this.renderMobileNavLink('/profile', 'Profile', 'user')}
+                        <div class="border-t border-white/5 my-2 pt-2">
+                             <a href="/new" class="block px-3 py-2 rounded-md text-base font-medium text-neon-blue hover:text-white hover:bg-white/10">New Snippet</a>
+                        </div>
+                    </div>
+                </div>
             </nav>
             <div class="h-16"></div> <!-- Spacer -->
         `;
@@ -83,11 +95,7 @@ export default class Navigation {
             ? "bg-white/10 text-white shadow-lg shadow-purple-500/10 border border-white/10"
             : "text-gray-400 hover:text-white hover:bg-white/5";
 
-        const icons = {
-            home: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>`,
-            code: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`,
-            user: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`
-        };
+        const icons = this.getIcons();
 
         return `
             <a href="${href}" class="${baseClasses} ${activeClasses}">
@@ -95,5 +103,45 @@ export default class Navigation {
                 <span>${text}</span>
             </a>
         `;
+    }
+
+    renderMobileNavLink(href, text, iconName) {
+        const isActive = this.activeRoute === href;
+        const baseClasses = "block px-3 py-2 rounded-md text-base font-medium flex items-center gap-3";
+        const activeClasses = isActive
+            ? "bg-white/10 text-white"
+            : "text-gray-400 hover:text-white hover:bg-white/5";
+
+        const icons = this.getIcons();
+
+        return `
+            <a href="${href}" class="${baseClasses} ${activeClasses}">
+                ${icons[iconName] || ''}
+                <span>${text}</span>
+            </a>
+         `;
+    }
+
+    getIcons() {
+        return {
+            home: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>`,
+            code: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`,
+            user: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`
+        };
+    }
+
+    /**
+     * Initialize event listeners for navigation
+     * Should be called after render()
+     */
+    postRender() {
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+
+        if (btn && menu) {
+            btn.addEventListener('click', () => {
+                menu.classList.toggle('hidden');
+            });
+        }
     }
 }

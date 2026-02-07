@@ -5,9 +5,10 @@
   "main": "src/js/app.js",
   "scripts": {
     "start": "npx serve .",
+    "dev": "npx serve . --watch",
+    "build": "npx tailwindcss -i ./src/css/input.css -o ./src/css/main.css --config ./config/tailwind.config.js",
     "test": "node tests/unit/utils.test.js",
-    "lint": "eslint src/js",
-    "build": "echo 'No build step required for vanilla JS'"
+    "lint": "eslint src/js"
   },
   "keywords": [
     "code",
@@ -17,7 +18,10 @@
   "author": "CodeEngage Team",
   "license": "MIT",
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/typography": "^0.5.19",
+    "eslint": "^8.0.0",
     "serve": "^14.0.0",
-    "eslint": "^8.0.0"
+    "tailwindcss": "^3.4.1"
   }
 }

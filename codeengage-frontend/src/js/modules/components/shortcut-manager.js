@@ -32,6 +32,7 @@ export class ShortcutManager {
     }
 
     handleKeydown(e) {
+        if (!e.key) return;
         const key = e.key.toLowerCase();
         const meta = e.metaKey;
         const ctrl = e.ctrlKey;

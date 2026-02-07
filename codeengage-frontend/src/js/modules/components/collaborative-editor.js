@@ -5,12 +5,10 @@ import {
     keymap,
     lineNumbers,
     highlightActiveLine,
-    foldGutter,
     drawSelection,
     dropCursor,
     rectangularSelection,
     crosshairCursor,
-    highlightSelectionMatches,
     Decoration
 } from 'https://esm.sh/@codemirror/view';
 import {
