@@ -5,23 +5,25 @@
  * Orchestrates all modules and initializes the app.
  */
 
-import { Router } from './modules/router.js';
-import { Auth } from './modules/auth.js';
-import { ApiClient } from './modules/api/client.js';
-import { AsyncErrorBoundary } from './modules/utils/async-error-boundary.js';
-import { Dashboard } from './pages/dashboard.js';
-import { Snippets } from './pages/snippets.js';
-import { Profile } from './pages/profile.js';
-import { Settings } from './pages/settings.js';
-import { Admin } from './pages/admin.js';
-import { Organizations } from './pages/organizations.js';
-import { Leaderboard } from './pages/leaderboard.js';
-import { SnippetViewer } from './pages/snippet-viewer.js';
-import SnippetEditor from './pages/snippet-editor.js';
-import NotificationSystem from './modules/components/notification-system.js';
-import CommandPalette from './modules/components/command-palette.js';
-import CodeVisualizer from './modules/components/code-visualizer.js';
-import ShortcutManager from './modules/components/shortcut-manager.js';
+import { Router } from './modules/router.js?v=5';
+import { Auth } from './modules/auth.js?v=5';
+import { ApiClient } from './modules/api/client.js?v=5';
+import { AsyncErrorBoundary } from './modules/utils/async-error-boundary.js?v=5';
+import { Dashboard } from './pages/dashboard.js?v=5';
+import { Snippets } from './pages/snippets.js?v=5';
+import { Profile } from './pages/profile.js?v=5';
+import { Settings } from './pages/settings.js?v=5';
+import { Admin } from './pages/admin.js?v=5';
+import { Organizations } from './pages/organizations.js?v=5';
+import { Leaderboard } from './pages/leaderboard.js?v=5';
+import { SnippetViewer } from './pages/snippet-viewer.js?v=5';
+import SnippetEditor from './pages/snippet-editor.js?v=5';
+import { Login } from './pages/login.js?v=5';
+import { Register } from './pages/register.js?v=5';
+import NotificationSystem from './modules/components/notification-system.js?v=5';
+import CommandPalette from './modules/components/command-palette.js?v=5';
+import CodeVisualizer from './modules/components/code-visualizer.js?v=5';
+import ShortcutManager from './modules/components/shortcut-manager.js?v=5';
 
 class App {
     constructor() {
@@ -92,7 +94,7 @@ class App {
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('/sw.js')
                     .then(registration => {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
                     })
@@ -129,7 +131,7 @@ class App {
      */
     setupRoutes() {
         // Public routes
-        this.router.add('/', () => this.renderLanding());
+        this.router.add('/', this.renderLanding.bind(this));
 
         // Protected routes
         this.router.add('/dashboard', async () => {
@@ -219,407 +221,123 @@ class App {
 
         // Auth routes
         this.router.add('/login', async () => {
-            if (this.auth.isAuthenticated()) return this.router.navigate('/dashboard');
-            this.renderLogin();
+            if (this.auth.isAuthenticated()) return this.router.navigate('/dashboard', true);
+            this.currentPage = new Login(this);
+            await this.currentPage.init();
         }, { guest: true });
 
         this.router.add('/register', async () => {
-            if (this.auth.isAuthenticated()) return this.router.navigate('/dashboard');
-            this.renderRegister();
+            if (this.auth.isAuthenticated()) return this.router.navigate('/dashboard', true);
+            this.currentPage = new Register(this);
+            await this.currentPage.init();
         }, { guest: true });
+
+        console.log('App initialization: Version v5 (Bound handlers)');
     }
 
     /**
-     * Render login page
-     */
-    renderLogin() {
-        const container = document.getElementById('app');
-        container.innerHTML = `
-            <div class="min-h-screen flex bg-deep-space">
-                <!-- Visual Side -->
-                <div class="hidden md:flex w-1/2 relative items-center justify-center p-12 overflow-hidden sticky top-0 h-screen">
-                    <div class="absolute inset-0 bg-gradient-radial from-neon-purple/20 to-transparent opacity-50"></div>
-                    <div class="absolute -top-40 -left-40 w-96 h-96 bg-neon-blue rounded-full blur-[128px] opacity-20 animate-pulse-slow"></div>
-                    <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-neon-purple rounded-full blur-[128px] opacity-20 animate-pulse-slow" style="animation-delay: 1s"></div>
-                    
-                    <div class="relative z-10 max-w-lg text-center">
-                         <div class="mb-8 relative group">
-                            <div class="absolute inset-0 bg-gradient-to-r from-neon-blue to-neon-purple blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
-                            <div class="glass-strong p-6 rounded-2xl border border-white/10 transform rotate-[-2deg] group-hover:rotate-0 transition duration-500">
-                                <pre class="text-left text-sm font-mono text-gray-300"><code><span class="text-neon-purple">async function</span> <span class="text-neon-blue">innovate</span>() {
-  <span class="text-neon-purple">await</span> CodeEngage.connect();
-  <span class="text-gray-500">// Build the future</span>
-  <span class="text-neon-purple">return</span> <span class="text-green-400">true</span>;
-}</code></pre>
-                            </div>
-                        </div>
-                        <h2 class="text-4xl font-bold text-white mb-4 tracking-tight">Welcome Back</h2>
-                        <p class="text-lg text-gray-400 leading-relaxed">Return to your collaborative workspace and continue building amazing things.</p>
-                    </div>
-                </div>
-
-                <!-- Form Side -->
-                <div class="w-full lg:w-1/2 lg:ml-auto flex items-center justify-center p-4 md:p-8 relative min-h-screen overflow-y-auto">
-                    <div class="absolute inset-0 bg-[url('/assets/svg/grid-pattern.svg')] opacity-5"></div>
-                    <!-- Mobile Background Elements -->
-                    <div class="lg:hidden absolute top-0 right-0 w-64 h-64 bg-neon-purple/20 rounded-full blur-[80px]"></div>
-                    <div class="lg:hidden absolute bottom-0 left-0 w-64 h-64 bg-neon-blue/20 rounded-full blur-[80px]"></div>
-                    
-                    <div class="w-full max-w-md glass p-6 md:p-10 rounded-3xl relative z-10 animate-fade-in mx-auto">
-                        <div class="mb-8 text-center md:text-left">
-                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 text-neon-blue mb-4">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-                            </div>
-                            <h1 class="text-2xl font-bold text-white mb-2">Sign In</h1>
-                            <p class="text-gray-400">Enter your credentials to access your account.</p>
-                        </div>
-
-                        <form id="login-form" class="space-y-6">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300">Email Address</label>
-                                <input type="email" name="email" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="name@company.com" required>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-sm font-medium text-gray-300">Password</label>
-                                    <a href="#" class="text-sm text-neon-blue hover:text-neon-purple transition-colors">Forgot password?</a>
-                                </div>
-                                <input type="password" name="password" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="••••••••" required>
-                            </div>
-                            
-                            <button type="submit" class="w-full btn-primary rounded-xl py-3.5 font-semibold text-white shadow-neon transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                Sign In
-                            </button>
-
-                            <p class="text-center text-sm text-gray-400">
-                                Don't have an account? 
-                                <a href="/register" class="text-neon-blue font-medium hover:text-neon-purple transition-colors">Create account</a>
-                            </p>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = e.target.email.value;
-            const password = e.target.password.value;
-            const button = e.target.querySelector('button');
-            const originalText = button.innerHTML;
-
-            try {
-                button.disabled = true;
-                button.innerHTML = '<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>';
-
-                const result = await this.auth.login(email, password);
-
-                if (result.success) {
-                    this.router.navigate('/dashboard');
-                } else {
-                    this.showError(result.message);
-                }
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-        });
-    }
-
-    /**
-     * Render register page
-     */
-    renderRegister() {
-        const container = document.getElementById('app');
-        container.innerHTML = `
-            <div class="min-h-screen flex bg-deep-space">
-                <!-- Visual Side -->
-                <div class="hidden md:flex w-1/2 relative items-center justify-center p-12 overflow-hidden sticky top-0 h-screen">
-                    <div class="absolute inset-0 bg-gradient-radial from-neon-blue/20 to-transparent opacity-50"></div>
-                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-white/5 rounded-full animate-[spin_60s_linear_infinite]"></div>
-                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-neon-purple/20 rounded-full animate-[spin_40s_linear_infinite_reverse]"></div>
-                    
-                    <div class="relative z-10 max-w-lg text-center">
-                         <div class="mb-8 flex justify-center">
-                            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-blue to-neon-purple p-0.5 transform rotate-3 hover:rotate-6 transition duration-300">
-                                <div class="w-full h-full bg-gray-900 rounded-2xl flex items-center justify-center">
-                                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                                </div>
-                            </div>
-                        </div>
-                        <h2 class="text-4xl font-bold text-white mb-4 tracking-tight">Join the Revolution</h2>
-                        <p class="text-lg text-gray-400 leading-relaxed">Collaborate with thousands of developers building the future of software.</p>
-                    </div>
-                </div>
-
-                <!-- Form Side -->
-                <div class="w-full lg:w-1/2 lg:ml-auto flex items-center justify-center p-4 md:p-8 relative min-h-screen overflow-y-auto">
-                    <!-- Mobile Background Elements -->
-                    <div class="lg:hidden absolute top-0 right-0 w-64 h-64 bg-neon-purple/20 rounded-full blur-[80px]"></div>
-
-                    <div class="w-full max-w-md glass p-6 md:p-10 rounded-3xl relative z-10 animate-fade-in my-10 mx-auto">
-                        <div class="mb-8">
-                            <h1 class="text-2xl font-bold text-white mb-2">Create Account</h1>
-                            <p class="text-gray-400">Start your coding journey today.</p>
-                        </div>
-
-                        <form id="register-form" class="space-y-5">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-gray-300">Username</label>
-                                    <input type="text" name="username" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="johndoe" required>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-gray-300">Full Name</label>
-                                    <input type="text" name="name" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="John Doe">
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300">Email Address</label>
-                                <input type="email" name="email" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="name@company.com" required>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300">Password</label>
-                                <div class="relative">
-                                    <input type="password" id="register-password" name="password" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all outline-none" placeholder="Create a strong password" required>
-                                    <div class="mt-2 h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-                                        <div id="password-strength" class="h-full bg-gray-600 w-0 transition-all duration-300"></div>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-500 flex justify-between">
-                                    <span>Must include uppercase, lowercase, and number.</span>
-                                    <span id="strength-text" class="hidden font-medium"></span>
-                                </p>
-                            </div>
-                            
-                            <button type="submit" class="w-full btn-primary rounded-xl py-3.5 font-semibold text-white shadow-neon transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                Create Account
-                            </button>
-
-                            <p class="text-center text-sm text-gray-400">
-                                Already have an account? 
-                                <a href="/login" class="text-neon-blue font-medium hover:text-neon-purple transition-colors">Sign in</a>
-                            </p>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Password Strength Meter Logic
-        const passwordInput = document.getElementById('register-password');
-        const strengthBar = document.getElementById('password-strength');
-        const strengthText = document.getElementById('strength-text');
-
-        passwordInput?.addEventListener('input', (e) => {
-            const val = e.target.value;
-            let strength = 0;
-            let checks = {
-                length: val.length >= 8,
-                hasUpper: /[A-Z]/.test(val),
-                hasLower: /[a-z]/.test(val),
-                hasNumber: /[0-9]/.test(val),
-                hasSpecial: /[^A-Za-z0-9]/.test(val)
-            };
-
-            if (checks.length) strength += 20;
-            if (checks.hasUpper) strength += 20;
-            if (checks.hasLower) strength += 20;
-            if (checks.hasNumber) strength += 20;
-            if (checks.hasSpecial) strength += 20;
-
-            strengthBar.style.width = `${strength}%`;
-
-            if (strength <= 20) {
-                strengthBar.className = 'h-full bg-red-500 w-0 transition-all duration-300';
-                strengthText.textContent = 'Weak';
-                strengthText.className = 'font-medium text-red-500';
-            } else if (strength <= 60) {
-                strengthBar.className = 'h-full bg-yellow-500 w-0 transition-all duration-300';
-                strengthText.textContent = 'Medium';
-                strengthText.className = 'font-medium text-yellow-500';
-            } else {
-                strengthBar.className = 'h-full bg-green-500 w-0 transition-all duration-300';
-                strengthText.textContent = 'Strong';
-                strengthText.className = 'font-medium text-green-500';
-            }
-            strengthBar.style.width = `${strength}%`; // Re-apply width after class change
-        });
-
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = e.target.username.value;
-            const name = e.target.name.value;
-            const email = e.target.email.value;
-            const password = e.target.password.value;
-            const button = e.target.querySelector('button');
-            const originalText = button.innerHTML;
-
-            try {
-                button.disabled = true;
-                button.innerHTML = '<div class="flex items-center justify-center"><div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div></div>';
-
-                // Send username, email, password, and map name to display_name
-                const result = await this.auth.register({
-                    username,
-                    email,
-                    password,
-                    display_name: name
-                });
-
-                if (result.success) {
-                    this.router.navigate('/dashboard');
-                } else {
-                    this.showError(result.message);
-                }
-            } catch (error) {
-                console.error('Registration failed:', error);
-                let message = error.message || 'Registration failed';
-
-                if (error.data && error.data.errors) {
-                    // Combine all error messages
-                    const errors = Object.values(error.data.errors).flat();
-                    if (errors.length > 0) {
-                        message = errors.join('\n');
-                    }
-                }
-
-                this.showError(message);
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-        });
-    }
-
-    /**
-     * Render landing page
+     * Render the landing page
      */
     renderLanding() {
+        if (this.auth.isAuthenticated()) {
+            return this.router.navigate('/dashboard', true);
+        }
+
         const container = document.getElementById('app');
+        if (!container) return;
+
         container.innerHTML = `
-            <div class="landing-page">
-                <nav class="landing-nav glass-nav">
-                    <div class="nav-brand">
-                        <span class="logo-icon">
-                            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                        </span>
-                        <span class="logo-text">CodeEngage</span>
+            <div class="min-h-screen bg-deep-space flex flex-col relative overflow-hidden">
+                <!-- Ambient Background -->
+                <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-neon-blue/10 rounded-full blur-[150px] animate-pulse-slow"></div>
+                    <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-neon-purple/10 rounded-full blur-[150px] animate-pulse-slow" style="animation-delay: 1.5s"></div>
+                </div>
+
+                <!-- Navbar -->
+                <nav class="relative z-50 flex items-center justify-between px-6 py-6 sm:px-12 max-w-7xl mx-auto w-full">
+                    <div class="flex items-center gap-2 group cursor-pointer" onclick="window.app.router.navigate('/')">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple p-0.5 shadow-neon">
+                            <div class="w-full h-full bg-gray-900 rounded-[9px] flex items-center justify-center">
+                                <i class="ph-bold ph-code text-xl text-white"></i>
+                            </div>
+                        </div>
+                        <span class="text-xl font-bold tracking-tight text-white group-hover:text-neon-blue transition-colors">CodeEngage</span>
                     </div>
-                    <div class="nav-links">
-                        <a href="/login" class="nav-link">Sign In</a>
-                        <a href="/register" class="btn btn-primary btn-sm">Get Started</a>
+                    <div class="flex items-center gap-4">
+                        <a href="/login" class="text-sm font-semibold text-gray-300 hover:text-white transition-colors">Sign In</a>
+                        <a href="/register" class="btn-primary rounded-xl px-5 py-2.5 text-sm font-bold shadow-neon hover:scale-105 transition-all">Get Started</a>
                     </div>
                 </nav>
-                
-                <header class="landing-hero">
-                    <div class="hero-content animate-fadeIn">
-                        <div class="hero-badge">
-                            <span class="badge-dot"></span>
-                            Now with real-time collaboration
-                        </div>
-                        <h1 class="hero-title">
-                            Share Code.<br>
-                            <span class="text-gradient">Ignite Innovation.</span>
-                        </h1>
-                        <p class="hero-subtitle">
-                            The enterprise-grade platform for developers to share snippets, 
-                            discover solutions, and collaborate in real-time.
-                        </p>
-                        <div class="hero-actions">
-                            <a href="/register" class="btn btn-primary btn-lg glow-effect">
-                                Start Collaborating
-                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-                            </a>
-                            <a href="#features" class="btn btn-secondary btn-lg glass-btn">
-                                Explore Features
-                            </a>
-                        </div>
-                        
-                        <div class="hero-stats">
-                            <div class="stat-item">
-                                <span class="stat-value">10k+</span>
-                                <span class="stat-label">Developers</span>
-                            </div>
-                            <div class="stat-separator"></div>
-                            <div class="stat-item">
-                                <span class="stat-value">50k+</span>
-                                <span class="stat-label">Snippets</span>
-                            </div>
-                            <div class="stat-separator"></div>
-                            <div class="stat-item">
-                                <span class="stat-value">99%</span>
-                                <span class="stat-label">Uptime</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="hero-visual animate-slideUp">
-                        <div class="code-window glass-panel">
-                            <div class="window-header">
-                                <div class="window-controls">
-                                    <span class="control close"></span>
-                                    <span class="control minimize"></span>
-                                    <span class="control maximize"></span>
-                                </div>
-                                <div class="window-title">collaboration.js</div>
-                            </div>
-                            <div class="window-content">
-                                <pre><code class="language-javascript"><span class="keyword">class</span> <span class="class-name">Collaboration</span> {
-    <span class="keyword">constructor</span>(session) {
-        <span class="keyword">this</span>.users = session.users;
-        <span class="keyword">this</span>.sync();
-    }
-    
-    <span class="function">broadcast</span>(change) {
-        <span class="comment">// Real-time sync logic</span>
-        <span class="keyword">await</span> socket.emit(<span class="string">'change'</span>, change);
-    }
-}</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </header>
 
-                <section id="features" class="features-section">
-                    <div class="section-header">
-                        <h2>Enterprise Features</h2>
-                        <p>Everything you need to scale your development.</p>
+                <!-- Hero Section -->
+                <main class="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 max-w-5xl mx-auto py-20">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8 animate-fade-in">
+                        <span class="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse"></span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Collaborative Coding Reimagined</span>
                     </div>
                     
-                    <div class="features-grid">
-                        <div class="feature-card glass-panel tilt-card">
-                            <div class="feature-icon icon-blue">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                            </div>
-                            <h3>Syntax Highlighting</h3>
-                            <p>Beautiful highlighting for over 100+ languages including JavaScript, Python, Go, and Rust.</p>
-                        </div>
-                        <div class="feature-card glass-panel tilt-card">
-                            <div class="feature-icon icon-purple">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                            </div>
-                            <h3>Smart Search</h3>
-                            <p>Find exactly what you need with our AI-powered semantic search engine.</p>
-                        </div>
-                        <div class="feature-card glass-panel tilt-card">
-                            <div class="feature-icon icon-green">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                            </div>
-                            <h3>Team Collaboration</h3>
-                            <p>Review code, leave comments, and pair program in real-time securely.</p>
+                    <h1 class="text-5xl sm:text-7xl font-black text-white mb-8 tracking-tight leading-tight">
+                        Build together. <br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-neon-purple to-neon-blue bg-[length:200%_auto] animate-gradient">Ship faster.</span>
+                    </h1>
+                    
+                    <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mb-12 leading-relaxed">
+                        A next-generation platform for developers to share, collaborate, and evolve their code snippets in real-time.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 items-center mb-20">
+                        <a href="/register" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-neon-blue to-neon-purple text-white font-bold rounded-2xl shadow-neon transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group">
+                            Start Building Now
+                            <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                        <a href="/snippets" class="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                            Explore Snippets
+                        </a>
+                    </div>
+
+                    <!-- Visual -->
+                    <div class="w-full max-w-4xl glass-strong p-4 rounded-[2rem] border border-white/10 shadow-2xl relative group mb-12">
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 blur opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                        <div class="relative bg-gray-900/90 rounded-[1.75rem] overflow-hidden">
+                             <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/5">
+                                <div class="flex gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-red-400/50"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-400/50"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-400/50"></div>
+                                </div>
+                                <div class="text-[10px] font-mono text-gray-500">collaborative_session.js</div>
+                                <div class="w-4"></div>
+                             </div>
+                             <div class="p-8 text-left font-mono text-sm sm:text-base text-gray-300 overflow-x-auto whitespace-pre">
+<span class="text-neon-purple">import</span> { CodeEngage } <span class="text-neon-purple">from</span> <span class="text-green-400">"@core/engine"</span>;
+
+<span class="text-gray-500">// Initialize real-time workspace</span>
+<span class="text-neon-purple">const</span> session = <span class="text-neon-purple">await</span> CodeEngage.<span class="text-yellow-400">initialize</span>({
+    id: <span class="text-green-400">"future-of-code"</span>,
+    realtime: <span class="text-neon-blue">true</span>,
+    persistence: <span class="text-neon-blue">true</span>
+});
+
+session.<span class="text-yellow-400">on</span>(<span class="text-green-400">"collaboration"</span>, (event) => {
+    <span class="text-neon-blue">console</span>.<span class="text-yellow-400">log</span>(<span class="text-green-400">"Building extraordinary things..."</span>);
+});
+                             </div>
                         </div>
                     </div>
-                </section>
-                
-                <footer class="landing-footer">
-                    <p>&copy; 2026 CodeEngage. Built for developers.</p>
+                </main>
+
+                <!-- Footer -->
+                <footer class="relative z-10 py-12 border-t border-white/5 bg-gray-950/20">
+                    <div class="max-w-7xl mx-auto px-6 text-center">
+                        <p class="text-gray-500 text-sm">© 2026 CodeEngage. Built for the modern developer.</p>
+                    </div>
                 </footer>
             </div>
         `;
     }
+
+
 
     /**
      * Show global error notification
@@ -638,21 +356,33 @@ class App {
     }
 
     setupGlobalShortcuts() {
-        this.shortcutManager.add(['ctrl+k', 'cmd+k'], () => {
-            this.commandPalette.show();
-        }, { description: 'Open Command Palette' });
+        this.shortcutManager.register('command-palette', {
+            keys: ['Meta+k', 'Control+k'],
+            description: 'Open Command Palette',
+            action: () => this.commandPalette.show()
+        });
 
-        this.shortcutManager.add(['ctrl+/', 'cmd+/'], () => {
-            if (this.currentPage && this.currentPage.editor) {
-                this.currentPage.editor.toggleComment();
+        this.shortcutManager.register('toggle-comment', {
+            keys: ['Meta+/', 'Control+/'],
+            description: 'Toggle Comment',
+            action: () => {
+                if (this.currentPage && this.currentPage.editor) {
+                    this.currentPage.editor.toggleComment();
+                }
             }
-        }, { description: 'Toggle Comment' });
+        });
 
-        this.shortcutManager.add(['ctrl+s', 'cmd+s'], () => {
-            if (this.currentPage && typeof this.currentPage.save === 'function') {
-                this.currentPage.save();
+        this.shortcutManager.register('save-snippet', {
+            keys: ['Meta+s', 'Control+s'],
+            description: 'Save Snippet',
+            action: (e) => {
+                if (this.currentPage && typeof this.currentPage.save === 'function') {
+                    // Prevent browser save dialog
+                    e.preventDefault();
+                    this.currentPage.save();
+                }
             }
-        }, { description: 'Save Snippet' });
+        });
     }
 
     /**
@@ -786,9 +516,9 @@ class App {
      */
     isCriticalError(error, context) {
         // Consider errors that prevent app functionality as critical
-        return error.name === 'ChunkLoadError' || 
-               error.message.includes('Loading chunk') ||
-               context.type === 'javascript_error' && context.lineno === 1;
+        return error.name === 'ChunkLoadError' ||
+            error.message.includes('Loading chunk') ||
+            context.type === 'javascript_error' && context.lineno === 1;
     }
 
     /**
@@ -814,7 +544,6 @@ class App {
             sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             sessionStorage.setItem('sessionId', sessionId);
         }
-        return sessionId;
     }
 
     /**
@@ -876,18 +605,19 @@ class App {
     }
 
     /**
-     * Group errors by type
-     * @param {Array} errors - Array of errors
-     * @returns {object} Grouped errors
+     * Group errors by type for statistics
+     * @param {Array} errors - List of errors
+     * @returns {object} Errors grouped by type
      */
     groupErrorsByType(errors) {
         return errors.reduce((groups, error) => {
-            const type = error.context?.type || error.name || 'unknown';
-            groups[type] = (groups[type] || 0) + 1;
+            const type = error.context?.type || 'unknown';
+            if (!groups[type]) {
+                groups[type] = 0;
+            }
+            groups[type]++;
             return groups;
         }, {});
-    }
-        return sessionId;
     }
 
     /**
@@ -896,7 +626,8 @@ class App {
     setupGlobalListeners() {
         // Handle logout
         document.addEventListener('click', async (e) => {
-            if (e.target.matches('#logout-btn')) {
+            const logoutBtn = e.target.closest('#logout-btn');
+            if (logoutBtn) {
                 e.preventDefault();
                 await this.auth.logout();
             }
