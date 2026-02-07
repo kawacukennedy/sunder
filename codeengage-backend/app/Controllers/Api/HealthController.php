@@ -80,8 +80,14 @@ class HealthController
             $stmt->fetch();
             $responseTime = round((microtime(true) - $start) * 1000, 2);
 
-            $versionQuery = $this->db->query('SELECT VERSION() as version');
-            $version = $versionQuery->fetch()['version'];
+            // Get database version (MySQL vs SQLite)
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $version = 'SQLite ' . $this->db->query('SELECT sqlite_version()')->fetch()[0];
+            } else {
+                $versionQuery = $this->db->query('SELECT VERSION() as version');
+                $version = $versionQuery->fetch()['version'];
+            }
 
             return [
                 'status' => 'healthy',
@@ -129,7 +135,7 @@ class HealthController
         }
 
         // Check file cache
-        $cacheDir = __DIR__ . '/../../storage/cache';
+        $cacheDir = dirname(__DIR__, 2) . '/storage/cache';
         if (is_dir($cacheDir) && is_writable($cacheDir)) {
             $checks['file_cache'] = [
                 'status' => 'healthy',
@@ -160,7 +166,7 @@ class HealthController
 
     private function checkStorage(): array
     {
-        $storageDir = __DIR__ . '/../../storage';
+        $storageDir = dirname(__DIR__, 2) . '/storage';
         $checks = [];
 
         // Check main storage directory

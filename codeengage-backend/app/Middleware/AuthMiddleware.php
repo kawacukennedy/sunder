@@ -68,7 +68,10 @@ class AuthMiddleware
             $config = require __DIR__ . '/../../config/auth.php';
             $secret = $config['jwt']['secret'] ?? 'default_secret'; // Fallback
             
+            error_log("JWT Token received: $token");
+            error_log("JWT Secret from config: $secret");
             $payload = \App\Helpers\SecurityHelper::validateJwtToken($token, $secret);
+            error_log("JWT Payload: " . json_encode($payload));
             
             if ($payload && isset($payload['user_id'])) {
                 $user = $this->userRepository->findById($payload['user_id']);

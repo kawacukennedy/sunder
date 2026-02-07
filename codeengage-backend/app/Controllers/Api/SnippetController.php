@@ -100,12 +100,38 @@ class SnippetController extends BaseController
                 'action' => 'snippet_analysis'
             ], 500);
         }
-    }
+}
+    
+    public function show($method, $params)
+    {
+        if ($method !== 'GET') {
+            ApiResponse::error('Method not allowed', 405);
+        }
 
         $id = $params[0] ?? null;
         if (!$id) {
-             ApiResponse::error('Snippet ID required', 400);
+            ApiResponse::error('Snippet ID required', 400);
         }
+
+        $snippet = $this->snippetService->getById($id);
+        
+        if (!$snippet) {
+            ApiResponse::error('Snippet not found', 404);
+        }
+
+        // Check visibility
+        if ($snippet['visibility'] !== 'public') {
+            $this->ensureAuth();
+            if ($snippet['author_id'] !== $_SESSION['user_id']) {
+                ApiResponse::error('Unauthorized', 403);
+            }
+        }
+
+        // Increment view count (debounced by session)
+        $this->snippetService->incrementViewCount($id);
+
+        ApiResponse::success($snippet, 'Snippet retrieved');
+    }
 
         // Visibility/Auth check
         $snippet = $this->snippetService->getById($id);

@@ -13,7 +13,7 @@ class CsrfMiddleware
 
     public function __construct(array $config = [])
     {
-        $this->enabled = $config['enabled'] ?? true;
+        $this->enabled = ($config['enabled'] ?? true) && !($_ENV['CSRF_ENABLED'] ?? 'true') === 'false';
         $this->exemptMethods = $config['exempt_methods'] ?? ['GET', 'HEAD', 'OPTIONS'];
         $this->exemptRoutes = $config['exempt_routes'] ?? ['/api/auth/login', '/api/auth/register', '/auth/login', '/auth/register'];
     }

@@ -35,7 +35,7 @@ class ApiResponse
     /**
      * Enhanced error response with error codes and details
      */
-    public static function error($message = 'Error', $code = 400, $errors = [], string $errorCode = null, array $details = [])
+    public static function error($message = 'Error', $code = 400, $errors = [], ?string $errorCode = null, array $details = [])
     {
         http_response_code($code);
         

@@ -386,7 +386,7 @@ abstract class BaseController
         }
 
         if (!empty($errors)) {
-            $this->handleException(new \Exception('Validation failed'), [
+            $this->handleException(new \Exception('Validation failed: ' . json_encode($errors)), [
                 'error_type' => 'validation_failed',
                 'errors' => $errors
             ], 422);

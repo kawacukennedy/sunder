@@ -102,7 +102,7 @@ class SecurityEventService
     /**
      * Log login attempt
      */
-    public function logLoginAttempt(string $email, string $ip = null, array $context = []): void
+    public function logLoginAttempt(string $email, ?string $ip = null, array $context = []): void
     {
         $this->logEvent('login_attempt', array_merge([
             'email' => $email,
@@ -320,9 +320,9 @@ class SecurityEventService
         // Path traversal patterns
         $pathPatterns = [
             '/\.\.\//',
-            '/\%2e%2e%2f/',
-            '/\.\.\\/',
-            '/\%2e%2e%5c/'
+            '/\%2e%2e%2f/i',
+            '/\.\.\\\\/',
+            '/\%2e%2e%5c/i'
         ];
 
         foreach ($pathPatterns as $pattern) {
@@ -338,12 +338,13 @@ class SecurityEventService
 
         // Bot detection
         if ($this->isBot($userAgent)) {
-            $risks[] = [
-                'type' => 'bot_detected',
-                'severity' => 'info',
-                'pattern' => 'user_agent_analysis',
-                'user_agent' => $userAgent
-            ];
+$risks[] = [
+                    'type' => 'bot_detected',
+                    'severity' => 'info',
+                    'pattern' => 'user_agent_analysis',
+                    'detected_in' => 'user_agent',
+                    'user_agent' => $userAgent
+                ];
         }
 
         // Log any detected risks
