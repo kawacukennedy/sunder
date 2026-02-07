@@ -10,12 +10,12 @@ class CodeVisualizer {
             animated: true,
             ...options
         };
-        
+
         this.code = '';
         this.language = '';
         this.analysis = null;
         this.visualization = null;
-        
+
         this.init();
     }
 
@@ -55,7 +55,7 @@ class CodeVisualizer {
                 </div>
             </div>
         `;
-        
+
         this.addEventListeners();
     }
 
@@ -63,7 +63,7 @@ class CodeVisualizer {
         this.code = code;
         this.language = language;
         this.analysis = analysis || await this.analyzeCode(code, language);
-        
+
         this.updateComplexityPanel();
         this.updateDependenciesPanel();
         this.updateStructurePanel();
@@ -77,14 +77,14 @@ class CodeVisualizer {
             structure: this.analyzeStructure(code, language),
             metrics: this.calculateMetrics(code, language)
         };
-        
+
         return analysis;
     }
 
     calculateComplexity(code, language) {
         const lines = code.split('\n');
         let complexity = 1; // Base complexity
-        
+
         // Count control flow structures
         const controlStructures = {
             javascript: ['if', 'else', 'for', 'while', 'switch', 'case', 'catch', 'function'],
@@ -94,9 +94,9 @@ class CodeVisualizer {
             c: ['if', 'else', 'for', 'while', 'switch', 'case'],
             cpp: ['if', 'else', 'for', 'while', 'switch', 'case', 'catch', 'try']
         };
-        
+
         const structures = controlStructures[language.toLowerCase()] || controlStructures.javascript;
-        
+
         lines.forEach(line => {
             structures.forEach(structure => {
                 const regex = new RegExp(`\\b${structure}\\b`, 'gi');
@@ -106,16 +106,16 @@ class CodeVisualizer {
                 }
             });
         });
-        
+
         // Calculate nesting depth
         const nestingDepth = this.calculateNestingDepth(code);
         complexity += nestingDepth * 2;
-        
+
         return {
             score: complexity,
             level: this.getComplexityLevel(complexity),
             nestingDepth,
-            controlFlowCount: lines.filter(line => 
+            controlFlowCount: lines.filter(line =>
                 structures.some(structure => line.toLowerCase().includes(structure))
             ).length
         };
@@ -124,19 +124,19 @@ class CodeVisualizer {
     calculateNestingDepth(code) {
         let maxDepth = 0;
         let currentDepth = 0;
-        
+
         const lines = code.split('\n');
         lines.forEach(line => {
             const trimmed = line.trim();
-            
+
             // Count opening braces/indents
             const openBraces = (trimmed.match(/{/g) || []).length;
             const closeBraces = (trimmed.match(/}/g) || []).length;
-            
+
             currentDepth += openBraces - closeBraces;
             maxDepth = Math.max(maxDepth, currentDepth);
         });
-        
+
         return maxDepth;
     }
 
@@ -151,7 +151,7 @@ class CodeVisualizer {
     extractDependencies(code, language) {
         const dependencies = [];
         const lines = code.split('\n');
-        
+
         const patterns = {
             javascript: [
                 /import\s+.*\s+from\s+['"]([^'"]+)['"]/g,
@@ -171,9 +171,9 @@ class CodeVisualizer {
                 /import\s+([^;]+);/g
             ]
         };
-        
+
         const langPatterns = patterns[language.toLowerCase()] || patterns.javascript;
-        
+
         langPatterns.forEach(pattern => {
             let match;
             while ((match = pattern.exec(code)) !== null) {
@@ -184,7 +184,7 @@ class CodeVisualizer {
                 });
             }
         });
-        
+
         return dependencies;
     }
 
@@ -195,17 +195,17 @@ class CodeVisualizer {
             php: ['mysqli', 'pdo', 'curl', 'json', 'datetime'],
             java: ['java.lang', 'java.util', 'java.io', 'java.net']
         };
-        
+
         const builtInDeps = builtIn[language.toLowerCase()] || [];
-        
+
         if (builtInDeps.some(built => dependency.includes(built))) {
             return 'builtin';
         }
-        
+
         if (dependency.startsWith('./') || dependency.startsWith('../')) {
             return 'local';
         }
-        
+
         return 'external';
     }
 
@@ -216,9 +216,9 @@ class CodeVisualizer {
             variables: [],
             imports: []
         };
-        
+
         const lines = code.split('\n');
-        
+
         // Extract functions
         const functionPatterns = {
             javascript: [/function\s+(\w+)/g, /const\s+(\w+)\s*=\s*\(/g, /(\w+)\s*:\s*function/g],
@@ -227,9 +227,9 @@ class CodeVisualizer {
             java: [/(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(/g],
             c: [/(\w+)\s+(\w+)\s*\(/g]
         };
-        
+
         const funcPatterns = functionPatterns[language.toLowerCase()] || functionPatterns.javascript;
-        
+
         funcPatterns.forEach(pattern => {
             let match;
             while ((match = pattern.exec(code)) !== null) {
@@ -241,7 +241,7 @@ class CodeVisualizer {
                 });
             }
         });
-        
+
         // Extract classes
         const classPatterns = {
             javascript: [/class\s+(\w+)/g],
@@ -250,7 +250,7 @@ class CodeVisualizer {
             java: [/class\s+(\w+)/g],
             cpp: [/class\s+(\w+)/g]
         };
-        
+
         const classPatternList = classPatterns[language.toLowerCase()];
         if (classPatternList) {
             classPatternList.forEach(pattern => {
@@ -264,7 +264,7 @@ class CodeVisualizer {
                 }
             });
         }
-        
+
         return structure;
     }
 
@@ -272,7 +272,7 @@ class CodeVisualizer {
         const lines = code.split('\n');
         const nonEmptyLines = lines.filter(line => line.trim().length > 0);
         const commentLines = lines.filter(line => this.isCommentLine(line, language));
-        
+
         return {
             totalLines: lines.length,
             codeLines: nonEmptyLines.length - commentLines.length,
@@ -295,19 +295,19 @@ class CodeVisualizer {
             html: ['<!--'],
             css: ['/*']
         };
-        
+
         const patterns = commentPatterns[language.toLowerCase()] || commentPatterns.javascript;
-        
+
         return patterns.some(pattern => trimmed.startsWith(pattern));
     }
 
     updateComplexityPanel() {
         const panel = this.container.querySelector('.complexity-metrics');
         if (!panel || !this.analysis) return;
-        
+
         const complexity = this.analysis.complexity;
         const levelColor = this.getComplexityLevelColor(complexity.level);
-        
+
         panel.innerHTML = `
             <div class="metric-item">
                 <div class="flex justify-between items-center mb-1">
@@ -343,36 +343,102 @@ class CodeVisualizer {
     updateDependenciesPanel() {
         const panel = this.container.querySelector('.dependencies-graph');
         if (!panel || !this.analysis) return;
-        
+
         const dependencies = this.analysis.dependencies;
-        
+
         if (dependencies.length === 0) {
             panel.innerHTML = '<p class="text-xs text-gray-500">No dependencies found</p>';
             return;
         }
-        
-        const dependencyTypes = {
-            builtin: 'text-green-400',
-            external: 'text-blue-400',
-            local: 'text-yellow-400'
-        };
-        
-        panel.innerHTML = dependencies.map(dep => `
-            <div class="dependency-item flex items-center justify-between py-1 border-b border-gray-700">
-                <span class="text-xs text-gray-300 truncate flex-1">${dep.name}</span>
-                <span class="text-xs ${dependencyTypes[dep.type]} ml-2">${dep.type}</span>
-            </div>
-        `).join('');
+
+        // Clear previous content
+        panel.innerHTML = '';
+        panel.style.height = '300px';
+        panel.style.position = 'relative';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = panel.offsetWidth || 300;
+        canvas.height = 300;
+        panel.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Draw Main Node
+        this.drawNode(ctx, centerX, centerY, 'Main', '#10B981'); // Green-500
+
+        // Draw Dependencies
+        const radius = Math.min(centerX, centerY) - 40;
+        const count = dependencies.length;
+        const angleStep = (2 * Math.PI) / count;
+
+        dependencies.forEach((dep, index) => {
+            const angle = index * angleStep;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+
+            // Draw Line
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = '#374151'; // Gray-700
+            ctx.stroke();
+
+            // Dependency Type Colors
+            let color = '#60A5FA'; // Blue-400 (external)
+            if (dep.type === 'builtin') color = '#34D399'; // Green-400
+            if (dep.type === 'local') color = '#FBBF24'; // Yellow-400
+
+            this.drawNode(ctx, x, y, dep.name, color);
+        });
+
+        // Simple Legend
+        const legend = document.createElement('div');
+        legend.className = 'absolute bottom-2 left-2 text-xs text-gray-400 space-y-1';
+        legend.innerHTML = `
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-400 mr-1"></span> Built-in</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-blue-400 mr-1"></span> External</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-400 mr-1"></span> Local</div>
+        `;
+        panel.appendChild(legend);
+    }
+
+    drawNode(ctx, x, y, label, color) {
+        // Shadow
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.fillStyle = '#1F2937'; // Gray-800
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+        // Label
+        ctx.fillStyle = '#E5E7EB'; // Gray-200
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // Truncate label if too long
+        const maxChars = 10;
+        const displayLabel = label.length > maxChars ? label.substring(0, maxChars) + '..' : label;
+        ctx.fillText(displayLabel, x, y + 25);
     }
 
     updateStructurePanel() {
         const panel = this.container.querySelector('.structure-tree');
         if (!panel || !this.analysis) return;
-        
+
         const structure = this.analysis.structure;
-        
+
         let html = '';
-        
+
         if (structure.classes.length > 0) {
             html += '<div class="structure-section mb-3">';
             html += '<h5 class="text-xs font-medium text-gray-400 mb-2">Classes</h5>';
@@ -385,7 +451,7 @@ class CodeVisualizer {
             `).join('');
             html += '</div>';
         }
-        
+
         if (structure.functions.length > 0) {
             html += '<div class="structure-section">';
             html += '<h5 class="text-xs font-medium text-gray-400 mb-2">Functions</h5>';
@@ -398,11 +464,11 @@ class CodeVisualizer {
             `).join('');
             html += '</div>';
         }
-        
+
         if (html === '') {
             html = '<p class="text-xs text-gray-500">No structure found</p>';
         }
-        
+
         panel.innerHTML = html;
     }
 
@@ -414,7 +480,7 @@ class CodeVisualizer {
             'High': 'text-orange-400',
             'Very High': 'text-red-400'
         };
-        
+
         return colors[level] || 'text-gray-400';
     }
 
@@ -423,7 +489,7 @@ class CodeVisualizer {
         const complexityToggle = this.container.querySelector('.complexity-toggle');
         const dependenciesToggle = this.container.querySelector('.dependencies-toggle');
         const structureToggle = this.container.querySelector('.structure-toggle');
-        
+
         if (complexityToggle) {
             complexityToggle.addEventListener('click', () => {
                 const panel = this.container.querySelector('.complexity-panel');
@@ -431,7 +497,7 @@ class CodeVisualizer {
                 complexityToggle.classList.toggle('bg-blue-600');
             });
         }
-        
+
         if (dependenciesToggle) {
             dependenciesToggle.addEventListener('click', () => {
                 const panel = this.container.querySelector('.dependencies-panel');
@@ -439,7 +505,7 @@ class CodeVisualizer {
                 dependenciesToggle.classList.toggle('bg-blue-600');
             });
         }
-        
+
         if (structureToggle) {
             structureToggle.addEventListener('click', () => {
                 const panel = this.container.querySelector('.structure-panel');
