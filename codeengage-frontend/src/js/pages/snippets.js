@@ -38,6 +38,7 @@ export class Snippets {
         });
         await this.loadSnippets();
         this.render();
+        this.nav.postRender();
         this.setupEventListeners();
     }
 

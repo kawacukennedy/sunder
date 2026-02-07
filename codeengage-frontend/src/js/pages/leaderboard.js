@@ -23,6 +23,7 @@ export class Leaderboard {
     async init() {
         await this.loadData();
         this.render();
+        this.nav.postRender();
         this.setupEventListeners();
     }
 

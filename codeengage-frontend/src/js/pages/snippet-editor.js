@@ -898,90 +898,9 @@ export default class SnippetEditor {
 
                     <!-- Main Content -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-slideUp">
-                        <!-- Editor Section -->
-                        <div class="lg:col-span-3 space-y-4">
-                            <div id="editor-container" class="glass-panel overflow-hidden border border-gray-700/50 shadow-2xl relative group flex flex-col h-[calc(100vh-12rem)] min-h-[500px]">
-                                <!-- Editor Toolbar -->
-                                <div class="bg-gray-900/50 backdrop-blur px-4 py-3 flex-none flex items-center justify-between border-b border-gray-700/50">
-                                    <div class="flex items-center space-x-4">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                            <div class="flex items-center gap-2">
-                             <div class="relative">
-                                <select id="editor-theme" class="bg-gray-700 border border-gray-600 text-white text-xs rounded px-2 py-1 focus:ring-1 focus:ring-primary focus:border-primary">
-                                    <option value="dracula">Dracula</option>
-                                    <option value="monokai">Monokai</option>
-                                    <option value="material">Material</option>
-                                    <option value="nord">Nord</option>
-                                </select>
-                            </div>
-                            <div class="relative">
-                                <select id="editor-font-size" class="bg-gray-700 border border-gray-600 text-white text-xs rounded px-2 py-1 focus:ring-1 focus:ring-primary focus:border-primary">
-                                    <option value="12px">12px</option>
-                                    <option value="14px" selected>14px</option>
-                                    <option value="16px">16px</option>
-                                    <option value="18px">18px</option>
-                                </select>
-                            </div>
-                            <button id="editor-focus-mode" title="Toggle Focus Mode" class="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-700 transition-colors">
-                                <i class="ph ph-corners-out"></i>
-                            </button>
-                            <span class="w-px h-4 bg-gray-700 mx-1"></span>
-                            <span id="autosave-indicator" class="text-xs text-gray-500 min-w-[60px] text-right"></span>
-                        </div>
-                    </div>
-                    
-                    <div id="code-editor" class="h-[calc(100vh-320px)] border-b border-gray-700/50 text-base"></div>
-                                        <select id="snippet-language" class="bg-transparent text-gray-300 text-sm focus:outline-none cursor-pointer hover:text-white transition-colors">
-                                            <option value="javascript">JavaScript</option>
-                                            <option value="typescript">TypeScript</option>
-                                            <option value="python">Python</option>
-                                            <option value="php">PHP</option>
-                                            <option value="html">HTML</option>
-                                            <option value="css">CSS</option>
-                                            <option value="sql">SQL</option>
-                                            <option value="json">JSON</option>
-                                            <option value="xml">XML</option>
-                                            <option value="java">Java</option>
-                                            <option value="cpp">C++</option>
-                                            <option value="go">Go</option>
-                                            <option value="rust">Rust</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="flex items-center space-x-4 text-xs">
-                                        <span id="autosave-indicator" class="text-green-400 opacity-0 transition-opacity duration-300 flex items-center">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                            Saved
-                                        </span>
-                                        <div class="h-4 w-px bg-gray-700"></div>
-                                        <button onclick="window.snippetEditor.toggleFullscreen()" 
-                                                class="text-gray-400 hover:text-white transition-colors flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                                            </svg>
-                                            Fullscreen
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Code Editor -->
-                                <div id="code-editor" class="text-base font-mono bg-gray-900 flex-1 overflow-hidden h-full"></div>
-                                
-                                <!-- Bottom Status Bar -->
-                                <div class="bg-gray-900/80 px-4 py-1 text-xs text-gray-500 border-t border-gray-700/50 flex justify-between">
-                                    <span>UTF-8</span>
-                                    <span id="cursor-position">Ln 1, Col 1</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Properties Panel -->
-                        <div class="lg:col-span-1">
-                            <div class="glass-panel p-6 space-y-6 sticky top-24">
+                        <!-- Properties Panel (Mobile: First / Desktop: Right Side) -->
+                        <div class="order-1 lg:order-2 lg:col-span-1">
+                            <div class="glass-panel p-6 space-y-6 lg:sticky lg:top-24">
                                 <h3 class="text-lg font-semibold text-white border-b border-gray-700/50 pb-4 mb-2">Details</h3>
                                 
                                 <!-- Title -->
@@ -1018,8 +937,6 @@ export default class SnippetEditor {
                                     </div>
                                 </div>
 
-
-
                                 <!-- Tags -->
                                 <div class="space-y-2">
                                     <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">Tags</label>
@@ -1035,8 +952,100 @@ export default class SnippetEditor {
                                     </div>
                                     <div id="tags-display" class="flex flex-wrap gap-2 mt-2"></div>
                                 </div>
+
+                                <!-- Participants -->
+                                <div id="participants-container" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Participants</label>
+                                    <div id="participants-list" class="space-y-2"></div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="pt-4 border-t border-gray-700">
+                                    <button id="cancel-button" 
+                                            class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Editor Section (Mobile: Second / Desktop: Left Side) -->
+                        <div class="order-2 lg:order-1 lg:col-span-3 space-y-4">
+                            <div id="editor-container" class="glass-panel overflow-hidden border border-gray-700/50 shadow-2xl relative group flex flex-col h-[600px] lg:h-[calc(100vh-12rem)] min-h-[500px]">
+                                <!-- Editor Toolbar -->
+                                <div class="bg-gray-900/50 backdrop-blur px-4 py-3 flex-none flex items-center justify-between border-b border-gray-700/50">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                        </div>
+                                        
+                                        <div class="h-4 w-px bg-gray-700"></div>
+
+                                        <div class="flex items-center gap-2">
+                                            <div class="relative">
+                                                <select id="editor-theme" class="bg-gray-700 border border-gray-600 text-white text-xs rounded px-2 py-1 focus:ring-1 focus:ring-primary focus:border-primary">
+                                                    <option value="dracula">Dracula</option>
+                                                    <option value="monokai">Monokai</option>
+                                                    <option value="material">Material</option>
+                                                    <option value="nord">Nord</option>
+                                                </select>
+                                            </div>
+                                            <div class="relative">
+                                                <select id="editor-font-size" class="bg-gray-700 border border-gray-600 text-white text-xs rounded px-2 py-1 focus:ring-1 focus:ring-primary focus:border-primary">
+                                                    <option value="12px">12px</option>
+                                                    <option value="14px" selected>14px</option>
+                                                    <option value="16px">16px</option>
+                                                    <option value="18px">18px</option>
+                                                </select>
+                                            </div>
+                                            <button id="editor-focus-mode" title="Toggle Focus Mode" class="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-700 transition-colors">
+                                                <i class="ph ph-corners-out"></i>
+                                            </button>
+                                            <span class="w-px h-4 bg-gray-700 mx-1"></span>
+                                            <span id="autosave-indicator" class="text-xs text-gray-500 min-w-[60px] text-right"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center space-x-4 text-xs">
+                                        <select id="snippet-language" class="bg-transparent text-gray-300 text-sm focus:outline-none cursor-pointer hover:text-white transition-colors">
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="typescript">TypeScript</option>
+                                            <option value="python">Python</option>
+                                            <option value="php">PHP</option>
+                                            <option value="html">HTML</option>
+                                            <option value="css">CSS</option>
+                                            <option value="sql">SQL</option>
+                                            <option value="json">JSON</option>
+                                            <option value="xml">XML</option>
+                                            <option value="java">Java</option>
+                                            <option value="cpp">C++</option>
+                                            <option value="go">Go</option>
+                                            <option value="rust">Rust</option>
+                                        </select>
+                                        <div class="h-4 w-px bg-gray-700"></div>
+                                        <button onclick="window.snippetEditor.toggleFullscreen()" 
+                                                class="text-gray-400 hover:text-white transition-colors flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                            </svg>
+                                            Fullscreen
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Code Editor -->
+                                <div id="code-editor" class="text-base font-mono bg-gray-900 flex-1 overflow-hidden h-full"></div>
+                                
+                                <!-- Bottom Status Bar -->
+                                <div class="bg-gray-900/80 px-4 py-1 text-xs text-gray-500 border-t border-gray-700/50 flex justify-between">
+                                    <span>UTF-8</span>
+                                    <span id="cursor-position">Ln 1, Col 1</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -1072,6 +1081,7 @@ export default class SnippetEditor {
         window.snippetEditor = this;
 
         // Initialize components after DOM is ready
+        this.nav.postRender();
         this.setupEditor();
         this.setupEventListeners();
         this.startAutosave();

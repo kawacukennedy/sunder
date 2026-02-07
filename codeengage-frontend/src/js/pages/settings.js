@@ -12,6 +12,7 @@ export class Settings {
             return this.app.router.navigate('/login');
         }
         this.render();
+        this.nav.postRender();
         this.setupEventListeners();
         this.loadSettings();
     }

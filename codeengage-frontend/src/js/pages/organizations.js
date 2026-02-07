@@ -36,37 +36,17 @@ export class Organizations {
         }
 
         const container = document.getElementById('app');
-        // Keep sidebar/nav if possible, but app architecture replaces #app content usually
-        // We need to wrap it in the main layout structure if this replaces everything
-        // Assuming app.js handles layout or we render full page. 
-        // Based on other pages replcaing #app content entirely:
-
-        // Re-construct full layout with sidebar + content
-        // This is a bit redundant but standard for this SPA structure
-        // ideally we'd fetch sidebar template too, but let's assume Navigation component handles sidebar?
-        // Navigation just handles highlighting.
-        // We need to check how other pages render. Dashboard renders Layout + Dashboard content?
-        // Let's look at Dashboard.js... it renders into #app?
-
-        // Assuming we need to inject into the main content area of a layout
-        // For now, let's just dump into #app but wrapping in the layout div structure
 
         container.innerHTML = `
-            <div class="flex h-screen bg-deep-space overflow-hidden">
-                <div id="sidebar-container" class="w-20 lg:w-64 flex-shrink-0 z-50"></div>
-                <div class="flex-1 flex flex-col min-w-0" id="main-content">
+            ${this.nav.render()}
+            <main class="min-h-screen pt-20 pb-12">
+                <div class="container mx-auto px-4 md:px-8">
                     ${template}
                 </div>
-            </div>
+            </main>
         `;
 
-        // Load sidebar
-        // In a real build this would be cached/preloaded
-        const sidebarRes = await fetch('/src/templates/components/sidebar.html');
-        const sidebarHtml = await sidebarRes.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHtml;
-        this.nav.init(); // Highlight link
-
+        this.nav.postRender();
         this.updateViewMode();
         this.setupEventListeners();
     }

@@ -25,6 +25,7 @@ export class Profile {
     async init() {
         await this.loadProfileData();
         this.render();
+        this.nav.postRender();
         this.setupEventListeners();
     }
 
