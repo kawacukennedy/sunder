@@ -1,9 +1,9 @@
 // Service Worker for PWA capabilities
-const CACHE_NAME = 'codeengage-sw-v5';
-const RUNTIME_CACHE_NAME = 'codeengage-runtime-v1';
+const CACHE_NAME = 'codeengage-sw-v9';
+const RUNTIME_CACHE_NAME = 'codeengage-runtime-v9';
 
 self.addEventListener('install', (event) => {
-    console.log('Service Worker installing...');
+    console.log('Service Worker installing v9...');
 
     // Create caches
     event.waitUntil(
@@ -13,7 +13,6 @@ self.addEventListener('install', (event) => {
                 '/index.html',
                 '/src/css/main.css',
                 '/src/js/app.js',
-                '/src/js/router.js',
                 '/manifest.json'
             ]);
         }).then(() => {
@@ -38,67 +37,71 @@ self.addEventListener('activate', (event) => {
             );
         }).then(() => {
             console.log('Service Worker activated');
+            return self.clients.claim(); // Immediately take control of all clients
         })
     );
 });
 
-// Network-first caching strategy for static assets
+// fetch listener
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = new URL(request.url);
 
-    // Skip non-GET requests
-    if (request.method !== 'GET') {
-        return;
-    }
+    if (request.method !== 'GET') return;
+    if (url.origin !== self.location.origin) return;
 
-    // Skip external requests
-    if (url.origin !== self.location.origin) {
-        return;
+    // Special handling for index.html and root (Network First)
+    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+        event.respondWith(networkFirst(request));
+    } else if (url.pathname.startsWith('/api/')) {
+        event.respondWith(apiNetworkFirst(request));
+    } else {
+        event.respondWith(cacheFirst(request));
     }
-
-    // Handle different request types
-    event.respondWith(handleRequest(request));
 });
 
-async function handleRequest(request) {
-    const url = new URL(request.url);
-
-    // API requests - network first
-    if (url.pathname.startsWith('/api/')) {
-        try {
-            const networkResponse = await fetch(request);
-            if (networkResponse.ok) {
-                // Cache successful API responses
-                const cache = await caches.open(RUNTIME_CACHE_NAME);
-                cache.put(request, networkResponse.clone());
-                return networkResponse;
-            }
-        } catch (error) {
-            console.error('API request failed:', error);
-            // Try to get from cache
-            return caches.match(request);
-        }
-    }
-
-    // Static assets - cache first
+async function networkFirst(request) {
     try {
-        const cacheResponse = await caches.match(request);
-        if (cacheResponse) {
-            return cacheResponse;
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
         }
+        throw new Error('Network response not ok');
+    } catch (error) {
+        const cachedResponse = await caches.match(request);
+        return cachedResponse || new Response('Network error and no cache', { status: 503 });
+    }
+}
 
-        // Not in cache, fetch from network
+async function apiNetworkFirst(request) {
+    try {
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+            const cache = await caches.open(RUNTIME_CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+        }
+        return networkResponse;
+    } catch (error) {
+        return caches.match(request);
+    }
+}
+
+async function cacheFirst(request) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+
+    try {
         const networkResponse = await fetch(request);
         if (networkResponse.ok) {
             const cache = await caches.open(CACHE_NAME);
             cache.put(request, networkResponse.clone());
         }
-
         return networkResponse;
     } catch (error) {
-        console.error('Request failed:', error);
-        return new Response('Network error', { status: 500 });
+        return new Response('Offline', { status: 503 });
     }
 }
 

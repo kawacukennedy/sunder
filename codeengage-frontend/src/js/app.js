@@ -5,25 +5,26 @@
  * Orchestrates all modules and initializes the app.
  */
 
-import { Router } from './modules/router.js?v=5';
-import { Auth } from './modules/auth.js?v=5';
-import { ApiClient } from './modules/api/client.js?v=5';
-import { AsyncErrorBoundary } from './modules/utils/async-error-boundary.js?v=5';
-import { Dashboard } from './pages/dashboard.js?v=5';
-import { Snippets } from './pages/snippets.js?v=5';
-import { Profile } from './pages/profile.js?v=5';
-import { Settings } from './pages/settings.js?v=5';
-import { Admin } from './pages/admin.js?v=5';
-import { Organizations } from './pages/organizations.js?v=5';
-import { Leaderboard } from './pages/leaderboard.js?v=5';
-import { SnippetViewer } from './pages/snippet-viewer.js?v=5';
-import SnippetEditor from './pages/snippet-editor.js?v=5';
-import { Login } from './pages/login.js?v=5';
-import { Register } from './pages/register.js?v=5';
-import NotificationSystem from './modules/components/notification-system.js?v=5';
-import CommandPalette from './modules/components/command-palette.js?v=5';
-import CodeVisualizer from './modules/components/code-visualizer.js?v=5';
-import ShortcutManager from './modules/components/shortcut-manager.js?v=5';
+import { Router } from './modules/router.js?v=9';
+import { Auth } from './modules/auth.js?v=9';
+import { ApiClient } from './modules/api/client.js?v=9';
+import { OfflineManager } from './modules/services/offline-manager.js?v=9';
+import { AsyncErrorBoundary } from './modules/utils/async-error-boundary.js?v=9';
+import { Dashboard } from './pages/dashboard.js?v=9';
+import { Snippets } from './pages/snippets.js?v=9';
+import { Profile } from './pages/profile.js?v=9';
+import { Settings } from './pages/settings.js?v=9';
+import { Admin } from './pages/admin.js?v=9';
+import { Organizations } from './pages/organizations.js?v=9';
+import { Leaderboard } from './pages/leaderboard.js?v=9';
+import { SnippetViewer } from './pages/snippet-viewer.js?v=9';
+import SnippetEditor from './pages/snippet-editor.js?v=9';
+import { Login } from './pages/login.js?v=9';
+import { Register } from './pages/register.js?v=9';
+import NotificationSystem from './modules/components/notification-system.js?v=9';
+import CommandPalette from './modules/components/command-palette.js?v=9';
+import CodeVisualizer from './modules/components/code-visualizer.js?v=9';
+import ShortcutManager from './modules/components/shortcut-manager.js?v=9';
 
 class App {
     constructor() {
@@ -57,6 +58,9 @@ class App {
         try {
             // Setup global error handling FIRST
             this.setupGlobalErrorHandling();
+
+            // Initialize Offline Manager
+            this.offlineManager = new OfflineManager();
 
             // Register Service Worker for offline support
             this.registerServiceWorker();
@@ -131,7 +135,7 @@ class App {
      */
     setupRoutes() {
         // Public routes
-        this.router.add('/', this.renderLanding.bind(this));
+        this.router.add('/', () => this.renderLanding());
 
         // Protected routes
         this.router.add('/dashboard', async () => {
@@ -232,7 +236,7 @@ class App {
             await this.currentPage.init();
         }, { guest: true });
 
-        console.log('App initialization: Version v5 (Bound handlers)');
+        console.log('App initialization: Version v9 (Global sync)');
     }
 
     /**
@@ -272,9 +276,9 @@ class App {
 
                 <!-- Hero Section -->
                 <main class="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 max-w-5xl mx-auto py-20">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8 animate-fade-in">
-                        <span class="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse"></span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Collaborative Coding Reimagined</span>
+                    <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md mb-8 animate-fade-in hover:border-neon-blue/30 transition-colors cursor-default group/badge">
+                        <span class="w-2 h-2 rounded-full bg-neon-blue animate-pulse shadow-[0_0_8px_rgba(0,240,255,0.5)]"></span>
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-hover/badge:text-gray-300 transition-colors">Collaborative Coding Reimagined</span>
                     </div>
                     
                     <h1 class="text-5xl sm:text-7xl font-black text-white mb-8 tracking-tight leading-tight">
@@ -427,14 +431,18 @@ session.<span class="text-yellow-400">on</span>(<span class="text-green-400">"co
      * Handle global errors consistently
      */
     async handleGlobalError(error, context = {}) {
-        // Log to console for debugging
-        console.error('Global error caught:', error, context);
+        // 1. Print to Console (User Request)
+        console.group('%c🚨 Application Error', 'background: red; color: white; padding: 2px 5px; border-radius: 2px; font-weight: bold;');
+        console.error('Message:', error.message || error);
+        console.error('Stack:', error.stack);
+        console.error('Context:', context);
+        console.groupEnd();
 
         // Report error to backend
         try {
             await this.reportError(error, context);
         } catch (reportError) {
-            console.error('Failed to report error:', reportError);
+            console.warn('Failed to report error:', reportError);
         }
 
         // Show user-friendly error message
