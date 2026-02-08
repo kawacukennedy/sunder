@@ -65,11 +65,11 @@ export class Register {
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2 group">
                                     <label class="block text-xs font-medium text-gray-400/80 group-focus-within:text-neon-blue transition-colors px-1 uppercase tracking-wider">Username</label>
-                                    <input type="text" name="username" class="w-full bg-gray-950/40 border border-white/5 rounded-2xl px-4 py-3.5 text-white placeholder-gray-600/60 focus:border-neon-blue/50 focus:ring-2 focus:ring-neon-blue/20 transition-all outline-none text-sm" placeholder="johndoe" required>
+                                    <input type="text" name="username" autocomplete="username" spellcheck="false" class="w-full bg-gray-950/40 border border-white/5 rounded-2xl px-4 py-3.5 text-white placeholder-gray-600/60 focus:border-neon-blue/50 focus:ring-2 focus:ring-neon-blue/20 transition-all outline-none text-sm" placeholder="johndoe" required>
                                 </div>
                                 <div class="space-y-2 group">
                                     <label class="block text-xs font-medium text-gray-400/80 group-focus-within:text-neon-blue transition-colors px-1 uppercase tracking-wider">Full Name</label>
-                                    <input type="text" name="name" class="w-full bg-gray-950/40 border border-white/5 rounded-2xl px-4 py-3.5 text-white placeholder-gray-600/60 focus:border-neon-blue/50 focus:ring-2 focus:ring-neon-blue/20 transition-all outline-none text-sm" placeholder="John Doe">
+                                    <input type="text" name="name" autocomplete="name" class="w-full bg-gray-950/40 border border-white/5 rounded-2xl px-4 py-3.5 text-white placeholder-gray-600/60 focus:border-neon-blue/50 focus:ring-2 focus:ring-neon-blue/20 transition-all outline-none text-sm" placeholder="John Doe">
                                 </div>
                             </div>
 
@@ -168,6 +168,7 @@ export class Register {
                 let strengthScore = 0;
                 if (val.length >= 8) strengthScore++;
                 if (/[A-Z]/.test(val)) strengthScore++;
+                if (/[a-z]/.test(val)) strengthScore++;
                 if (/[0-9]/.test(val)) strengthScore++;
                 if (/[^A-Za-z0-9]/.test(val)) strengthScore++;
 
@@ -196,6 +197,26 @@ export class Register {
             button.disabled = true;
             button.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span>';
 
+            // Client-side validation for password complexity
+            let strengthScore = 0;
+            if (password.length >= 8) strengthScore++;
+            if (/[A-Z]/.test(password)) strengthScore++;
+            if (/[a-z]/.test(password)) strengthScore++;
+            if (/[0-9]/.test(password)) strengthScore++;
+            if (/[^A-Za-z0-9]/.test(password)) strengthScore++;
+
+            // Require all 5 criteria (score >= 5)
+            if (strengthScore < 5) {
+                const missing = [];
+                if (password.length < 8) missing.push('at least 8 characters');
+                if (!/[A-Z]/.test(password)) missing.push('one uppercase letter');
+                if (!/[a-z]/.test(password)) missing.push('one lowercase letter');
+                if (!/[0-9]/.test(password)) missing.push('one number');
+                if (!/[^A-Za-z0-9]/.test(password)) missing.push('one special character');
+
+                throw new Error('Password must contain ' + missing.join(', ') + '.');
+            }
+
             const result = await this.app.auth.register({
                 username,
                 email,
@@ -216,11 +237,18 @@ export class Register {
             console.error('Registration failed:', error);
 
             let message = error.message || 'Registration failed';
+
+            // Check for API structured errors first
             if (error.data && error.data.errors) {
-                const errors = Object.values(error.data.errors).flat();
-                if (errors.length > 0) {
-                    message = errors.join(', ');
+                const errorEntries = Object.entries(error.data.errors);
+                if (errorEntries.length > 0) {
+                    // Map field names to readable names if needed, or just join messages
+                    message = errorEntries
+                        .map(([field, msgs]) => Array.isArray(msgs) ? msgs.join('. ') : msgs)
+                        .join(' | ');
                 }
+            } else if (error.data && error.data.message) {
+                message = error.data.message;
             }
 
             this.app.notifications.show(message, 'error');
