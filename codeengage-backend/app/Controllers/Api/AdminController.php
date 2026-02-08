@@ -16,11 +16,19 @@ class AdminController
     private AuthMiddleware $auth;
     private RoleMiddleware $roleMiddleware;
 
+    private $notificationService;
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
         $this->auth = new AuthMiddleware($pdo);
         $this->roleMiddleware = new RoleMiddleware($pdo);
+        
+        // Manual DI for now
+        $notificationRepo = new \App\Repositories\NotificationRepository($pdo);
+        $userRepo = new \App\Repositories\UserRepository($pdo);
+        $emailService = new \App\Services\EmailService();
+        $this->notificationService = new \App\Services\NotificationService($notificationRepo, $userRepo, $emailService);
     }
 
     private function ensureAdmin()
@@ -104,10 +112,148 @@ class AdminController
     public function reports($method, $params)
     {
         $this->ensureAdmin();
-        // Stub for content moderation reports
-        ApiResponse::success([
-            'reports' => []
-        ]);
+        
+        $status = $_GET['status'] ?? 'pending';
+        $limit = (int)($_GET['limit'] ?? 20);
+        $offset = (int)($_GET['offset'] ?? 0);
+
+        $sql = "
+            SELECT r.*, u.username as reporter_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.status = :status
+            ORDER BY r.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':status', $status);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            ApiResponse::success([
+                'reports' => $reports
+            ]);
+        } catch (\PDOException $e) {
+            // If table doesn't exist, return empty for now but log it
+            error_log("Reports table potentially missing: " . $e->getMessage());
+            ApiResponse::success(['reports' => []]);
+        }
+    }
+
+    public function reportAction($method, $params)
+    {
+        $admin = $this->ensureAdmin();
+        $reportId = $params[0] ?? null;
+
+        if ($method !== 'POST' || !$reportId) {
+            ApiResponse::error('Invalid request', 400);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? null;
+
+        if (!$action) {
+            ApiResponse::error('Action required', 400);
+        }
+
+        // Get report details
+        $stmt = $this->pdo->prepare("SELECT * FROM reports WHERE id = ?");
+        $stmt->execute([$reportId]);
+        $report = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$report) {
+            ApiResponse::error('Report not found', 404);
+        }
+
+        $auditRepo = new AuditRepository($this->pdo);
+
+        if ($action === 'delete') {
+            if ($report['target_type'] === 'snippet') {
+                $stmt = $this->pdo->prepare("UPDATE snippets SET deleted_at = NOW() WHERE id = ?");
+                $stmt->execute([$report['target_id']]);
+                
+                // Notify offender
+                $offenderId = $this->getOffenderId('snippet', $report['target_id']);
+                if ($offenderId) {
+                    $this->notificationService->notify(
+                        $offenderId,
+                        'system',
+                        'Content Removed',
+                        "Your snippet (ID: #{$report['target_id']}) was removed for violating community guidelines.",
+                        ['report_id' => $reportId]
+                    );
+                }
+                
+            } elseif ($report['target_type'] === 'comment') {
+                $stmt = $this->pdo->prepare("DELETE FROM comments WHERE id = ?"); // Or soft delete
+                $stmt->execute([$report['target_id']]);
+                
+                 // Notify offender
+                $offenderId = $this->getOffenderId('comment', $report['target_id']);
+                if ($offenderId) {
+                    $this->notificationService->notify(
+                        $offenderId,
+                        'system',
+                        'Content Removed',
+                        "Your comment was removed by moderation.",
+                        ['report_id' => $reportId]
+                    );
+                }
+            }
+            $status = 'resolved';
+        } elseif ($action === 'warn') {
+            // Send warning notification
+            $offenderId = $this->getOffenderId($report['target_type'], $report['target_id']);
+            if ($offenderId) {
+                $this->notificationService->notify(
+                    $offenderId,
+                    'warning',
+                    'Content Warning',
+                    "Your content (ID: #{$report['target_id']}) has been flagged for violating our community guidelines. Please review our rules.",
+                    ['report_id' => $reportId]
+                );
+            }
+            $status = 'resolved';
+        } elseif ($action === 'dismiss') {
+            $status = 'dismissed';
+        } else {
+            ApiResponse::error('Invalid action', 400);
+        }
+
+        // Update report status
+        $stmt = $this->pdo->prepare("UPDATE reports SET status = ?, resolved_at = NOW(), resolved_by = ? WHERE id = ?");
+        $stmt->execute([$status, $admin['id'], $reportId]);
+
+        $auditRepo->log($admin['id'], 'moderation', 'report', $reportId, null, ['action' => $action, 'status' => $status]);
+
+        ApiResponse::success(null, 'Report processed');
+    }
+
+    private function getOffenderId($type, $id)
+    {
+        try {
+            if ($type === 'snippet') {
+                $stmt = $this->pdo->prepare("SELECT user_id FROM snippets WHERE id = ?");
+                $stmt->execute([$id]);
+                return $stmt->fetchColumn();
+            } elseif ($type === 'comment') {
+                $stmt = $this->pdo->prepare("SELECT user_id FROM comments WHERE id = ?");
+                $stmt->execute([$id]);
+                return $stmt->fetchColumn();
+            } else {
+                // Try users table if target is user
+                 if ($type === 'user') {
+                     return $id;
+                 }
+            }
+            return null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function auditLogs($method, $params)

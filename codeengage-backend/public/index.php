@@ -14,7 +14,9 @@ header_remove('X-Powered-By');
 // Set default headers
 header('Content-Type: application/json');
 
-// Handle CORS
+// Global Middleware placeholder - moved below autoloader
+
+// Route to appropriate controller
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
     header('Access-Control-Allow-Credentials: true');
@@ -33,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Start Session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+    session_write_close(); // Close immediately to release lock for concurrency
 }
 
 // Error handling
@@ -45,7 +48,7 @@ set_error_handler(function($severity, $message, $file, $line) {
 });
 
 // Exception handler
-set_exception_handler(function($exception) {
+set_exception_handler(function($exception) use ($startTime, $requestId) {
     http_response_code(500);
     
     if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
@@ -158,7 +161,7 @@ if (strpos($path, '/api') !== 0) {
 }
 
 // API processing continues below
-$uri = str_replace('/api', '', $path);
+$uri = substr($path, 4); // Remove '/api' prefix
 $uriParts = explode('/', trim($uri, '/'));
 
 // Global Middleware
@@ -172,7 +175,7 @@ $rateLimiter->handle();
 $csrf = new \App\Middleware\CsrfMiddleware();
 $csrf->handle();
 
-// Route to appropriate controller
+// Handle CORS
 try {
     // Controller name mapping (plural to singular)
     $controllerMap = [
@@ -253,10 +256,19 @@ try {
     $controllerFile = __DIR__ . "/../app/Controllers/Api/{$controllerName}Controller.php";
     
     if (!file_exists($controllerFile)) {
+        error_log("DEBUG: Controller file not found: $controllerFile");
+        error_log("DEBUG: Controller Name: $controllerName");
+        error_log("DEBUG: URI Parts: " . json_encode($uriParts));
+        \App\Helpers\Logger::error("Controller not found", [
+            'expected_file' => $controllerFile,
+            'controller_name' => $controllerName,
+            'uri_parts' => $uriParts,
+            'real_path' => realpath(__DIR__ . "/../app/Controllers/Api")
+        ]);
         http_response_code(404);
         echo json_encode([
             'success' => false,
-            'message' => 'Controller not found'
+            'message' => 'Controller not found: ' . $controllerName
         ], JSON_THROW_ON_ERROR);
         exit;
     }

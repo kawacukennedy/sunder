@@ -86,7 +86,8 @@ class HealthController
                 $version = 'SQLite ' . $this->db->query('SELECT sqlite_version()')->fetch()[0];
             } else {
                 $versionQuery = $this->db->query('SELECT VERSION() as version');
-                $version = $versionQuery->fetch()['version'];
+                $row = $versionQuery->fetch(PDO::FETCH_ASSOC);
+                $version = $row['version'] ?? 'Unknown';
             }
 
             return [
@@ -135,7 +136,7 @@ class HealthController
         }
 
         // Check file cache
-        $cacheDir = dirname(__DIR__, 2) . '/storage/cache';
+        $cacheDir = dirname(__DIR__, 3) . '/storage/cache';
         if (is_dir($cacheDir) && is_writable($cacheDir)) {
             $checks['file_cache'] = [
                 'status' => 'healthy',
@@ -146,7 +147,7 @@ class HealthController
             $checks['file_cache'] = [
                 'status' => 'unhealthy',
                 'writable' => false,
-                'path' => $cacheDir ?? 'not found'
+                'path' => $cacheDir
             ];
         }
 
@@ -166,7 +167,7 @@ class HealthController
 
     private function checkStorage(): array
     {
-        $storageDir = dirname(__DIR__, 2) . '/storage';
+        $storageDir = dirname(__DIR__, 3) . '/storage';
         $checks = [];
 
         // Check main storage directory
@@ -289,13 +290,24 @@ class HealthController
             '/api/health'
         ];
 
+        // Skip on PHP dev server to prevent deadlock (single-threaded)
+        if (php_sapi_name() === 'cli-server') {
+            return [
+                'status' => 'healthy',
+                'endpoints' => [
+                    'message' => 'Skipped on dev server'
+                ]
+            ];
+        }
+
         $checks = [];
         $overallStatus = 'healthy';
 
         foreach ($endpoints as $endpoint) {
             try {
                 $start = microtime(true);
-                $url = 'http://localhost' . $endpoint;
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+                $url = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $host . $endpoint;
                 
                 // Use file_get_contents to test availability
                 $context = stream_context_create([

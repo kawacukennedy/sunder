@@ -309,7 +309,6 @@ export class SnippetViewer {
                  <div id="relatedContent" class="space-y-2"></div>
             </div>
 
-            <!--Comments Section-- >
             <div id="commentsSection" class="pt-4 border-t border-gray-700">
                 <label class="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Comments</label>
                 <div id="commentsList" class="space-y-3 mb-3"></div>
@@ -320,6 +319,14 @@ export class SnippetViewer {
                     </form>
                  ` : '<p class="text-xs text-gray-500">Log in to comment</p>'}
             </div>
+            ${this.app.auth.user && this.app.auth.user.id !== this.snippet.user_id ? `
+                <div class="pt-4 border-t border-gray-700">
+                    <button id="reportBtn" class="text-gray-500 hover:text-red-400 text-xs flex items-center transition-colors">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>
+                        Report Snippet
+                    </button>
+                </div>
+            ` : ''}
         `;
 
         // Versions
@@ -330,6 +337,24 @@ export class SnippetViewer {
 
         // Render code
         this.renderCode();
+    }
+
+    async reportSnippet() {
+        const type = prompt('Select report type: spam, offensive, copyright, other', 'spam');
+        if (!type) return;
+        const reason = prompt('Short reason for reporting:', '');
+        if (!reason) return;
+
+        try {
+            await this.app.apiClient.post(`/snippets/${this.snippetId}/report`, {
+                type,
+                reason,
+                details: `Reported by user from viewer`
+            });
+            this.app.showSuccess('Thank you. Significant violations will be reviewed by moderators.');
+        } catch (error) {
+            this.app.showError('Failed to submit report');
+        }
     }
 
     renderCode() {
@@ -516,7 +541,16 @@ export class SnippetViewer {
             }
         };
 
-        new vis.Network(container, data, options);
+        const network = new vis.Network(container, data, options);
+
+        network.on("click", (params) => {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                if (nodeId !== this.snippet.id) {
+                    this.app.router.navigate(`/snippet/${nodeId}`);
+                }
+            }
+        });
     }
 
     async loadComments(id) {
@@ -620,6 +654,9 @@ export class SnippetViewer {
 
         const diffBtn = document.getElementById('diffToggleBtn');
         if (diffBtn) diffBtn.addEventListener('click', () => this.toggleDiff());
+
+        const reportBtn = document.getElementById('reportBtn');
+        if (reportBtn) reportBtn.addEventListener('click', () => this.reportSnippet());
     }
 
     async toggleDiff() {

@@ -50,7 +50,7 @@ class SnippetRepository
     {
         ValidationHelper::validateRequired($data, ['title', 'language', 'author_id']);
         ValidationHelper::validateLength($data['title'], 1, 255, 'title');
-        ValidationHelper::validateLength($data['description'], 0, 1000, 'description');
+        ValidationHelper::validateLength($data['description'] ?? '', 0, 1000, 'description');
         ValidationHelper::validateEnum($data['visibility'] ?? 'public', ['public', 'private', 'organization'], 'visibility');
 
         $snippet = new Snippet($this->db);
@@ -533,6 +533,7 @@ class SnippetRepository
         $filters['author_id'] = $authorId;
         return $this->findMany($filters, $limit, $offset);
     }
+
 
     public function findStarredByUser(int $userId, int $limit = 20, int $offset = 0): array
     {

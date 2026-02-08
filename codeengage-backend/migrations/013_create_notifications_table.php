@@ -31,7 +31,11 @@ return function(PDO $pdo) {
     
     // Add index on user_id and is_read for performance
     try {
-        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)");
+        if ($driver === 'sqlite') {
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)");
+        } else {
+            $pdo->exec("CREATE INDEX idx_notifications_user_read ON notifications(user_id, is_read)");
+        }
     } catch (PDOException $e) {
         // Index might already exist
     }

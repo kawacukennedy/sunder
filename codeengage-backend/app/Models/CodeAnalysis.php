@@ -8,11 +8,48 @@ class CodeAnalysis
     private string $language;
     private array $analysis;
 
-    public function __construct(string $code, string $language)
+    private array $data;
+
+    public function __construct(string $code, string $language, array $data = [])
     {
         $this->code = $code;
         $this->language = $language;
-        $this->analysis = $this->performAnalysis();
+        $this->data = $data;
+        $this->analysis = empty($data) ? $this->performAnalysis() : $data;
+    }
+
+    public static function findById(\PDO $db, int $id): ?self
+    {
+        $stmt = $db->prepare("SELECT * FROM code_analyses WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        return $data ? self::fromData($db, $data) : null;
+    }
+
+    public static function fromData(\PDO $db, array $data): self
+    {
+        // Decode JSON fields if they are strings
+        $security = is_string($data['security_issues'] ?? null) ? json_decode($data['security_issues'], true) : ($data['security_issues'] ?? []);
+        $performance = is_string($data['performance_suggestions'] ?? null) ? json_decode($data['performance_suggestions'], true) : ($data['performance_suggestions'] ?? []);
+        $smells = is_string($data['code_smells'] ?? null) ? json_decode($data['code_smells'], true) : ($data['code_smells'] ?? []);
+        
+        $analysisData = [
+            'complexity_score' => $data['complexity_score'] ?? 0,
+            'security_issues' => $security,
+            'performance_suggestions' => $performance,
+            'code_smells' => $smells,
+            'metrics' => [
+                'lines_of_code' => 0, // Would need to be recalculated or loaded from somewhere
+                'character_count' => 0
+            ]
+        ];
+
+        // We don't have the original code here usually, unless joined. 
+        // For simplicity, we return the object with the stored analysis results.
+        $instance = new self('', '', $analysisData);
+        $instance->data = $data;
+        return $instance;
     }
 
     public function getComplexityScore(): float

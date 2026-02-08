@@ -88,9 +88,9 @@ class AnalysisRepository
             ':snippet_version_id' => $data['snippet_version_id'],
             ':analysis_type' => $data['analysis_type'],
             ':complexity_score' => $data['complexity_score'] ?? null,
-            ':security_issues' => $data['security_issues'] ?? json_encode([]),
-            ':performance_suggestions' => $data['performance_suggestions'] ?? json_encode([]),
-            ':code_smells' => $data['code_smells'] ?? json_encode([])
+            ':security_issues' => is_array($data['security_issues'] ?? null) ? json_encode($data['security_issues']) : ($data['security_issues'] ?? json_encode([])),
+            ':performance_suggestions' => is_array($data['performance_suggestions'] ?? null) ? json_encode($data['performance_suggestions']) : ($data['performance_suggestions'] ?? json_encode([])),
+            ':code_smells' => is_array($data['code_smells'] ?? null) ? json_encode($data['code_smells']) : ($data['code_smells'] ?? json_encode([]))
         ]);
 
         if (!$result) {

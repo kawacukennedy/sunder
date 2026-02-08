@@ -165,6 +165,51 @@ class CodeHelper
         return $duplicates;
     }
 
+    public static function detectLanguage(string $code): string
+    {
+        $patterns = [
+            'php' => '/<\?php|<\?|=.*session_start|public\s+function|namespace\s+/i',
+            'javascript' => '/const\s+.*=|let\s+.*=|var\s+.*=|function\s+.*\(|console\.log|document\./i',
+            'python' => '/def\s+.*\(.*\)[\s]*:|import\s+[a-z0-9_]+|from\s+[a-z0-9_]+\s+import/i',
+            'html' => '/<!DOCTYPE\s+html|<html|<body|<div/i',
+            'css' => '/[a-z0-9_\-\.#\*]+\s*\{[^}]+\}/is',
+            'sql' => '/SELECT\s+.*\s+FROM|INSERT\s+INTO|UPDATE\s+.*SET|DELETE\s+FROM/i'
+        ];
+
+        foreach ($patterns as $lang => $pattern) {
+            if (preg_match($pattern, $code)) {
+                return $lang;
+            }
+        }
+
+        return 'plain_text';
+    }
+
+    public static function extractFunctions(string $code, string $language): array
+    {
+        $functions = [];
+        $patterns = [
+            'php' => '/(public|protected|private)?\s*function\s+([a-zA-Z0-9_]+)\s*\(/i',
+            'javascript' => '/function\s+([a-zA-Z0-9_]+)\s*\(|([a-zA-Z0-9_]+)\s*=\s*\([^)]*\)\s*=>|([a-zA-Z0-9_]+)\s*:\s*function/i',
+            'python' => '/def\s+([a-zA-Z0-9_]+)\s*\(/i'
+        ];
+
+        $pattern = $patterns[$language] ?? null;
+        if ($pattern) {
+            preg_match_all($pattern, $code, $matches);
+            // Collect function names from the first capture group that isn't empty
+            foreach ($matches as $group) {
+                foreach ($group as $name) {
+                    if ($name && !in_array($name, ['public', 'protected', 'private', 'function']) && is_string($name) && !is_numeric($name)) {
+                        $functions[] = $name;
+                    }
+                }
+            }
+        }
+
+        return array_unique(array_filter($functions));
+    }
+
     public static function detectCodeSmells(string $code): array
     {
         $smells = [];

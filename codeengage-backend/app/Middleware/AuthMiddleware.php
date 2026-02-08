@@ -66,7 +66,7 @@ class AuthMiddleware
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
             $token = $matches[1];
             $config = require __DIR__ . '/../../config/auth.php';
-            $secret = $config['jwt']['secret'] ?? 'default_secret'; // Fallback
+            $secret = $config['jwt']['secret'] ?? $_ENV['JWT_SECRET'] ?? 'default-secret-change-in-production';
             
             error_log("JWT Token received: $token");
             error_log("JWT Secret from config: $secret");

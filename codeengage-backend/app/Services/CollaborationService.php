@@ -134,58 +134,73 @@ class CollaborationService
         
         // Improved Conflict Resolution
         if ($clientVersion < $currentVersion) {
-             // Conflict detected!
-             
-             if ($incomingCode !== null) {
-                 // Attempt 3-way merge
-                 // We need a base. Ideally we track history, but for now we use $currentCode as "Yours"
-                 // and try to infer "Original". Actually, without history, we can't get true Original.
-                 // But we can try to merge "Incoming" into "Current".
-                 // Let's use MergeHelper. For 'original', we really need the version the client *started* from.
-                 // But we don't have it stored. We'll use a simplified merge:
-                 // MergeHelper::merge($currentCode, $currentCode, $incomingCode) -> effectively "Apply Incoming".
-                 // That's not right.
-                 
-                 // If we don't have the base, we can't do a TRUE 3-way merge. 
-                 // But we can try to see if the changes are append-only or non-destructive.
-                 // OR we just assume the client sent the *result* of their local edit.
-                 
-                 // Let's use $currentCode as 'Original' and 'Yours' (Server) and '$incomingCode' as 'Theirs'.
-                 // Actually this is wrong.
-                 
-                 // Since we don't store history in this simple backend, we will just return the CONFLICT
-                 // but provide the server's current version so the CLIENT can do the merge.
-                 // However, the spec says "Backend Merge".
-                 // We will try our best:
-                 
-                 // Note: Ideally we'd fetch the specific version the client claims to have ($clientVersion)
-                 // but we don't store every intermediate session version in DB (performance).
-                 
-                 return [
-                     'success' => false, 
-                     'error' => 'conflict', 
-                     'current_version' => $currentVersion,
-                     'server_content' => $currentCode, // Send specific server content to help client merge
-                     'message' => 'Version mismatch. Please resolve conflict.'
-                 ];
-             } else {
+            // Conflict detected!
+            
+            if ($incomingCode !== null) {
+                // Attempt 3-way merge using stored history
+                $history = $metadata['history'] ?? [];
+                $originalCode = $history[$clientVersion] ?? null;
+                
+                if ($originalCode !== null) {
+                    $mergeResult = \App\Helpers\MergeHelper::merge($originalCode, $currentCode, $incomingCode);
+                    
+                    if ($mergeResult['success']) {
+                        // Auto-merge successful! Proceed with the merged content.
+                        $incomingCode = $mergeResult['merged'];
+                        // Don't return yet, let it fall through to successful update logic
+                    } else {
+                        // Auto-merge failed (true conflict). Return conflict data for UI resolution.
+                        return [
+                            'success' => false,
+                            'error' => 'conflict',
+                            'current_version' => $currentVersion,
+                            'original_content' => $originalCode,
+                            'server_content' => $currentCode,
+                            'client_content' => $incomingCode,
+                            'message' => 'Merge conflict detected. Manual resolution required.'
+                        ];
+                    }
+                } else {
+                    // History missing (too old or first update), fallback to mandatory client-side merge
+                    return [
+                        'success' => false, 
+                        'error' => 'conflict', 
+                        'current_version' => $currentVersion,
+                        'server_content' => $currentCode,
+                        'message' => 'Version mismatch. History expired. Please resolve conflict.'
+                    ];
+                }
+            } else {
                  return [
                     'success' => false, 
                     'error' => 'conflict', 
                     'current_version' => $currentVersion,
-                     'message' => 'Your version is out of date.'
+                    'message' => 'Your version is out of date.'
                  ];
-             }
+            }
         }
         
         // If versions match (or force update/fast-forward)
+        $nextVersion = $currentVersion + 1;
         $updateData = [
             'last_activity' => date('Y-m-d H:i:s'),
-            'version' => $currentVersion + 1
+            'version' => $nextVersion
         ];
         
         if ($incomingCode !== null) {
             $metadata['content'] = $incomingCode;
+            
+            // Update history buffer (keep last 20 snapshots)
+            $metadata['history'] = $metadata['history'] ?? [];
+            $metadata['history'][$nextVersion] = $incomingCode;
+            
+            // Prune history
+            if (count($metadata['history']) > 20) {
+                ksort($metadata['history']);
+                reset($metadata['history']);
+                $oldestKey = key($metadata['history']);
+                unset($metadata['history'][$oldestKey]);
+            }
         }
 
         $codeChange = $data['change'] ?? null;
@@ -205,7 +220,7 @@ class CollaborationService
 
         $this->collaborationRepository->update($session['id'], $updateData);
         
-        return ['success' => true, 'version' => $currentVersion + 1];
+        return ['success' => true, 'version' => $nextVersion];
     }
 
     public function pollUpdates($token, $lastVersion, $userId)

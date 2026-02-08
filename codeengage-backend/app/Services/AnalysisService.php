@@ -4,6 +4,7 @@ namespace App\Services;
 
 class AnalysisService
 {
+    private $pdo;
     private $analysisRepository;
 
     public function __construct($pdo)

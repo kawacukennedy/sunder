@@ -81,7 +81,7 @@ class AuthService
             'exp' => $currentTime + (60 * 60 * 24) // 24 hour expiration for testing
         ];
 
-        $secret = $this->config['auth']['jwt']['secret'] ?? 'default_secret'; // Fallback
+        $secret = $this->config['auth']['jwt']['secret'] ?? $_ENV['JWT_SECRET'] ?? 'default-secret-change-in-production';
         $accessToken = \App\Helpers\SecurityHelper::generateJwtToken($payload, $secret);
         
         // Refresh Token

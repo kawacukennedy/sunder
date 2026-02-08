@@ -11,6 +11,7 @@ class SnippetController extends BaseController
     private $snippetService;
     private $searchService;
     private $gamificationService;
+    private $auth;
 
     public function __construct(PDO $pdo)
     {
@@ -37,6 +38,7 @@ class SnippetController extends BaseController
             new \App\Helpers\SecurityHelper(),
             $notificationService
         );
+        $this->auth = new \App\Middleware\AuthMiddleware($pdo);
     }
     
     // ... index method ... 
@@ -100,7 +102,60 @@ class SnippetController extends BaseController
                 'action' => 'snippet_analysis'
             ], 500);
         }
-}
+    }
+
+    public function index($method, $params)
+    {
+        if ($method === 'GET') {
+            $filters = [
+                'language' => $_GET['language'] ?? null,
+                'visibility' => $_GET['visibility'] ?? 'public',
+                'search' => $_GET['search'] ?? null,
+                'author_id' => $_GET['author_id'] ?? null,
+                'organization_id' => $_GET['organization_id'] ?? null,
+                'tags' => isset($_GET['tags']) ? explode(',', $_GET['tags']) : null,
+                'order_by' => $_GET['sort'] ?? 'created_at',
+                'order' => $_GET['order'] ?? 'DESC'
+            ];
+            
+            $filters = array_filter($filters, function($v) { return !is_null($v) && $v !== ''; });
+
+            if (!empty($filters['search'])) {
+                 $page = (int)($_GET['page'] ?? 1);
+                 $limit = (int)($_GET['per_page'] ?? $_GET['limit'] ?? 20);
+                 
+                 $searchParams = [
+                     'q' => $filters['search'],
+                     'page' => $page,
+                     'limit' => $limit,
+                     'filters' => $filters,
+                     'sort' => $_GET['sort'] ?? 'relevance'
+                 ];
+                 
+                 $results = $this->searchService->search($searchParams);
+                 ApiResponse::success($results);
+                 return;
+            }
+            
+            $page = (int)($_GET['page'] ?? 1);
+            $limit = (int)($_GET['per_page'] ?? $_GET['limit'] ?? 20);
+            $offset = ($page - 1) * $limit;
+
+            $cacheKey = 'snippets_list_' . md5(json_encode($filters) . "_p{$page}_l{$limit}");
+            $snippets = \App\Helpers\CacheHelper::get($cacheKey);
+            
+            if ($snippets === null) {
+                $snippets = $this->snippetService->list($filters, $limit, $offset);
+                \App\Helpers\CacheHelper::set($cacheKey, $snippets, 60);
+            }
+            
+            ApiResponse::success($snippets);
+        } elseif ($method === 'POST') {
+            $this->create();
+        } else {
+            ApiResponse::error('Method not allowed', 405);
+        }
+    }
     
     public function show($method, $params)
     {
@@ -121,154 +176,8 @@ class SnippetController extends BaseController
 
         // Check visibility
         if ($snippet['visibility'] !== 'public') {
-            $this->ensureAuth();
-            if ($snippet['author_id'] !== $_SESSION['user_id']) {
-                ApiResponse::error('Unauthorized', 403);
-            }
-        }
-
-        // Increment view count (debounced by session)
-        $this->snippetService->incrementViewCount($id);
-
-        ApiResponse::success($snippet, 'Snippet retrieved');
-    }
-
-        // Visibility/Auth check
-        $snippet = $this->snippetService->getById($id);
-        if ($snippet['visibility'] !== 'public') {
-             $this->ensureAuth();
-             if ($snippet['author_id'] !== $_SESSION['user_id']) {
-                 ApiResponse::error('Unauthorized', 403);
-             }
-        }
-        
-        $result = $this->snippetService->analyzeSaved($id);
-        
-        // Trigger gamification
-        if (isset($_SESSION['user_id'])) {
-             $this->triggerGamification($_SESSION['user_id'], 'snippet.analyze');
-        }
-
-        ApiResponse::success($result);
-    }
-
-    // ... other methods ...
-
-    private function incrementViewCountDebounced($id)
-    {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        
-        $viewedSnippets = $_SESSION['viewed_snippets'] ?? [];
-        $lastViewed = $viewedSnippets[$id] ?? 0;
-        
-        // 1 hour debounce
-        if (time() - $lastViewed > 3600) {
-            $this->snippetService->incrementViewCount($id);
-            $viewedSnippets[$id] = time();
-            $_SESSION['viewed_snippets'] = $viewedSnippets;
-            
-            // Trigger View Gamification (actions are usually attributed to the AUTHOR of the snippet, not the viewer)
-            // But wait, 'getting_noticed' achievement is for the AUTHOR.
-            // So we need to find the author of this snippet and award them points!
-            $snippet = $this->snippetService->getById($id);
-            if ($snippet) {
-                // Award points/check achievements for the AUTHOR
-                $this->triggerGamification($snippet['author_id'], 'snippet.view');
-            }
-        }
-    }
-
-    private function triggerGamification($userId, $action, $context = [])
-    {
-        try {
-            $this->gamificationService->awardPoints($userId, $action, $context);
-        } catch (\Exception $e) {
-            // Log error but don't fail properly
-            error_log("Gamification error: " . $e->getMessage());
-        }
-    }
-
-    public function index($method, $params)
-    {
-        if ($method === 'GET') {
-            $filters = [
-                'language' => $_GET['language'] ?? null,
-                'visibility' => $_GET['visibility'] ?? 'public',
-                'search' => $_GET['search'] ?? null,
-                'author_id' => $_GET['author_id'] ?? null,
-                'organization_id' => $_GET['organization_id'] ?? null,
-                'tags' => isset($_GET['tags']) ? explode(',', $_GET['tags']) : null,
-                'order_by' => $_GET['sort'] ?? 'created_at', // snippets.js sends 'sort' param mapping to order_by
-                'order' => $_GET['order'] ?? 'DESC'
-            ];
-            
-            // Clean filters
-            $filters = array_filter($filters, function($v) { return !is_null($v) && $v !== ''; });
-
-            // If searching, use SearchService
-            if (!empty($filters['search'])) {
-                 $page = (int)($_GET['page'] ?? 1);
-                 $limit = (int)($_GET['per_page'] ?? $_GET['limit'] ?? 20);
-                 
-                 $searchParams = [
-                     'q' => $filters['search'],
-                     'page' => $page,
-                     'limit' => $limit,
-                     'filters' => $filters,
-                     'sort' => $_GET['sort'] ?? 'relevance'
-                 ];
-                 
-                 $results = $this->searchService->search($searchParams);
-                 ApiResponse::success($results);
-                 return;
-            }
-            
-            // Normal browsing (Listing)
-            $page = (int)($_GET['page'] ?? 1);
-            $limit = (int)($_GET['per_page'] ?? $_GET['limit'] ?? 20);
-            $offset = ($page - 1) * $limit;
-
-            // Generate cache key based on filters and pagination
-            $cacheKey = 'snippets_list_' . md5(json_encode($filters) . "_p{$page}_l{$limit}");
-            
-            // Try to get from cache
-            $snippets = \App\Helpers\CacheHelper::get($cacheKey);
-            
-            if ($snippets === null) {
-                $snippets = $this->snippetService->list($filters, $limit, $offset);
-                // Cache for 1 minute (short TTL for lists)
-                \App\Helpers\CacheHelper::set($cacheKey, $snippets, 60);
-            }
-            
-            ApiResponse::success($snippets);
-        } elseif ($method === 'POST') {
-            $this->create();
-        } else {
-            ApiResponse::error('Method not allowed', 405);
-        }
-    }
-
-    public function show($method, $params)
-    {
-        if ($method !== 'GET') {
-            ApiResponse::error('Method not allowed', 405);
-        }
-
-        $id = $params[0] ?? null;
-        if (!$id) {
-            ApiResponse::error('Snippet ID required', 400);
-        }
-
-        $snippet = $this->snippetService->getById($id);
-        
-        if (!$snippet) {
-            ApiResponse::error('Snippet not found', 404);
-        }
-
-        // Check visibility
-        if ($snippet['visibility'] !== 'public') {
-            $this->ensureAuth();
-            if ($snippet['author_id'] !== $_SESSION['user_id']) {
+            $user = $this->auth->handle();
+            if ($snippet['author_id'] !== $user->getId()) {
                 ApiResponse::error('Unauthorized', 403);
             }
         }
@@ -279,16 +188,55 @@ class SnippetController extends BaseController
         ApiResponse::success($snippet);
     }
 
-    public function create()
+    private function incrementViewCountDebounced($id)
     {
-        $this->ensureAuth();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $viewedSnippets = $_SESSION['viewed_snippets'] ?? [];
+        $lastViewed = $viewedSnippets[$id] ?? 0;
+        
+        if (time() - $lastViewed > 3600) {
+            $this->snippetService->incrementViewCount($id);
+            $viewedSnippets[$id] = time();
+            $_SESSION['viewed_snippets'] = $viewedSnippets;
+            
+            $snippet = $this->snippetService->getById($id);
+            if ($snippet) {
+                $this->triggerGamification($snippet['author_id'], 'snippet.view');
+            }
+        }
+    }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $result = $this->snippetService->create($input, $_SESSION['user_id']);
-        
-        $this->triggerGamification($_SESSION['user_id'], 'snippet.create');
-        
-        ApiResponse::success($result, 'Snippet created', 201);
+    private function triggerGamification($userId, $action, $context = [])
+    {
+        try {
+            $this->gamificationService->awardPoints($userId, $action, $context);
+        } catch (\Exception $e) {
+            error_log("Gamification error: " . $e->getMessage());
+        }
+    }
+
+    public function create(): void
+    {
+        try {
+            $user = $this->auth->handle();
+            if (!$user) {
+                ApiResponse::unauthorized();
+                return;
+            }
+
+            $userId = $user->getId();
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            $result = $this->snippetService->create($input, $userId);
+            
+            $this->triggerGamification($userId, 'snippet.create');
+            
+            ApiResponse::success($result, 'Snippet created', 201);
+        } catch (\Exception $e) {
+            error_log("SnippetController::create error: " . $e->getMessage());
+            ApiResponse::error('An unexpected error occurred', 500);
+        }
     }
 
     public function update($method, $params)
@@ -503,15 +451,30 @@ class SnippetController extends BaseController
     
     private function ensureAuth()
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        if (!isset($_SESSION['user_id'])) {
-            ApiResponse::error('Unauthorized', 401);
-        }
+        return $this->auth->handle();
     }
+    public function report($method, $params)
+    {
+        $user = $this->auth->handle();
+        $snippetId = $params[0] ?? null;
 
+        if ($method !== 'POST' || !$snippetId) {
+            ApiResponse::error('Invalid request', 400);
+        }
 
+        $input = json_decode(file_get_contents('php://input'), true);
+        $type = $input['type'] ?? 'spam';
+        $reason = $input['reason'] ?? '';
+        $details = $input['details'] ?? '';
 
+        $stmt = $this->pdo->prepare("
+            INSERT INTO reports (user_id, target_type, target_id, type, reason, details, status, created_at)
+            VALUES (?, 'snippet', ?, ?, ?, ?, 'pending', NOW())
+        ");
+        $stmt->execute([$user['id'], $snippetId, $type, $reason, $details]);
 
+        ApiResponse::success(null, 'Snippet reported successfully');
+    }
 
     public function __call($name, $arguments)
     {

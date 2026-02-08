@@ -367,7 +367,7 @@ class GamificationService
         ];
     }
 
-    public function getUserProgress(int $userId, array $achievementTypes = null): array
+    public function getUserProgress(int $userId, ?array $achievementTypes = null): array
     {
         if ($achievementTypes === null) {
             $achievementTypes = array_keys($this->achievementTypes);

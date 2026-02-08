@@ -537,31 +537,56 @@ $risks[] = [
      */
     private function createSecurityEventsTable(): void
     {
-        $sql = "
-            CREATE TABLE IF NOT EXISTS security_events (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                event_type VARCHAR(50) NOT NULL,
-                severity ENUM('info', 'warning', 'error', 'critical') NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                request_id VARCHAR(64),
-                client_ip VARCHAR(45),
-                user_agent TEXT,
-                user_id INT,
-                username VARCHAR(100),
-                email VARCHAR(255),
-                session_id VARCHAR(255),
-                endpoint VARCHAR(500),
-                method VARCHAR(10),
-                details JSON,
-                geo_data JSON,
-                risk_score INT DEFAULT 0,
-                INDEX idx_event_type (event_type),
-                INDEX idx_severity (severity),
-                INDEX idx_timestamp (timestamp),
-                INDEX idx_client_ip (client_ip),
-                INDEX idx_user_id (user_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        
+        if ($driver === 'sqlite') {
+            $sql = "
+                CREATE TABLE IF NOT EXISTS security_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_type VARCHAR(50) NOT NULL,
+                    severity VARCHAR(20) NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    request_id VARCHAR(64),
+                    client_ip VARCHAR(45),
+                    user_agent TEXT,
+                    user_id INT,
+                    username VARCHAR(100),
+                    email VARCHAR(255),
+                    session_id VARCHAR(255),
+                    endpoint VARCHAR(500),
+                    method VARCHAR(10),
+                    details TEXT,
+                    geo_data TEXT,
+                    risk_score INT DEFAULT 0
+                )
+            ";
+        } else {
+            $sql = "
+                CREATE TABLE IF NOT EXISTS security_events (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    event_type VARCHAR(50) NOT NULL,
+                    severity ENUM('info', 'warning', 'error', 'critical') NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    request_id VARCHAR(64),
+                    client_ip VARCHAR(45),
+                    user_agent TEXT,
+                    user_id INT,
+                    username VARCHAR(100),
+                    email VARCHAR(255),
+                    session_id VARCHAR(255),
+                    endpoint VARCHAR(500),
+                    method VARCHAR(10),
+                    details JSON,
+                    geo_data JSON,
+                    risk_score INT DEFAULT 0,
+                    INDEX idx_event_type (event_type),
+                    INDEX idx_severity (severity),
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_client_ip (client_ip),
+                    INDEX idx_user_id (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+        }
 
         $this->db->exec($sql);
     }
