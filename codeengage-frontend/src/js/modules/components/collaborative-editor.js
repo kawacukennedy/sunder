@@ -9,7 +9,9 @@ import {
     dropCursor,
     rectangularSelection,
     crosshairCursor,
-    Decoration
+    Decoration,
+    gutter,
+    GutterMarker
 } from 'https://esm.sh/@codemirror/view';
 import {
     defaultKeymap,
@@ -19,6 +21,8 @@ import {
     insertNewlineAndIndent,
     toggleComment
 } from 'https://esm.sh/@codemirror/commands';
+import { highlightSelectionMatches } from 'https://esm.sh/@codemirror/search';
+import { foldGutter } from 'https://esm.sh/@codemirror/language';
 import {
     indentOnInput,
     bracketMatching,
@@ -95,6 +99,49 @@ const monokaiTheme = EditorView.theme({
     }
 }, { dark: true });
 
+class IssueMarker extends GutterMarker {
+    constructor(type) {
+        super();
+        this.type = type;
+    }
+    toDOM() {
+        const span = document.createElement("span");
+        span.className = `cm-gutter-issue cm-issue-${this.type}`;
+        span.textContent = "●";
+        return span;
+    }
+}
+
+const setAnnotationsEffect = StateEffect.define();
+const annotationField = StateField.define({
+    create() { return { decorations: Decoration.none, markers: Decoration.none }; },
+    update(value, tr) {
+        let decorations = value.decorations.map(tr.changes);
+        let markers = value.markers.map(tr.changes);
+        for (let e of tr.effects) {
+            if (e.is(setAnnotationsEffect)) {
+                const decoList = [];
+                const markerList = [];
+                const sortedIssues = [...e.value].sort((a, b) => a.line - b.line);
+
+                for (let issue of sortedIssues) {
+                    const lineNo = Math.max(1, Math.min(issue.line, tr.state.doc.lines));
+                    const line = tr.state.doc.line(lineNo);
+                    decoList.push(Decoration.mark({
+                        class: `cm-analysis-issue cm-issue-${issue.type || 'warning'}`,
+                        attributes: { title: issue.message }
+                    }).range(line.from, line.to));
+                    markerList.push(new IssueMarker(issue.type || 'warning').range(line.from));
+                }
+                decorations = Decoration.set(decoList);
+                markers = Decoration.set(markerList);
+            }
+        }
+        return { decorations, markers };
+    },
+    provide: f => EditorView.decorations.from(f, val => val.decorations)
+});
+
 export class CollaborativeEditor {
     constructor(container, options = {}) {
         this.container = container;
@@ -170,6 +217,12 @@ export class CollaborativeEditor {
                     { key: "Mod-Enter", run: () => { this.runCode(); return true; } },
                     { key: "Mod-/", run: () => { this.toggleComment(); return true; } }
                 ]),
+                annotationField,
+                gutter({
+                    class: "cm-analysis-gutter",
+                    renderEmptyElements: false,
+                    markers: view => view.state.field(annotationField).markers
+                }),
                 this.compartments.language.of(this.getLanguageExtension(this.options.language)),
                 this.compartments.theme.of(this.getThemeExtension(this.options.theme)),
                 this.compartments.readOnly.of(EditorState.readOnly.of(this.options.readOnly || false)),
@@ -190,6 +243,15 @@ export class CollaborativeEditor {
         this.editor.dom.style.height = "100%";
         this.editor.dom.style.width = "100%";
         this.editor.dom.classList.add('premium-editor');
+    }
+
+    setAnnotations(issues) {
+        if (!this.editor) return;
+        this.currentIssues = issues;
+        this.editor.dispatch({
+            effects: setAnnotationsEffect.of(issues)
+        });
+        this.updateMinimap();
     }
 
     getLanguageExtension(lang) {
@@ -233,10 +295,22 @@ export class CollaborativeEditor {
     async pushChange(changes) {
         if (!this.isCollaborating || !this.sessionToken) return;
         try {
-            await window.app.apiClient.post(`/collaboration/sessions/${this.sessionToken}/updates`, {
+            const response = await window.app.apiClient.post(`/collaboration/sessions/${this.sessionToken}/updates`, {
                 change: JSON.stringify(changes),
+                code: this.getValue(),
                 v: this.currentVersion
             });
+
+            if (response.success) {
+                if (response.version) {
+                    this.currentVersion = response.version;
+                }
+            } else if (response.error === 'conflict') {
+                console.warn('Conflict detected during push:', response);
+                if (this.options.onConflict) {
+                    this.options.onConflict(response);
+                }
+            }
         } catch (error) {
             console.error('Push change failed:', error);
         }

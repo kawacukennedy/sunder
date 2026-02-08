@@ -133,7 +133,8 @@ export default class SnippetEditor {
             },
             onReady: (editorInstance) => {
                 this.updateCollaborationUI();
-            }
+            },
+            onConflict: (conflictData) => this.handleConflict(conflictData)
         });
     }
 
@@ -1105,7 +1106,7 @@ export default class SnippetEditor {
 
     updateTheme(theme) {
         if (this.editor) {
-            this.editor.setTheme(theme);
+            this.editor.setOption('theme', theme);
         }
         localStorage.setItem('editor_theme', theme);
     }
@@ -1129,6 +1130,79 @@ export default class SnippetEditor {
         if (this.editor) {
             this.editor.toggleMarkdownPreview();
         }
+    }
+
+    handleConflict(conflict) {
+        // Show Conflict Resolution Modal
+        // conflict contains: original_content, server_content, client_content
+        const modalHtml = `
+            <div id="conflict-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
+                <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-5xl w-full max-h-[90vh] flex flex-col">
+                    <h3 class="text-2xl font-bold text-white mb-2 flex items-center">
+                        <i class="ph ph-warning-circle text-yellow-500 mr-2"></i>
+                        Merge Conflict
+                    </h3>
+                    <p class="text-gray-400 mb-6">Another user saved changes that conflict with yours. Please choose which version to keep.</p>
+                    
+                    <div class="grid grid-cols-2 gap-6 flex-1 min-h-0 mb-6">
+                        <div class="flex flex-col">
+                            <h4 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">Server Version (Theirs)</h4>
+                            <div class="flex-1 bg-gray-900 rounded-xl border border-gray-700 p-4 overflow-auto font-mono text-sm text-gray-300 whitespace-pre">
+                                ${this.escapeHtml(conflict.server_content)}
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <h4 class="text-sm font-semibold text-blue-400 mb-2 uppercase tracking-wider">Your Version (Mine)</h4>
+                            <div class="flex-1 bg-gray-900 rounded-xl border border-blue-900 p-4 overflow-auto font-mono text-sm text-white whitespace-pre">
+                                ${this.escapeHtml(conflict.client_content)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex border-t border-gray-700 pt-6 justify-between items-center">
+                        <button onclick="window.snippetEditor.resolveConflict('manual')" class="text-gray-400 hover:text-white transition-colors">
+                            Manual Resolution
+                        </button>
+                        <div class="flex gap-3">
+                            <button onclick="window.snippetEditor.resolveConflict('theirs')" class="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors">
+                                Use Theirs
+                            </button>
+                            <button onclick="window.snippetEditor.resolveConflict('mine')" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-blue-500/20">
+                                Overwrite with Mine
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.currentConflict = conflict;
+    }
+
+    resolveConflict(resolution) {
+        const modal = document.getElementById('conflict-modal');
+        if (modal) modal.remove();
+
+        const conflict = this.currentConflict;
+        if (!conflict) return;
+
+        if (resolution === 'mine') {
+            // Force update with our content and server version (to make it fast-forward)
+            this.editor.currentVersion = conflict.current_version;
+            this.editor.pushChange([]); // Trigger push with current content
+            window.app.showSuccess('Your version was kept');
+        } else if (resolution === 'theirs') {
+            // Accept server version
+            this.editor.setValue(conflict.server_content);
+            this.editor.currentVersion = conflict.current_version;
+            window.app.showSuccess('Server version accepted');
+        } else if (resolution === 'manual') {
+            // Just let user edit and try to save again later
+            this.editor.currentVersion = conflict.current_version;
+            window.app.showInfo('You can now manually resolve and save.');
+        }
+
+        this.currentConflict = null;
     }
 
     destroy() {
