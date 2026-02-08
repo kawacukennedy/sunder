@@ -75,10 +75,17 @@ export class Auth {
             const response = await this.app.apiClient.post('/auth/register', userData);
 
             // Handle double-wrapped response: client wraps in .data, backend also wraps in .data
-            const responseData = response.data?.data || response.data;
+            let responseData = response.data?.data || response.data;
 
-            if (responseData?.token) {
-                this.setSession(responseData.token, responseData.user);
+            // Robustness: Check if token is at top level
+            if (!responseData?.access_token && response.access_token) {
+                responseData = response;
+            }
+
+            console.log('[Auth] Register response:', response, 'Parsed data:', responseData);
+
+            if (responseData?.access_token) {
+                this.setSession(responseData.access_token, responseData.user, responseData.session_id);
                 return { success: true };
             }
 
