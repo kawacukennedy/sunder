@@ -571,7 +571,7 @@ export class Admin {
      */
     async processReport(reportId, actionType) {
         try {
-            await this.app.apiClient.post(`/admin/reports/${reportId}/action`, { action: actionType });
+            await this.app.apiClient.post(`/admin/report-action/${reportId}`, { action: actionType });
             this.app.showSuccess(`Report ${actionType} successfully`);
             await this.loadAdminData();
             this.switchSection('reports');

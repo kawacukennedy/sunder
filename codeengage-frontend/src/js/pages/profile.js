@@ -159,9 +159,6 @@ export class Profile {
     /**
      * Render profile header with user info
      */
-    /**
-     * Render profile header with user info
-     */
     renderProfileHeader() {
         const user = this.data.user || {};
         const avatarUrl = user.avatar_url || this.generateDefaultAvatar(user.username);
@@ -372,7 +369,6 @@ export class Profile {
     /**
      * Render snippets tab content
      */
-    /**
     renderSnippetsTab() {
         if (!this.data.snippets.length) {
             return `
@@ -401,7 +397,7 @@ export class Profile {
      */
     renderSnippetCard(snippet) {
         return `
-            <div class="glass-panel group hover:border-gray-600 transition-all duration-300 cursor-pointer relative overflow-hidden" data-id="${snippet.id}">
+            <div class="glass-panel snippet-card group hover:border-gray-600 transition-all duration-300 cursor-pointer relative overflow-hidden" data-id="${snippet.id}">
                 <div class="absolute inset-0 bg-gradient-to-br from-neon-blue/5 to-neon-purple/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div class="p-6 relative z-10">
                     <div class="flex justify-between items-start mb-4">
@@ -647,9 +643,10 @@ export class Profile {
         // Snippet card clicks
         document.querySelectorAll('.snippet-card').forEach(card => {
             card.addEventListener('click', (e) => {
-                if (!e.target.matches('a')) {
+                // Don't trigger if clicking an actual link or button
+                if (!e.target.closest('a') && !e.target.closest('button')) {
                     const snippetId = card.dataset.id;
-                    window.location.href = `/ snippet / ${snippetId} `;
+                    this.app.router.navigate(`/snippet/${snippetId}`);
                 }
             });
         });
@@ -669,7 +666,7 @@ export class Profile {
             content.classList.add('hidden');
         });
 
-        const activeTab = document.getElementById(`${tabName} -tab`);
+        const activeTab = document.getElementById(`${tabName}-tab`);
         if (activeTab) {
             activeTab.classList.remove('hidden');
         }
