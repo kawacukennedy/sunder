@@ -24,7 +24,8 @@ import {
     MessageSquare,
     AlertCircle,
     CheckCircle2,
-    X
+    X,
+    Activity
 } from 'lucide-react';
 import { cn, fetchApi } from '@/lib/utils';
 import { useEditorStore } from '@/store/editorStore';
