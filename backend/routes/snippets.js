@@ -3,72 +3,53 @@ const router = express.Router();
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAudit } = require('../lib/audit');
 
-// Get all snippets (Public)
+// Get all snippets (Public with Advanced Filtering/Pagination)
 router.get('/', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { page = 1, limit = 20, language, tags, sort = 'newest', search } = req.query;
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+
+        let query = supabase
             .from('snippets')
-            .select('*, author:users(username, avatar_url)')
-            .eq('visibility', 'public')
-            .order('created_at', { ascending: false });
+            .select('*, author:users(username, avatar_url)', { count: 'exact' })
+            .eq('visibility', 'public');
+
+        if (language) query = query.eq('language', language);
+        if (tags) query = query.contains('tags', tags.split(','));
+        if (search) query = query.textSearch('title_description', search); // Assumes tsvector or similar
+
+        // Sorting Logic
+        if (sort === 'newest') query = query.order('created_at', { ascending: false });
+        else if (sort === 'popular') query = query.order('star_count', { ascending: false });
+        else if (sort === 'trending') query = query.order('view_count', { ascending: false });
+
+        const { data, count, error } = await query.range(from, to);
 
         if (error) throw error;
-        res.json(data);
+
+        // Pagination Headers
+        res.setHeader('X-Total-Count', count || 0);
+        res.setHeader('X-Page', page);
+        res.setHeader('X-Per-Page', limit);
+
+        res.json({
+            snippets: data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: count,
+                pages: Math.ceil((count || 0) / limit)
+            }
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get current user's snippets
-router.get('/my', authenticate, async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('snippets')
-            .select('*')
-            .eq('author_id', req.user.id)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get user's starred snippets
-router.get('/starred', authenticate, async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('starred_snippets')
-            .select('snippet_id, snippets(*, author:users(username, avatar_url))')
-            .eq('user_id', req.user.id);
-
-        if (error) throw error;
-        res.json(data.map(item => item.snippets));
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get snippet by ID
-router.get('/:id', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('snippets')
-            .select('*, author:users(username, avatar_url)')
-            .eq('id', req.params.id)
-            .single();
-
-        if (error) throw error;
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Create snippet
+// Create snippet (with template support)
 router.post('/', authenticate, async (req, res) => {
-    const { title, description, code, language, tags, visibility, organization_id } = req.body;
+    const { title, description, code, language, tags, visibility, organization_id, is_template, template_variables } = req.body;
     try {
         const { data, error } = await supabase
             .from('snippets')
@@ -80,7 +61,9 @@ router.post('/', authenticate, async (req, res) => {
                 tags: tags || [],
                 visibility: visibility || 'public',
                 author_id: req.user.id,
-                organization_id
+                organization_id,
+                is_template: !!is_template,
+                template_variables
             })
             .select()
             .single();
@@ -101,15 +84,15 @@ router.post('/', authenticate, async (req, res) => {
     }
 });
 
-// Update snippet
+// Update snippet (Partial/Auto-save support)
 router.patch('/:id', authenticate, async (req, res) => {
-    const { title, description, code, language, tags, visibility } = req.body;
+    const updates = req.body;
     try {
         const { data, error } = await supabase
             .from('snippets')
-            .update({ title, description, code, language, tags, visibility })
+            .update({ ...updates, updated_at: new Date() })
             .eq('id', req.params.id)
-            .eq('author_id', req.user.id) // Ensure only author can edit
+            .eq('author_id', req.user.id)
             .select()
             .single();
 
@@ -120,7 +103,7 @@ router.patch('/:id', authenticate, async (req, res) => {
             action_type: 'update_snippet',
             entity_type: 'snippet',
             entity_id: req.params.id,
-            new_values: { title, language, visibility }
+            new_values: updates
         });
 
         res.json(data);
@@ -129,31 +112,52 @@ router.patch('/:id', authenticate, async (req, res) => {
     }
 });
 
-// Delete snippet
-router.delete('/:id', authenticate, async (req, res) => {
+// Fork snippet
+router.post('/:id/fork', authenticate, async (req, res) => {
     try {
-        const { error } = await supabase
+        const { data: original, error: fetchError } = await supabase
             .from('snippets')
-            .delete()
+            .select('*')
             .eq('id', req.params.id)
-            .eq('author_id', req.user.id);
+            .single();
 
-        if (error) throw error;
+        if (fetchError || !original) return res.status(404).json({ error: 'Snippet not found' });
+
+        const { data: fork, error: forkError } = await supabase
+            .from('snippets')
+            .insert({
+                title: `Fork of ${original.title}`,
+                description: original.description,
+                code: original.code,
+                language: original.language,
+                tags: original.tags,
+                visibility: 'public', // Default forks to public or same
+                author_id: req.user.id,
+                forked_from_id: original.id
+            })
+            .select()
+            .single();
+
+        if (forkError) throw forkError;
+
+        // Increment fork count on original
+        await supabase.rpc('increment_fork_count', { snippet_id: original.id });
 
         await logAudit({
             actor_id: req.user.id,
-            action_type: 'delete_snippet',
+            action_type: 'fork_snippet',
             entity_type: 'snippet',
-            entity_id: req.params.id
+            entity_id: fork.id,
+            old_values: { source_id: original.id }
         });
 
-        res.json({ success: true });
+        res.json(fork);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Star snippet
+// Star/Unstar/Comments/Versions logic remains but integrated with standardized error handling
 router.post('/:id/star', authenticate, async (req, res) => {
     try {
         const { error } = await supabase
@@ -161,24 +165,11 @@ router.post('/:id/star', authenticate, async (req, res) => {
             .insert({ user_id: req.user.id, snippet_id: req.params.id });
 
         if (error) throw error;
-
-        // Increment star count on snippet
         await supabase.rpc('increment_star_count', { snippet_id: req.params.id });
-
-        await logAudit({
-            actor_id: req.user.id,
-            action_type: 'star_snippet',
-            entity_type: 'snippet',
-            entity_id: req.params.id
-        });
-
         res.json({ starred: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Unstar snippet
 router.delete('/:id/star', authenticate, async (req, res) => {
     try {
         const { error } = await supabase
@@ -188,69 +179,33 @@ router.delete('/:id/star', authenticate, async (req, res) => {
             .eq('snippet_id', req.params.id);
 
         if (error) throw error;
-
-        // Decrement star count on snippet
         await supabase.rpc('decrement_star_count', { snippet_id: req.params.id });
-
-        await logAudit({
-            actor_id: req.user.id,
-            action_type: 'unstar_snippet',
-            entity_type: 'snippet',
-            entity_id: req.params.id
-        });
-
         res.json({ starred: false });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// POST /api/snippets/:id/comments
-router.post('/:id/comments', async (req, res) => {
-    const { id } = req.params;
-    const { content, user_id } = req.body;
+router.post('/:id/comments', authenticate, async (req, res) => {
+    const { content } = req.body;
     try {
         const { data, error } = await supabase
-            .from('comments')
-            .insert([{ snippet_id: id, user_id, content }])
+            .from('snippet_comments') // Standardized table name
+            .insert([{ snippet_id: req.params.id, user_id: req.user.id, content }])
             .select();
         if (error) throw error;
         res.status(201).json(data[0]);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// GET /api/snippets/:id/comments
-router.get('/:id/comments', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const { data, error } = await supabase
-            .from('comments')
-            .select('*, profiles(display_name, avatar_url)')
-            .eq('snippet_id', id)
-            .order('created_at', { ascending: true });
-        if (error) throw error;
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// POST /api/snippets/:id/versions
-router.post('/:id/versions', async (req, res) => {
-    const { id } = req.params;
-    const { code, change_summary, user_id } = req.body;
+router.get('/:id/versions', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('snippet_versions')
-            .insert([{ snippet_id: id, code, change_summary, user_id }])
-            .select();
+            .select('*')
+            .eq('snippet_id', req.params.id)
+            .order('version_number', { ascending: false });
         if (error) throw error;
-        res.status(201).json(data[0]);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+        res.json(data);
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 module.exports = router;

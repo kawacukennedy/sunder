@@ -229,3 +229,40 @@ CREATE TABLE content_flags (
     resolved_at timestamptz,
     created_at timestamptz DEFAULT NOW()
 );
+
+-- Learning Paths
+CREATE TABLE learning_paths (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    title varchar(255) NOT NULL,
+    description text,
+    category varchar(100),
+    difficulty varchar(20) CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+    estimated_duration_minutes integer,
+    thumbnail_url text,
+    modules jsonb DEFAULT '[]', -- List of lessons/challenges
+    created_at timestamptz DEFAULT NOW()
+);
+
+-- User Learning Progress (Enrollments)
+CREATE TABLE user_learning_progress (
+    user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    path_id uuid REFERENCES learning_paths(id) ON DELETE CASCADE,
+    progress_percent integer DEFAULT 0,
+    completed_modules jsonb DEFAULT '[]',
+    last_accessed_at timestamptz DEFAULT NOW(),
+    completed_at timestamptz,
+    PRIMARY KEY (user_id, path_id)
+);
+
+-- User Followers (Social)
+CREATE TABLE user_followers (
+    follower_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    following_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz DEFAULT NOW(),
+    PRIMARY KEY (follower_id, following_id)
+);
+
+-- Advanced Search Indexes
+CREATE INDEX idx_snippets_full_text ON snippets USING GIN (to_tsvector('english', title || ' ' || description));
+CREATE INDEX idx_snippets_denormalized_stats ON snippets (star_count DESC, view_count DESC, created_at DESC);
+CREATE INDEX idx_users_social_streak ON users (coding_streak DESC, last_active_at DESC);
