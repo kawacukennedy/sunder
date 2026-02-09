@@ -36,22 +36,22 @@ export const useEditorStore = create<EditorState>((set) => ({
         right: true,
         bottom: false,
     },
-    updateCode: (code) => set((state) => ({
+    updateCode: (code: string) => set((state) => ({
         currentSnippet: { ...state.currentSnippet, code },
         isDirty: true
     })),
-    updateTitle: (title) => set((state) => ({
+    updateTitle: (title: string) => set((state) => ({
         currentSnippet: { ...state.currentSnippet, title },
         isDirty: true
     })),
-    updateLanguage: (language) => set((state) => ({
+    updateLanguage: (language: string) => set((state) => ({
         currentSnippet: { ...state.currentSnippet, language },
         isDirty: true
     })),
-    togglePane: (pane) => set((state) => ({
+    togglePane: (pane: 'left' | 'right' | 'bottom') => set((state) => ({
         panes: { ...state.panes, [pane]: !state.panes[pane] }
     })),
-    setSnippet: (snippet) => set({ currentSnippet: snippet, isDirty: false }),
+    setSnippet: (snippet: any) => set({ currentSnippet: snippet, isDirty: false }),
     resetEditor: () => set({
         currentSnippet: {
             id: null,

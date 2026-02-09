@@ -8,6 +8,8 @@ interface AuthState {
     error: string | null;
     setUser: (user: any) => void;
     setToken: (token: string | null) => void;
+    login: (credentials: Record<string, any>) => Promise<void>;
+    register: (userData: Record<string, any>) => Promise<void>;
     logout: () => void;
 }
 
@@ -22,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
             setUser: (user) => set({ user }),
             setToken: (token) => set({ token }),
-            login: async (credentials) => {
+            login: async (credentials: Record<string, any>) => {
                 set({ isLoading: true, error: null });
                 try {
                     const response = await fetch(`${API_URL}/auth/login`, {
@@ -37,7 +39,7 @@ export const useAuthStore = create<AuthState>()(
                     set({ error: error.message, isLoading: false });
                 }
             },
-            register: async (userData) => {
+            register: async (userData: Record<string, any>) => {
                 set({ isLoading: true, error: null });
                 try {
                     const response = await fetch(`${API_URL}/auth/register`, {

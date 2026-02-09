@@ -24,14 +24,14 @@ export const useCollaborationStore = create<CollaborationState>((set) => ({
     chatMessages: [],
     isRecording: false,
     recordingUrl: null,
-    setSession: (token) => set({ activeSession: token }),
-    setParticipants: (participants) => set({ participants }),
-    updateCursor: (userId, position) => set((state) => ({
+    setSession: (token: string | null) => set({ activeSession: token }),
+    setParticipants: (participants: any[]) => set({ participants }),
+    updateCursor: (userId: string, position: any) => set((state) => ({
         cursorPositions: { ...state.cursorPositions, [userId]: position }
     })),
-    setConnectionStatus: (status) => set({ connectionStatus: status }),
-    addChatMessage: (message) => set((state) => ({
+    setConnectionStatus: (status: 'connecting' | 'connected' | 'disconnected') => set({ connectionStatus: status }),
+    addChatMessage: (message: any) => set((state) => ({
         chatMessages: [...state.chatMessages, { ...message, timestamp: new Date() }]
     })),
-    setRecording: (isRecording, url = null) => set({ isRecording, recordingUrl: url }),
+    setRecording: (isRecording: boolean, url: string | null = null) => set({ isRecording, recordingUrl: url }),
 }));

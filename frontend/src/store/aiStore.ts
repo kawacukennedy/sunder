@@ -27,13 +27,13 @@ export const useAIStore = create<AIState>((set) => ({
     suggestions: [],
     personality: 'helpful',
     usageStats: { tokensUsed: 0, costToday: 0 },
-    addMessage: (role, content) => set((state) => ({
+    addMessage: (role: string, content: string) => set((state) => ({
         history: [...state.history, { role, content }]
     })),
-    setProcessing: (isProcessing) => set({ isProcessing }),
-    setSuggestions: (suggestions) => set({ suggestions }),
-    setPersonality: (personality) => set({ personality }),
-    updateUsageStats: (tokens) => set((state) => ({
+    setProcessing: (isProcessing: boolean) => set({ isProcessing }),
+    setSuggestions: (suggestions: any[]) => set({ suggestions }),
+    setPersonality: (personality: 'helpful' | 'critical' | 'concise' | 'educational') => set({ personality }),
+    updateUsageStats: (tokens: number) => set((state) => ({
         usageStats: {
             tokensUsed: state.usageStats.tokensUsed + tokens,
             costToday: state.usageStats.costToday + (tokens * 0.000001) // Simplified cost

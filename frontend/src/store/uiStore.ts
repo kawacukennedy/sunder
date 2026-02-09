@@ -32,13 +32,13 @@ export const useUIStore = create<UIState>((set) => ({
     loadingOverlay: false,
     toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-    addNotification: (notification) => set((state) => ({
+    addNotification: (notification: any) => set((state) => ({
         notifications: [...state.notifications, notification]
     })),
-    openModal: (name, props = {}) => set({ modals: { active: name, props } }),
+    openModal: (name: string, props: any = {}) => set({ modals: { active: name, props } }),
     closeModal: () => set({ modals: { active: null, props: {} } }),
-    addToast: (toast) => set((state) => ({ toasts: [...state.toasts, { ...toast, id: Date.now() }] })),
-    removeToast: (id) => set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) })),
+    addToast: (toast: any) => set((state) => ({ toasts: [...state.toasts, { ...toast, id: Date.now() }] })),
+    removeToast: (id: string | number) => set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) })),
     toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
     setLoading: (isLoading) => set({ loadingOverlay: isLoading }),
 }));
