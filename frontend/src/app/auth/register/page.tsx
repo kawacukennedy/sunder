@@ -63,24 +63,24 @@ export default function Register() {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
             {/* Background Orbs */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4" />
             <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-600/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4" />
 
             <div className="w-full max-w-xl relative z-10">
-                <div className="text-center mb-10">
+                <div className="text-center mb-6">
                     <Link href="/" className="inline-block mb-6">
-                        <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-2xl shadow-white/10">
+                        <div className="w-10 h-10 bg-white rounded-[15px] flex items-center justify-center shadow-2xl shadow-white/10">
                             <Terminal className="text-slate-950" size={24} />
                         </div>
                     </Link>
-                    <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Create Account</h1>
-                    <p className="text-slate-500 mt-2">Step {step} of 3: {steps[step - 1].title}</p>
+                    <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Create Account</h1>
+                    <p className="text-slate-500 mt-1 text-xs">Step {step} of 3: {steps[step - 1].title}</p>
                 </div>
 
                 {/* Progress Stepper */}
-                <div className="flex items-center justify-between mb-12 px-8 relative">
+                <div className="flex items-center justify-between mb-8 px-8 relative">
                     <div className="absolute top-1/2 left-0 w-full h-px bg-white/5 -translate-y-1/2" />
                     {steps.map((s) => (
                         <div key={s.id} className="relative z-10">
@@ -94,7 +94,7 @@ export default function Register() {
                     ))}
                 </div>
 
-                <div className="glass p-10 rounded-[40px] border border-white/5 shadow-2xl space-y-8">
+                <div className="glass p-6 md:p-8 rounded-[32px] border border-white/5 shadow-2xl space-y-6">
                     {step === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                             <div className="space-y-4">
@@ -104,7 +104,7 @@ export default function Register() {
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                         <input
                                             type="text"
-                                            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
+                                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
                                             placeholder="Your unique handle"
                                             value={formData.username}
                                             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -117,7 +117,7 @@ export default function Register() {
                                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                         <input
                                             type="email"
-                                            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
+                                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
                                             placeholder="you@example.com"
                                             value={formData.email}
                                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -130,7 +130,7 @@ export default function Register() {
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                         <input
                                             type="password"
-                                            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
+                                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
                                             placeholder="••••••••"
                                             value={formData.password}
                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -148,7 +148,7 @@ export default function Register() {
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Display Name</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
+                                        className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-6 text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono text-sm"
                                         placeholder="Publicly visible name"
                                         value={formData.displayName}
                                         onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
@@ -162,7 +162,7 @@ export default function Register() {
                                                 key={mode}
                                                 onClick={() => setFormData({ ...formData, aiModel: mode.toLowerCase() })}
                                                 className={cn(
-                                                    "py-4 rounded-2xl border transition-all text-sm font-bold",
+                                                    "py-3 rounded-xl border transition-all text-sm font-bold",
                                                     formData.aiModel === mode.toLowerCase() ? "bg-violet-600/20 border-violet-500/50 text-white" : "bg-slate-900/50 border-white/5 text-slate-500"
                                                 )}
                                             >
@@ -177,8 +177,8 @@ export default function Register() {
 
                     {step === 3 && (
                         <div className="text-center py-6 space-y-6 animate-in fade-in zoom-in-95 duration-700">
-                            <div className="w-20 h-20 bg-emerald-600/20 rounded-[30px] flex items-center justify-center mx-auto mb-8 border border-emerald-500/20">
-                                <ShieldCheck className="text-emerald-400" size={40} />
+                            <div className="w-16 h-16 bg-emerald-600/20 rounded-[24px] flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                                <ShieldCheck className="text-emerald-400" size={32} />
                             </div>
                             <h2 className="text-2xl font-bold text-white tracking-tight">Check your email</h2>
                             <p className="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto">
@@ -198,7 +198,7 @@ export default function Register() {
                         {step > 1 && (
                             <button
                                 onClick={prevStep}
-                                className="px-8 py-5 border border-white/10 text-slate-400 hover:text-white font-bold rounded-2xl hover:bg-white/5 transition-all text-sm uppercase tracking-widest flex items-center gap-2"
+                                className="px-6 py-4 border border-white/10 text-slate-400 hover:text-white font-bold rounded-xl hover:bg-white/5 transition-all text-sm uppercase tracking-widest flex items-center gap-2"
                             >
                                 <ChevronLeft size={18} /> Back
                             </button>
@@ -206,7 +206,7 @@ export default function Register() {
                         <button
                             disabled={isLoading}
                             onClick={step === 3 ? handleRegister : nextStep}
-                            className="flex-1 py-5 bg-white text-slate-950 font-black rounded-2xl hover:bg-slate-200 transition-all shadow-xl shadow-white/10 uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="flex-1 py-4 bg-white text-slate-950 font-black rounded-xl hover:bg-slate-200 transition-all shadow-xl shadow-white/10 uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isLoading ? 'Processing...' : (step === 3 ? 'Complete Setup' : 'Continue')} <ChevronRight size={18} />
                         </button>
@@ -214,7 +214,7 @@ export default function Register() {
                     {error && <p className="text-center text-red-400 text-xs font-bold uppercase tracking-tight">{error}</p>}
                 </div>
 
-                <p className="text-center mt-10 text-slate-500 text-sm">
+                <p className="text-center mt-6 text-slate-500 text-sm">
                     Already have an account? <Link href="/auth/login" className="text-white font-bold hover:underline">Sign In</Link>
                 </p>
             </div>
