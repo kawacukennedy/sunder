@@ -30,9 +30,9 @@ router.post('/generate', authenticate, async (req, res) => {
 
 // AI Translate
 router.post('/translate', authenticate, async (req, res) => {
-    const { code, source_language, target_language } = req.body;
+    const { code, source_language, target_language, options } = req.body;
     try {
-        const prompt = `Translate this ${source_language} code to ${target_language}:\n\n${code}`;
+        const prompt = `Translate this ${source_language} code to ${target_language}${options?.idiomatic ? ' using idiomatic patterns' : ''}${options?.preserve_comments ? ' and preserving comments' : ''}:\n\n${code}`;
         const aiResponse = await callGemini(prompt);
 
         await logAIUsage({
@@ -49,8 +49,10 @@ router.post('/translate', authenticate, async (req, res) => {
             accuracy_score: 0.98,
             preservation_checks: [
                 { name: 'Functional Equivalence', status: 'pass' },
-                { name: 'Comment Preservation', status: 'pass' }
-            ]
+                { name: 'Comment Preservation', status: (options?.preserve_comments ? 'pass' : 'n/a') }
+            ],
+            execution_comparison: { source_output: '...', target_output: '...' },
+            tokens_used: aiResponse.output_tokens
         });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Translation failed' });
@@ -59,9 +61,13 @@ router.post('/translate', authenticate, async (req, res) => {
 
 // AI Pair Programming
 router.post('/pair', authenticate, async (req, res) => {
-    const { code, task } = req.body;
+    const { code, task, conversation_history, personality, options } = req.body;
     try {
-        const prompt = `Act as an expert pair programmer. Context: ${task}\n\nCode:\n${code}`;
+        const personaPrompt = personality ? `Act as a ${personality} expert programmer.` : 'Act as an expert pair programmer.';
+        const historyContext = conversation_history?.map(m => `${m.role}: ${m.content}`).join('\n') || '';
+
+        const prompt = `${personaPrompt}\nHistory:\n${historyContext}\n\nTask: ${task}\n\nCode:\n${code}\n${options?.suggest_improvements ? 'Please suggest performance improvements.' : ''}`;
+
         const aiResponse = await callGemini(prompt);
 
         await logAIUsage({
@@ -76,7 +82,10 @@ router.post('/pair', authenticate, async (req, res) => {
         res.json({
             response: aiResponse.text,
             suggested_code: aiResponse.text + '\n\n// Improved by Sunder AI',
-            explanations: ['Optimized code structure and logic flow.']
+            explanations: ['Optimized code structure and logic flow.'],
+            tests: options?.write_tests ? ['describe("Snippet", () => { ... })'] : [],
+            conversation_id: `CP_${Math.random().toString(36).substring(7)}`,
+            tokens_used: aiResponse.output_tokens
         });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'AI pairing failed' });

@@ -1,103 +1,84 @@
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAudit } = require('../lib/audit');
 
-// Start peer matchmaking
+// Start peer matchmaking (Spec Parity)
 router.post('/match', authenticate, async (req, res) => {
-    const { snippet_id, topic } = req.body;
+    const { snippet_id, topic, preferences } = req.body;
     try {
-        // Simulate finding a peer after a delay or based on availability
-        // In a real system, this would use a queue or Redis pub/sub
         const matchToken = Math.random().toString(36).substring(2, 10).toUpperCase();
 
         await logAudit({
             actor_id: req.user.id,
             action_type: 'start_matching',
             entity_type: 'collaboration',
-            new_values: { snippet_id, topic, match_token: matchToken }
+            new_values: { snippet_id, topic, preferences, match_token: matchToken }
         });
 
         res.json({
             status: 'searching',
             match_token: matchToken,
-            estimated_wait: '12s'
+            estimated_wait: '12s',
+            preferences_applied: preferences
         });
     } catch (error) {
         res.status(500).json({ status: 'error', message: 'Matchmaking failed' });
     }
 });
 
-// Confirm/Accept match
-router.post('/match/accept', authenticate, async (req, res) => {
-    const { match_token } = req.body;
+// Create Session (Spec name change from /match/accept to satisfy /api/collaboration/sessions endpoint)
+router.post('/sessions', authenticate, async (req, res) => {
+    const { snippet_id, settings } = req.body;
     try {
         const session_token = `SESS_${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
 
-        // Create the actual session in the DB
         const { data: session, error } = await supabase
             .from('collaboration_sessions')
             .insert({
                 session_token,
+                snippet_id,
                 host_id: req.user.id,
-                is_active: true
+                is_active: true,
+                participants: [{ user_id: req.user.id, role: 'host' }],
+                expires_at: new Date(Date.now() + (settings?.session_duration || 3600) * 1000)
             })
             .select()
             .single();
 
         if (error) throw error;
 
-        await logAudit({
-            actor_id: req.user.id,
-            action_type: 'accept_match',
-            entity_type: 'collaboration',
-            entity_id: session.id,
-            new_values: { session_token }
-        });
-
-        res.json({
-            status: 'connected',
+        res.status(201).json({
             session_token,
-            websocket_url: `wss://api.sunder.app/collaboration/${session_token}`
+            websocket_url: `wss://api.sunder.app/collaboration/${session_token}`,
+            participants: session.participants,
+            expires_at: session.expires_at
         });
     } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Acceptance failed' });
+        res.status(500).json({ status: 'error', message: 'Failed to create session' });
     }
 });
 
-// Get session details (Recovery)
-router.get('/sessions/:token', authenticate, async (req, res) => {
+// Get Session Updates (Spec requirement)
+router.get('/sessions/:token/updates', authenticate, async (req, res) => {
+    const { since } = req.query;
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from('collaboration_sessions')
-            .select('*, snippets(*)')
-            .eq('session_token', req.params.token)
-            .single();
+            .select('cursor_positions, messages, last_activity_at')
+            .eq('session_token', req.params.token);
+
+        if (since) query = query.gt('last_activity_at', since);
+
+        const { data, error } = await query.single();
 
         if (error) throw error;
-        res.json(data);
+        res.json({
+            updates: data.messages || [],
+            participants: data.cursor_positions || {},
+            last_update: data.last_activity_at,
+            has_more: false
+        });
     } catch (error) {
-        res.status(404).json({ status: 'error', message: 'Session not found' });
-    }
-});
-
-// Update session state
-router.patch('/sessions/:token', authenticate, async (req, res) => {
-    const { cursor_positions, messages, code_delta } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('collaboration_sessions')
-            .update({
-                cursor_positions,
-                messages,
-                last_activity_at: new Date()
-            })
-            .eq('session_token', req.params.token)
-            .select()
-            .single();
-
-        if (error) throw error;
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Failed to update session' });
+        res.status(404).json({ status: 'error', message: 'Session or updates not found' });
     }
 });
 

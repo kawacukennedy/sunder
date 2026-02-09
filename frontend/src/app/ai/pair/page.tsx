@@ -21,7 +21,8 @@ import {
     Command,
     Workflow,
     Layers,
-    Activity
+    Activity,
+    ArrowUpRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
