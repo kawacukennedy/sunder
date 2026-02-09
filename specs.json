@@ -1,1012 +1,3983 @@
 {
-  "project_name": "CodeEngage",
-  "description": "A production-ready, developer-focused web application for saving, sharing, and discovering code snippets with advanced collaboration, code analysis, and productivity features. Built with PHP, MySQL, HTML, and Tailwind CSS. Optimized for free-tier hosting with separate frontend and backend architecture for easy deployment.",
-  "system_overview": {
-    "architecture_type": "Decoupled Monolith with Separate Frontend/Backend",
-    "communication": "RESTful JSON API between frontend and backend",
-    "deployment_options": [
-      "Single-server (traditional)",
-      "Separate servers (frontend on Cloudflare Pages/CDN, backend on InfinityFree)",
-      "Hybrid (frontend on Netlify/Vercel, backend on shared hosting)"
+  "project_overview": {
+    "application_name": "Sunder",
+    "core_purpose": "An AI-powered collaborative platform for saving, sharing, discovering, and transforming code snippets with advanced intelligence, real-time collaboration, and developer productivity features.",
+    "target_audience": [
+      "Professional software developers",
+      "Computer science students",
+      "Coding bootcamp participants",
+      "Open-source contributors",
+      "Tech educators and mentors",
+      "Programming enthusiasts",
+      "Technical recruiters"
     ],
-    "key_innovations": [
-      "Real-time collaboration without WebSockets (HTTP Long Polling)",
-      "Intelligent code analysis (Cyclomatic complexity, Security scanning)",
-      "Developer productivity suite (Command Palette, CodeMirror 6)",
-      "Gamification and learning features (Badges, Leaderboards)",
-      "All features work on free-tier hosting"
-    ]
+    "unique_value_proposition": "Sunder combines AI-paired programming, real-time collaborative editing, code translation across languages, and automated educational content generation into a unified platform that learns from your coding style and makes every developer more productive."
   },
-  "directory_structure": {
-    "frontend_root": "/codeengage-frontend",
-    "backend_root": "/codeengage-backend",
-    "complete_structure": {
-      "frontend": {
-        "public": [
-          "index.html",
-          "favicon.ico",
-          "manifest.json",
-          "robots.txt",
-          ".htaccess"
-        ],
-        "src": {
-          "css": [
-            "main.css",
-            "syntax-highlighting.css",
-            "animations.css"
+  "technical_architecture": {
+    "frontend": {
+      "framework": {
+        "primary": "Next.js 14 (App Router)",
+        "rationale": "Server-side rendering for better SEO, built-in API routes, excellent TypeScript support, and optimal performance with React Server Components."
+      },
+      "state_management": {
+        "pattern": "Hybrid (Server State + Client State)",
+        "library": "Zustand for client state, React Query for server state",
+        "configuration_details": {
+          "zustand": {
+            "stores": [
+              "authStore",
+              "uiStore",
+              "editorStore",
+              "collaborationStore",
+              "aiStore"
+            ],
+            "middleware": [
+              "persist",
+              "immer"
+            ],
+            "devtools": true
+          },
+          "react_query": {
+            "version": "5.0.0",
+            "defaultOptions": {
+              "staleTime": 30000,
+              "cacheTime": 600000,
+              "retry": 2,
+              "refetchOnWindowFocus": false
+            }
+          }
+        }
+      },
+      "navigation": {
+        "library": "Next.js Navigation",
+        "structure": {
+          "root": "/",
+          "auth": {
+            "login": "/auth/login",
+            "register": "/auth/register",
+            "forgot-password": "/auth/forgot-password",
+            "reset-password": "/auth/reset-password"
+          },
+          "dashboard": {
+            "home": "/dashboard",
+            "overview": "/dashboard/overview",
+            "activity": "/dashboard/activity",
+            "achievements": "/dashboard/achievements"
+          },
+          "snippets": {
+            "explore": "/snippets",
+            "create": "/snippets/create",
+            "edit": "/snippets/[id]/edit",
+            "view": "/snippets/[id]",
+            "my": "/snippets/my",
+            "starred": "/snippets/starred"
+          },
+          "collaboration": {
+            "sessions": "/collaboration/sessions",
+            "session": "/collaboration/sessions/[sessionToken]",
+            "reviews": "/collaboration/reviews",
+            "review_match": "/collaboration/reviews/match"
+          },
+          "ai": {
+            "translate": "/ai/translate",
+            "explain": "/ai/explain",
+            "pair": "/ai/pair",
+            "generate": "/ai/generate"
+          },
+          "profile": {
+            "view": "/profile/[username]",
+            "edit": "/profile/edit",
+            "settings": "/profile/settings",
+            "api_keys": "/profile/api-keys"
+          },
+          "organizations": {
+            "list": "/organizations",
+            "create": "/organizations/create",
+            "view": "/organizations/[slug]",
+            "settings": "/organizations/[slug]/settings"
+          },
+          "learning": {
+            "paths": "/learning/paths",
+            "courses": "/learning/courses",
+            "challenges": "/learning/challenges",
+            "leaderboard": "/learning/leaderboard"
+          },
+          "admin": {
+            "dashboard": "/admin",
+            "users": "/admin/users",
+            "snippets": "/admin/snippets",
+            "moderation": "/admin/moderation",
+            "audit": "/admin/audit",
+            "system": "/admin/system",
+            "ai": "/admin/ai"
+          }
+        }
+      },
+      "styling_system": {
+        "methodology": "Tailwind CSS with CSS Modules for component-specific styles",
+        "theme_engine": "Custom theme provider with CSS variables",
+        "design_tokens": {
+          "colors": {
+            "primary": {
+              "50": "#f5f3ff",
+              "100": "#ede9fe",
+              "200": "#ddd6fe",
+              "300": "#c4b5fd",
+              "400": "#a78bfa",
+              "500": "#8b5cf6",
+              "600": "#7c3aed",
+              "700": "#6d28d9",
+              "800": "#5b21b6",
+              "900": "#4c1d95",
+              "950": "#2e1065"
+            },
+            "secondary": {
+              "50": "#f0f9ff",
+              "100": "#e0f2fe",
+              "200": "#bae6fd",
+              "300": "#7dd3fc",
+              "400": "#38bdf8",
+              "500": "#0ea5e9",
+              "600": "#0284c7",
+              "700": "#0369a1",
+              "800": "#075985",
+              "900": "#0c4a6e",
+              "950": "#082f49"
+            },
+            "success": {
+              "50": "#f0fdf4",
+              "100": "#dcfce7",
+              "200": "#bbf7d0",
+              "300": "#86efac",
+              "400": "#4ade80",
+              "500": "#22c55e",
+              "600": "#16a34a",
+              "700": "#15803d",
+              "800": "#166534",
+              "900": "#14532d",
+              "950": "#052e16"
+            },
+            "warning": {
+              "50": "#fffbeb",
+              "100": "#fef3c7",
+              "200": "#fde68a",
+              "300": "#fcd34d",
+              "400": "#fbbf24",
+              "500": "#f59e0b",
+              "600": "#d97706",
+              "700": "#b45309",
+              "800": "#92400e",
+              "900": "#78350f",
+              "950": "#451a03"
+            },
+            "error": {
+              "50": "#fef2f2",
+              "100": "#fee2e2",
+              "200": "#fecaca",
+              "300": "#fca5a5",
+              "400": "#f87171",
+              "500": "#ef4444",
+              "600": "#dc2626",
+              "700": "#b91c1c",
+              "800": "#991b1b",
+              "900": "#7f1d1d",
+              "950": "#450a0a"
+            },
+            "gray": {
+              "50": "#f9fafb",
+              "100": "#f3f4f6",
+              "200": "#e5e7eb",
+              "300": "#d1d5db",
+              "400": "#9ca3af",
+              "500": "#6b7280",
+              "600": "#4b5563",
+              "700": "#374151",
+              "800": "#1f2937",
+              "900": "#111827",
+              "950": "#030712"
+            },
+            "background": {
+              "light": "#ffffff",
+              "dark": "#0f172a"
+            },
+            "surface": {
+              "light": "#f8fafc",
+              "dark": "#1e293b"
+            }
+          },
+          "typography": {
+            "font_families": {
+              "sans": "Inter, system-ui, -apple-system, sans-serif",
+              "mono": "JetBrains Mono, SF Mono, Monaco, Consolas, monospace"
+            },
+            "font_sizes": {
+              "xs": "0.75rem",
+              "sm": "0.875rem",
+              "base": "1rem",
+              "lg": "1.125rem",
+              "xl": "1.25rem",
+              "2xl": "1.5rem",
+              "3xl": "1.875rem",
+              "4xl": "2.25rem",
+              "5xl": "3rem",
+              "6xl": "3.75rem"
+            },
+            "font_weights": {
+              "light": "300",
+              "normal": "400",
+              "medium": "500",
+              "semibold": "600",
+              "bold": "700",
+              "extrabold": "800"
+            },
+            "line_heights": {
+              "tight": "1.25",
+              "snug": "1.375",
+              "normal": "1.5",
+              "relaxed": "1.625",
+              "loose": "2"
+            }
+          },
+          "spacing": {
+            "0": "0",
+            "1": "0.25rem",
+            "2": "0.5rem",
+            "3": "0.75rem",
+            "4": "1rem",
+            "5": "1.25rem",
+            "6": "1.5rem",
+            "8": "2rem",
+            "10": "2.5rem",
+            "12": "3rem",
+            "16": "4rem",
+            "20": "5rem",
+            "24": "6rem",
+            "32": "8rem",
+            "40": "10rem",
+            "48": "12rem",
+            "56": "14rem",
+            "64": "16rem"
+          },
+          "border_radius": {
+            "none": "0",
+            "sm": "0.125rem",
+            "default": "0.25rem",
+            "md": "0.375rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "3xl": "1.5rem",
+            "full": "9999px"
+          },
+          "shadows": {
+            "sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+            "default": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+            "md": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+            "lg": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+            "xl": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+            "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+            "inner": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+            "glow": "0 0 20px rgba(139, 92, 246, 0.3)"
+          }
+        }
+      }
+    },
+    "backend": {
+      "runtime": {
+        "primary": "Node.js",
+        "version": "18.17.0"
+      },
+      "framework": {
+        "primary": "Express.js",
+        "version": "4.18.2"
+      },
+      "api_gateway": {
+        "service": "Custom Express middleware",
+        "configuration": {
+          "rate_limiting": {
+            "windowMs": 15 * 60 * 1000,
+            "max": 100,
+            "standardHeaders": true,
+            "legacyHeaders": false
+          },
+          "cors": {
+            "origin": [
+              "http://localhost:3000",
+              "https://sunder.app"
+            ],
+            "methods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization"
+            ],
+            "exposedHeaders": [
+              "X-Total-Count",
+              "X-Page",
+              "X-Per-Page"
+            ],
+            "credentials": true,
+            "maxAge": 86400
+          },
+          "compression": {
+            "level": 6,
+            "threshold": "1kb"
+          },
+          "helmet": {
+            "contentSecurityPolicy": {
+              "directives": {
+                "defaultSrc": [
+                  "'self'"
+                ],
+                "scriptSrc": [
+                  "'self'",
+                  "'unsafe-inline'",
+                  "'unsafe-eval'"
+                ],
+                "styleSrc": [
+                  "'self'",
+                  "'unsafe-inline'",
+                  "https://fonts.googleapis.com"
+                ],
+                "fontSrc": [
+                  "'self'",
+                  "https://fonts.gstatic.com"
+                ],
+                "imgSrc": [
+                  "'self'",
+                  "data:",
+                  "https:"
+                ],
+                "connectSrc": [
+                  "'self'",
+                  "https://api.gemini.google.com",
+                  "wss:"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "authentication_service": {
+        "provider": "Custom JWT-based with Supabase Auth integration",
+        "flow_type": "Session-based with refresh tokens",
+        "configuration": {
+          "jwt": {
+            "secret": "process.env.JWT_SECRET (32+ character string)",
+            "access_token_expiry": "15m",
+            "refresh_token_expiry": "7d",
+            "algorithm": "HS256"
+          },
+          "session": {
+            "cookie_name": "sunder_session",
+            "http_only": true,
+            "secure": process.env.NODE_ENV === "production",
+            "same_site": "lax",
+            "max_age": 7 * 24 * 60 * 60 * 1000
+          },
+          "password": {
+            "salt_rounds": 12,
+            "min_length": 8,
+            "require_special_char": true,
+            "require_number": true,
+            "require_uppercase": true
+          }
+        }
+      },
+      "authorization": {
+        "model": "Role-Based Access Control (RBAC) with resource-level permissions",
+        "rules": [
+          {
+            "role": "anonymous",
+            "permissions": [
+              "view_public_snippets",
+              "view_public_profiles",
+              "register",
+              "login"
+            ]
+          },
+          {
+            "role": "user",
+            "permissions": [
+              "create_snippet",
+              "edit_own_snippet",
+              "delete_own_snippet",
+              "fork_snippet",
+              "star_snippet",
+              "join_collaboration",
+              "use_ai_features",
+              "update_profile",
+              "create_organization",
+              "join_organization"
+            ]
+          },
+          {
+            "role": "organization_admin",
+            "permissions": [
+              "manage_organization_members",
+              "edit_organization_settings",
+              "delete_organization_snippets",
+              "view_organization_analytics"
+            ]
+          },
+          {
+            "role": "organization_owner",
+            "permissions": [
+              "transfer_organization_ownership",
+              "delete_organization",
+              "manage_billing"
+            ]
+          },
+          {
+            "role": "moderator",
+            "permissions": [
+              "delete_any_snippet",
+              "suspend_user",
+              "view_reports",
+              "manage_content_flags"
+            ]
+          },
+          {
+            "role": "admin",
+            "permissions": [
+              "manage_all_users",
+              "view_system_metrics",
+              "manage_ai_configuration",
+              "view_audit_logs",
+              "clear_caches",
+              "run_maintenance_tasks",
+              "manage_feature_flags"
+            ]
+          },
+          {
+            "role": "super_admin",
+            "permissions": [
+              "everything",
+              "admin_login_secret_only"
+            ]
+          }
+        ]
+      }
+    },
+    "data_layer": {
+      "primary_database": {
+        "type": "PostgreSQL",
+        "service": "Supabase",
+        "schema_details": {
+          "users": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "username varchar(50) UNIQUE NOT NULL",
+              "email varchar(255) UNIQUE NOT NULL",
+              "password_hash varchar(255) NOT NULL",
+              "display_name varchar(100)",
+              "avatar_url text",
+              "bio text",
+              "preferences jsonb DEFAULT '{\"theme\": \"dark\", \"editor_mode\": \"advanced\", \"notifications\": true}'",
+              "coding_style_signature jsonb",
+              "ai_model_preferences jsonb DEFAULT '{\"temperature\": 0.7, \"max_tokens\": 2048}'",
+              "achievement_points integer DEFAULT 0",
+              "coding_streak integer DEFAULT 0",
+              "last_active_at timestamptz",
+              "email_verified_at timestamptz",
+              "is_suspended boolean DEFAULT false",
+              "suspended_reason text",
+              "suspended_until timestamptz",
+              "created_at timestamptz DEFAULT NOW()",
+              "updated_at timestamptz DEFAULT NOW()",
+              "deleted_at timestamptz"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_users_username ON users(username)",
+              "CREATE INDEX idx_users_email ON users(email)",
+              "CREATE INDEX idx_users_achievement_points ON users(achievement_points DESC)",
+              "CREATE INDEX idx_users_created_at ON users(created_at DESC)"
+            ]
+          },
+          "snippets": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "author_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "organization_id uuid REFERENCES organizations(id) ON DELETE SET NULL",
+              "title varchar(255) NOT NULL",
+              "description text",
+              "code text NOT NULL",
+              "language varchar(50) NOT NULL",
+              "tags text[] DEFAULT '{}'",
+              "visibility varchar(20) DEFAULT 'public' CHECK (visibility IN ('public', 'private', 'organization', 'unlisted'))",
+              "forked_from_id uuid REFERENCES snippets(id) ON DELETE SET NULL",
+              "is_template boolean DEFAULT false",
+              "template_variables jsonb",
+              "complexity_score float",
+              "security_scan_result jsonb",
+              "ai_generated boolean DEFAULT false",
+              "ai_model_used varchar(100)",
+              "view_count integer DEFAULT 0",
+              "star_count integer DEFAULT 0",
+              "fork_count integer DEFAULT 0",
+              "last_edited_at timestamptz DEFAULT NOW()",
+              "created_at timestamptz DEFAULT NOW()",
+              "updated_at timestamptz DEFAULT NOW()",
+              "deleted_at timestamptz"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_snippets_author_id ON snippets(author_id)",
+              "CREATE INDEX idx_snippets_language ON snippets(language)",
+              "CREATE INDEX idx_snippets_visibility ON snippets(visibility)",
+              "CREATE INDEX idx_snippets_created_at ON snippets(created_at DESC)",
+              "CREATE INDEX idx_snippets_star_count ON snippets(star_count DESC)",
+              "CREATE INDEX idx_snippets_view_count ON snippets(view_count DESC)",
+              "CREATE INDEX idx_snippets_tags ON snippets USING GIN(tags)",
+              "CREATE INDEX idx_snippets_organization_id ON snippets(organization_id)"
+            ]
+          },
+          "snippet_versions": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "version_number integer NOT NULL",
+              "code text NOT NULL",
+              "checksum varchar(64) NOT NULL",
+              "editor_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "change_summary varchar(500)",
+              "ai_assistance jsonb",
+              "analysis_results jsonb",
+              "created_at timestamptz DEFAULT NOW()",
+              "CONSTRAINT unique_snippet_version UNIQUE(snippet_id, version_number)"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_snippet_versions_snippet_id ON snippet_versions(snippet_id)",
+              "CREATE INDEX idx_snippet_versions_created_at ON snippet_versions(created_at DESC)",
+              "CREATE INDEX idx_snippet_versions_editor_id ON snippet_versions(editor_id)"
+            ]
+          },
+          "snippet_analyses": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "analysis_type varchar(50) NOT NULL",
+              "results jsonb NOT NULL",
+              "complexity_score float",
+              "security_issues jsonb",
+              "performance_metrics jsonb",
+              "ai_recommendations text[]",
+              "created_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_snippet_analyses_snippet_id ON snippet_analyses(snippet_id)",
+              "CREATE INDEX idx_snippet_analyses_analysis_type ON snippet_analyses(analysis_type)"
+            ]
+          },
+          "collaboration_sessions": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "session_token varchar(64) UNIQUE NOT NULL",
+              "host_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "participants jsonb DEFAULT '[]'",
+              "cursor_positions jsonb DEFAULT '{}'",
+              "messages jsonb DEFAULT '[]'",
+              "recording_url text",
+              "is_active boolean DEFAULT true",
+                            "last_activity_at timestamptz DEFAULT NOW(),"created_at timestamptz DEFAULT NOW(),"ended_at timestamptz"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_collab_sessions_token ON collaboration_sessions(session_token)",
+              "CREATE INDEX idx_collab_sessions_snippet_id ON collaboration_sessions(snippet_id)",
+              "CREATE INDEX idx_collab_sessions_last_activity ON collaboration_sessions(last_activity_at)",
+              "CREATE INDEX idx_collab_sessions_is_active ON collaboration_sessions(is_active)"
+            ]
+          },
+          "collaboration_participants": {
+            "columns": [
+              "session_id uuid REFERENCES collaboration_sessions(id) ON DELETE CASCADE",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "joined_at timestamptz DEFAULT NOW()",
+              "left_at timestamptz",
+              "cursor_color varchar(7)",
+              "cursor_position jsonb",
+              "PRIMARY KEY (session_id, user_id)"
+            ]
+          },
+          "code_reviews": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "reviewer_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "reviewee_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "status varchar(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled'))",
+              "matched_at timestamptz",
+              "started_at timestamptz",
+              "completed_at timestamptz",
+              "duration_seconds integer",
+              "rating integer CHECK (rating >= 1 AND rating <= 5)",
+              "feedback text",
+              "ai_analysis jsonb",
+              "created_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_code_reviews_reviewer_id ON code_reviews(reviewer_id)",
+              "CREATE INDEX idx_code_reviews_reviewee_id ON code_reviews(reviewee_id)",
+              "CREATE INDEX idx_code_reviews_status ON code_reviews(status)"
+            ]
+          },
+          "ai_translations": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "source_snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "source_language varchar(50) NOT NULL",
+              "target_language varchar(50) NOT NULL",
+              "translated_code text NOT NULL",
+              "ai_model_used varchar(100)",
+              "accuracy_score float",
+              "preserved_functionality boolean",
+              "execution_tests jsonb",
+              "created_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_ai_translations_source_snippet ON ai_translations(source_snippet_id)",
+              "CREATE INDEX idx_ai_translations_languages ON ai_translations(source_language, target_language)"
+            ]
+          },
+          "ai_pair_sessions": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "ai_model_config jsonb NOT NULL",
+              "conversation_history jsonb DEFAULT '[]'",
+              "code_changes jsonb DEFAULT '[]'",
+              "suggestions_provided integer DEFAULT 0",
+              "session_duration_seconds integer",
+              "user_feedback jsonb",
+              "started_at timestamptz DEFAULT NOW()",
+              "ended_at timestamptz"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_ai_pair_sessions_user_id ON ai_pair_sessions(user_id)",
+              "CREATE INDEX idx_ai_pair_sessions_created_at ON ai_pair_sessions(started_at DESC)"
+            ]
+          },
+          "organizations": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "name varchar(255) NOT NULL",
+              "slug varchar(100) UNIQUE NOT NULL",
+              "description text",
+              "owner_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "avatar_url text",
+              "banner_url text",
+              "color_theme varchar(50) DEFAULT 'violet'",
+              "settings jsonb DEFAULT '{\"default_visibility\": \"organization\", \"require_approval\": false}'",
+              "member_count integer DEFAULT 1",
+              "snippet_count integer DEFAULT 0",
+              "is_public boolean DEFAULT true",
+              "created_at timestamptz DEFAULT NOW()",
+              "updated_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_organizations_slug ON organizations(slug)",
+              "CREATE INDEX idx_organizations_owner_id ON organizations(owner_id)"
+            ]
+          },
+          "organization_members": {
+            "columns": [
+              "organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "role varchar(20) DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer'))",
+              "joined_at timestamptz DEFAULT NOW()",
+              "invited_by uuid REFERENCES users(id) ON DELETE SET NULL",
+              "PRIMARY KEY (organization_id, user_id)"
+            ]
+          },
+          "achievements": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "badge_type varchar(50) NOT NULL",
+              "badge_tier varchar(20) DEFAULT 'bronze' CHECK (badge_tier IN ('bronze', 'silver', 'gold', 'platinum', 'diamond'))",
+              "unlocked_at timestamptz DEFAULT NOW()",
+              "progress_data jsonb"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_achievements_user_id ON achievements(user_id)",
+              "CREATE INDEX idx_achievements_badge_type ON achievements(badge_type)"
+            ]
+          },
+          "starred_snippets": {
+            "columns": [
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "starred_at timestamptz DEFAULT NOW()",
+              "PRIMARY KEY (user_id, snippet_id)"
+            ]
+          },
+          "audit_logs": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "actor_id uuid REFERENCES users(id) ON DELETE SET NULL",
+              "action_type varchar(100) NOT NULL",
+              "entity_type varchar(50) NOT NULL",
+              "entity_id uuid",
+              "old_values jsonb",
+              "new_values jsonb",
+              "ip_address inet",
+              "user_agent text",
+              "request_id varchar(64)",
+              "created_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_audit_logs_actor_id ON audit_logs(actor_id)",
+              "CREATE INDEX idx_audit_logs_action_type ON audit_logs(action_type)",
+              "CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC)"
+            ]
+          },
+          "ai_usage_logs": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "ai_feature varchar(50) NOT NULL",
+              "input_tokens integer NOT NULL",
+              "output_tokens integer NOT NULL",
+              "total_cost decimal(10, 6)",
+              "model_used varchar(100)",
+              "request_duration_ms integer",
+              "created_at timestamptz DEFAULT NOW()"
+            ],
+            "indexes": [
+              "CREATE INDEX idx_ai_usage_logs_user_id ON ai_usage_logs(user_id)",
+              "CREATE INDEX idx_ai_usage_logs_created_at ON ai_usage_logs(created_at)"
+            ]
+          },
+          "content_flags": {
+            "columns": [
+              "id uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+              "snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE",
+              "user_id uuid REFERENCES users(id) ON DELETE CASCADE",
+              "flag_reason varchar(100) NOT NULL",
+              "description text",
+              "status varchar(20) DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed'))",
+              "resolved_by uuid REFERENCES users(id) ON DELETE SET NULL",
+              "resolved_at timestamptz",
+              "created_at timestamptz DEFAULT NOW()"
+            ]
+          }
+        }
+      },
+      "caching_layer": {
+        "service": "Redis via Supabase",
+        "strategy": "Write-through with TTL-based invalidation",
+        "ttl_configurations": {
+          "snippet_details": 300,
+          "user_profiles": 600,
+          "ai_responses": 3600,
+          "leaderboard_data": 60,
+          "session_data": 1800,
+          "search_results": 120
+        }
+      },
+      "object_storage": {
+        "service": "Supabase Storage",
+        "bucket_configurations": {
+          "user_avatars": {
+            "name": "avatars",
+            "public": true,
+            "file_size_limit": 5242880,
+            "allowed_mime_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          },
+          "snippet_assets": {
+            "name": "snippet-assets",
+            "public": true,
+            "file_size_limit": 10485760,
+            "allowed_mime_types": [
+              "image/*",
+              "application/pdf",
+              "text/*"
+            ]
+          },
+          "organization_banners": {
+            "name": "organization-banners",
+            "public": true,
+            "file_size_limit": 10485760,
+            "allowed_mime_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          },
+          "collaboration_recordings": {
+            "name": "collaboration-recordings",
+            "public": false,
+            "file_size_limit": 52428800,
+            "allowed_mime_types": [
+              "video/webm",
+              "video/mp4"
+            ]
+          }
+        }
+      }
+    },
+    "devops_infrastructure": {
+      "cloud_provider": "Vercel (frontend) + Supabase (backend/database) + Custom Node.js backend (optional)",
+      "infrastructure_as_code": {
+        "tool": "Terraform",
+        "repository_structure": {
+          "modules": [
+            "network",
+            "database",
+            "compute",
+            "storage",
+            "monitoring"
           ],
-          "js": {
-            "modules": {
-              "api": [
-                "api-client.js",
-                "auth-manager.js",
-                "websocket-polyfill.js"
-              ],
-              "components": [
-                "collaborative-editor.js",
-                "command-palette.js",
-                "code-visualizer.js",
-                "demo-sandbox.js",
-                "notification-system.js"
-              ],
-              "services": [
-                "offline-manager.js",
-                "shortcut-manager.js",
-                "analytics-worker.js",
-                "cache-manager.js"
-              ],
-              "utils": [
-                "form-validator.js",
-                "code-formatter.js",
-                "diff-viewer.js",
-                "export-generator.js"
+          "environments": [
+            "dev",
+            "staging",
+            "production"
+          ],
+          "variables": "terraform.tfvars per environment"
+        }
+      },
+      "ci_cd_pipeline": {
+        "tools": [
+          "GitHub Actions",
+          "Vercel CLI",
+          "Supabase CLI"
+        ],
+        "workflow_stages": {
+          "lint": "ESLint, Prettier, TypeScript compilation",
+          "test": "Unit tests, integration tests, E2E tests with Playwright",
+          "build": "Next.js build, Docker image build",
+          "deploy": "Vercel deployment, Supabase migrations, backend deployment",
+          "verify": "Health checks, smoke tests, performance tests"
+        }
+      },
+      "containerization": {
+        "orchestration": "Docker Compose for local, optional Kubernetes for production",
+        "image_registry": "GitHub Container Registry"
+      },
+      "monitoring": {
+        "logging_service": "Logtail by Better Stack",
+        "apm_tool": "Sentry for error tracking",
+        "alert_configurations": {
+          "error_rate": ">5% for 5 minutes triggers PagerDuty",
+          "response_time": ">2s P95 triggers Slack alert",
+          "api_availability": "<99.9% triggers email and Slack",
+          "database_connections": ">80% triggers warning"
+        }
+      }
+    },
+    "integrations": {
+      "third_party_apis": [
+        {
+          "name": "Gemini API",
+          "purpose": "AI-powered code analysis, translation, pair programming, explanations",
+          "auth_details": {
+            "type": "API Key",
+            "storage": "Encrypted in database, rotated monthly",
+            "rate_limit": "60 requests per minute per user"
+          }
+        },
+        {
+          "name": "GitHub API",
+          "purpose": "Import/export snippets, user authentication (optional), repository integration",
+          "auth_details": {
+            "type": "OAuth 2.0",
+            "scopes": [
+              "repo",
+              "user:email"
+            ],
+            "storage": "Encrypted user tokens"
+          }
+        },
+        {
+          "name": "Replicate API",
+          "purpose": "Optional AI model hosting for specialized code tasks",
+          "auth_details": {
+            "type": "API Key",
+            "storage": "Environment variable",
+            "rate_limit": "Based on plan"
+          }
+        }
+      ],
+      "microservices": [
+        {
+          "name": "ai-orchestrator",
+          "responsibility": "Manage AI requests, load balancing between models, caching responses",
+          "communication_protocol": "gRPC for internal, REST for external"
+        },
+        {
+          "name": "collaboration-engine",
+          "responsibility": "Real-time collaboration, WebSocket management, conflict resolution",
+          "communication_protocol": "WebSocket, Redis Pub/Sub"
+        },
+        {
+          "name": "analytics-processor",
+          "responsibility": "Process usage data, generate insights, update leaderboards",
+          "communication_protocol": "Message Queue (Redis/RabbitMQ), REST"
+        }
+      ]
+    }
+  },
+  "ios_26_design_specification": {
+    "design_philosophy": "Fluid, intelligent, and personalized interface that anticipates developer needs, with spatial computing principles and adaptive UI that responds to context, focus, and user behavior.",
+    "aesthetic_foundation": {
+      "color_palette": {
+        "primary": {
+          "base": "#7C3AED",
+          "light": "#8B5CF6",
+          "dark": "#5B21B6",
+          "gradient": "linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)"
+        },
+        "secondary": {
+          "base": "#0EA5E9",
+          "light": "#38BDF8",
+          "dark": "#0369A1"
+        },
+        "semantic": {
+          "success": "#10B981",
+          "warning": "#F59E0B",
+          "error": "#EF4444",
+          "info": "#3B82F6"
+        },
+        "dynamic": {
+          "light": {
+            "background": "#FFFFFF",
+            "surface": "#F8FAFC",
+            "text_primary": "#111827",
+            "text_secondary": "#6B7280",
+            "border": "#E5E7EB"
+          },
+          "dark": {
+            "background": "#0F172A",
+            "surface": "#1E293B",
+            "text_primary": "#F1F5F9",
+            "text_secondary": "#94A3B8",
+            "border": "#334155"
+          }
+        }
+      },
+      "typography_scale": {
+        "display": {
+          "large": {
+            "font_family": "Inter",
+            "font_size": "3.75rem",
+            "font_weight": "800",
+            "line_height": "1.1",
+            "letter_spacing": "-0.025em"
+          },
+          "medium": {
+            "font_family": "Inter",
+            "font_size": "3rem",
+            "font_weight": "800",
+            "line_height": "1.15",
+            "letter_spacing": "-0.015em"
+          },
+          "small": {
+            "font_family": "Inter",
+            "font_size": "2.25rem",
+            "font_weight": "700",
+            "line_height": "1.2",
+            "letter_spacing": "-0.01em"
+          }
+        },
+        "heading": {
+          "h1": {
+            "font_family": "Inter",
+            "font_size": "1.875rem",
+            "font_weight": "700",
+            "line_height": "1.25",
+            "letter_spacing": "-0.005em"
+          },
+          "h2": {
+            "font_family": "Inter",
+            "font_size": "1.5rem",
+            "font_weight": "600",
+            "line_height": "1.3"
+          },
+          "h3": {
+            "font_family": "Inter",
+            "font_size": "1.25rem",
+            "font_weight": "600",
+            "line_height": "1.4"
+          }
+        },
+        "body": {
+          "large": {
+            "font_family": "Inter",
+            "font_size": "1.125rem",
+            "font_weight": "400",
+            "line_height": "1.6"
+          },
+          "medium": {
+            "font_family": "Inter",
+            "font_size": "1rem",
+            "font_weight": "400",
+            "line_height": "1.6"
+          },
+          "small": {
+            "font_family": "Inter",
+            "font_size": "0.875rem",
+            "font_weight": "400",
+            "line_height": "1.5"
+          },
+          "code": {
+            "font_family": "JetBrains Mono",
+            "font_size": "0.875rem",
+            "font_weight": "400",
+            "line_height": "1.7"
+          }
+        }
+      },
+      "material_system": {
+        "glassmorphism": {
+          "background": "rgba(255, 255, 255, 0.1)",
+          "backdrop_filter": "blur(12px)",
+          "border": "1px solid rgba(255, 255, 255, 0.2)"
+        },
+        "neumorphism": {
+          "light": {
+            "shadow_light": "-8px -8px 16px rgba(255, 255, 255, 0.7)",
+            "shadow_dark": "8px 8px 16px rgba(174, 174, 192, 0.4)"
+          },
+          "dark": {
+            "shadow_light": "-8px -8px 16px rgba(255, 255, 255, 0.05)",
+            "shadow_dark": "8px 8px 16px rgba(0, 0, 0, 0.3)"
+          }
+        },
+        "fluidity": {
+          "border_radius": "24px",
+          "transition_timing": "cubic-bezier(0.4, 0, 0.2, 1)",
+          "transition_duration": "300ms"
+        }
+      },
+      "iconography": {
+        "set": "Lucide React Icons",
+        "size_grid": {
+          "xs": "12px",
+          "sm": "16px",
+          "md": "20px",
+          "lg": "24px",
+          "xl": "32px",
+          "2xl": "48px"
+        },
+        "symbolic_conventions": {
+          "snippet": "FileCode",
+          "collaboration": "Users",
+          "ai": "Brain",
+          "organization": "Building2",
+          "profile": "User",
+          "settings": "Settings",
+          "search": "Search",
+          "add": "Plus",
+          "edit": "Pencil",
+          "delete": "Trash2",
+          "share": "Share2",
+          "star": "Star",
+          "fork": "GitFork",
+          "code": "Code2",
+          "translate": "Languages",
+          "explain": "MessageSquare",
+          "pair": "Bot"
+        }
+      }
+    },
+    "interaction_patterns": {
+      "gesture_library": [
+        {
+          "gesture": "Swipe left on snippet card",
+          "action": "Reveal quick actions (star, fork, share)",
+          "haptic": "light"
+        },
+        {
+          "gesture": "Swipe right on snippet card",
+          "action": "Delete or archive snippet",
+          "haptic": "medium"
+        },
+        {
+          "gesture": "Long press on code block",
+          "action": "Show AI options (explain, translate, optimize)",
+          "haptic": "light"
+        },
+        {
+          "gesture": "Two-finger pinch on editor",
+          "action": "Zoom code font size",
+          "haptic": "none"
+        },
+        {
+          "gesture": "Swipe from left edge",
+          "action": "Open navigation sidebar",
+          "haptic": "light"
+        },
+        {
+          "gesture": "Swipe from right edge",
+          "action": "Open command palette",
+          "haptic": "light"
+        },
+        {
+          "gesture": "Pull down on feed",
+          "action": "Refresh content",
+          "haptic": "success"
+        }
+      ],
+      "haptic_feedback": {
+        "success": "notification(type: .success)",
+        "warning": "notification(type: .warning)",
+        "error": "notification(type: .error)",
+        "selection": "impact(style: .light)",
+        "action": "impact(style: .medium)",
+        "heavy_action": "impact(style: .heavy)"
+      },
+      "motion_choreography": {
+        "transition_animations": {
+          "page_transition": {
+            "type": "shared_element",
+            "duration": "400ms",
+            "easing": "cubic-bezier(0.4, 0, 0.2, 1)"
+          },
+          "modal_presentation": {
+            "type": "spring",
+            "duration": "500ms",
+            "damping": "0.8"
+          },
+          "list_item_enter": {
+            "type": "staggered_fade",
+            "delay_per_item": "50ms",
+            "duration": "300ms"
+          }
+        },
+        "micro_interactions": {
+          "button_press": "scale down to 0.95, then spring back",
+          "checkbox_toggle": "bounce effect with rotation",
+          "switch_toggle": "slide with elastic easing",
+          "star_animation": "scale up with particle effects"
+        },
+        "physics": {
+          "scroll_momentum": "custom deceleration curve",
+          "drag_resistance": "velocity-based resistance",
+          "spring_configurations": {
+            "stiff": "damping: 0.7, mass: 1.0",
+            "medium": "damping: 0.5, mass: 1.0",
+            "loose": "damping: 0.3, mass: 1.0"
+          }
+        }
+      },
+      "accessibility": {
+        "voiceover_labels": {
+          "snippet_card": "Snippet by {author}, {title}, {language}, {star_count} stars",
+          "code_block": "Code block, {lines} lines, press and hold for AI options",
+          "ai_button": "AI assistant, double tap to activate"
+        },
+        "dynamic_type_support": {
+          "scales": [
+            "xs",
+            "s",
+            "m",
+            "l",
+            "xl",
+            "xxl",
+            "xxxl"
+          ],
+          "code_font_scaling": "80% of body text scale"
+        },
+        "contrast_requirements": {
+          "minimum": "4.5:1 for normal text",
+          "enhanced": "7:1 for low vision users",
+          "large_text": "3:1 minimum"
+        },
+        "reduced_motion": {
+          "disable_animations": true,
+          "simplified_transitions": true,
+          "remove_parallax": true
+        }
+      }
+    },
+    "component_library": {
+      "atomic_design_breakdown": {
+        "atoms": [
+          {
+            "name": "Button",
+            "variants": [
+              "primary",
+              "secondary",
+              "ghost",
+              "danger",
+              "success",
+              "outline"
+            ],
+            "sizes": [
+              "sm",
+              "md",
+              "lg"
+            ],
+            "states": [
+              "default",
+              "hover",
+              "active",
+              "disabled",
+              "loading"
+            ],
+            "properties": {
+              "padding": "vertical: 8px-12px, horizontal: 16px-24px",
+              "border_radius": "8px",
+              "font_weight": "500",
+              "icon_position": "left, right, or only icon",
+              "full_width": "boolean"
+            }
+          },
+          {
+            "name": "Input",
+            "variants": [
+              "default",
+              "filled",
+              "outline",
+              "ghost"
+            ],
+            "sizes": [
+              "sm",
+              "md",
+              "lg"
+            ],
+            "states": [
+              "default",
+              "focused",
+              "error",
+              "disabled",
+              "loading"
+            ],
+            "properties": {
+              "padding": "12px",
+              "border_radius": "8px",
+              "border_width": "1px",
+              "prefix_icon": "boolean",
+              "suffix_icon": "boolean",
+              "clearable": "boolean"
+            }
+          },
+          {
+            "name": "Avatar",
+            "variants": [
+              "circle",
+              "square",
+              "rounded"
+            ],
+            "sizes": [
+              "xs",
+              "sm",
+              "md",
+              "lg",
+              "xl"
+            ],
+            "states": [
+              "default",
+              "hover",
+              "active",
+              "offline",
+              "online"
+            ],
+            "properties": {
+              "image_url": "string",
+              "fallback_text": "string",
+              "fallback_color": "based on text hash",
+              "badge": "boolean",
+              "presence_indicator": "boolean"
+            }
+          },
+          {
+            "name": "Badge",
+            "variants": [
+              "default",
+              "outline",
+              "solid",
+              "subtle"
+            ],
+            "sizes": [
+              "sm",
+              "md"
+            ],
+            "colors": [
+              "primary",
+              "secondary",
+              "success",
+              "warning",
+              "error",
+              "gray"
+            ],
+            "properties": {
+              "padding": "2px 8px",
+              "border_radius": "9999px",
+              "font_size": "0.75rem",
+              "font_weight": "500"
+            }
+          }
+        ],
+        "molecules": [
+          {
+            "name": "SearchBar",
+            "composition": [
+              "Input atom",
+              "SearchIcon",
+              "ClearButton",
+              "ShortcutHint"
+            ],
+            "layout": "flex row, input stretches, icons on ends",
+            "states": [
+              "idle",
+              "typing",
+              "loading",
+              "has_results",
+              "error"
+            ],
+            "behavior": {
+              "debounce": "300ms",
+              "min_chars": "2",
+              "max_suggestions": "10",
+              "keyboard_shortcut": "Cmd/Ctrl + K"
+            }
+          },
+          {
+            "name": "SnippetCard",
+            "composition": [
+              "Avatar",
+              "TitleText",
+              "DescriptionText",
+              "LanguageBadge",
+              "StarButton",
+              "StatsRow"
+            ],
+            "layout": "grid with header, body, footer",
+            "states": [
+              "default",
+              "hover",
+              "selected",
+              "dragging"
+            ],
+            "behavior": {
+              "click": "navigate to snippet",
+              "long_press": "show context menu",
+              "swipe": "reveal actions"
+            }
+          },
+          {
+            "name": "CodeBlock",
+            "composition": [
+              "SyntaxHighlighter",
+              "LineNumbers",
+              "CopyButton",
+              "LanguageLabel"
+            ],
+            "layout": "relative positioning, overlay controls",
+            "states": [
+              "collapsed",
+              "expanded",
+              "highlighted",
+              "readonly"
+            ],
+            "behavior": {
+              "line_click": "toggle line highlight",
+              "copy_click": "copy to clipboard with feedback",
+              "hover": "show line actions"
+            }
+          }
+        ],
+        "organisms": [
+          {
+            "name": "NavigationSidebar",
+            "composition": [
+              "Logo",
+              "UserProfileSection",
+              "NavItemsList",
+              "CollapseButton",
+              "ThemeToggle"
+            ],
+            "layout": "flex column, sticky positioning",
+            "states": [
+              "expanded",
+              "collapsed",
+              "mobile",
+              "loading"
+            ],
+            "behavior": {
+              "item_click": "navigate and highlight active",
+              "collapse_toggle": "animate width change",
+              "hover": "show tooltips when collapsed"
+            }
+          },
+          {
+            "name": "SnippetEditor",
+            "composition": [
+              "Toolbar",
+              "CodeMirrorEditor",
+              "PropertiesPanel",
+              "PreviewPanel",
+              "AIAssistantPanel"
+            ],
+            "layout": "grid with resizable panels",
+            "states": [
+              "editing",
+              "saving",
+              "readonly",
+              "collaborating",
+              "ai_assisted"
+            ],
+            "behavior": {
+              "code_change": "auto-save after delay",
+              "ai_trigger": "show suggestions",
+              "collaboration": "show other cursors"
+            }
+          },
+          {
+            "name": "CollaborationSession",
+            "composition": [
+              "ParticipantList",
+              "ChatPanel",
+              "CodeEditor",
+              "VideoGrid",
+              "Controls"
+            ],
+            "layout": "split view with adjustable dividers",
+            "states": [
+              "connecting",
+              "active",
+              "ended",
+              "recording"
+            ],
+            "behavior": {
+              "cursor_move": "broadcast to others",
+              "chat_send": "add to chat history",
+              "user_join": "announce and update list"
+            }
+          }
+        ],
+        "templates": [
+          {
+            "name": "DashboardLayout",
+            "grid_definition": "12-column responsive grid",
+            "areas": [
+              "sidebar main main main main main main main main main main",
+              "sidebar main main main main main main main main main main"
+            ],
+            "breakpoints": {
+              "mobile": "single column, bottom nav",
+              "tablet": "sidebar collapsed, main expanded",
+              "desktop": "full layout with sidebar"
+            }
+          },
+          {
+            "name": "EditorLayout",
+            "grid_definition": "fluid grid with minmax",
+            "areas": [
+              "toolbar toolbar toolbar toolbar",
+              "editor editor properties preview",
+              "editor editor properties preview",
+              "editor editor assistant assistant"
+            ],
+            "breakpoints": {
+              "mobile": "stack vertically",
+              "tablet": "editor and properties side by side",
+              "desktop": "full four-pane layout"
+            }
+          }
+        ],
+        "pages": [
+          {
+            "name": "LoginPage",
+            "navigation_path": "/auth/login",
+            "layout_grid": "centered single column",
+            "component_hierarchy": {
+              "root": "AuthLayout",
+              "children": [
+                "BrandHeader",
+                "LoginForm",
+                "SocialLoginOptions",
+                "SignupLink",
+                "FooterLinks"
               ]
             },
-            "pages": {
-              "dashboard.js",
-              "snippet-editor.js",
-              "snippet-viewer.js",
-              "profile.js",
-              "admin.js",
-              "login.js",
-              "signup.js",
-              "organization.js"
+            "state_properties": {
+              "email": "string",
+              "password": "string",
+              "remember_me": "boolean",
+              "is_loading": "boolean",
+              "error_message": "string | null"
             },
-            "app.js",
-            "router.js"
+            "event_handlers": {
+              "handle_email_change": "update email state",
+              "handle_password_change": "update password state",
+              "handle_submit": "validate and call login API",
+              "handle_social_login": "redirect to OAuth provider"
+            },
+            "business_logic_pseudocode": "IF form valid THEN CALL API /auth/login WITH credentials; IF success THEN SET token in cookies AND REDIRECT to dashboard; ELSE SHOW error message"
           },
-          "templates": {
-            "components": [
-              "header.html",
-              "sidebar.html",
-              "footer.html",
-              "modal-base.html",
-              "toast-notification.html"
+          {
+            "name": "DashboardHomePage",
+            "navigation_path": "/dashboard",
+            "layout_grid": "bento grid with 12 columns",
+            "component_hierarchy": {
+              "root": "DashboardLayout",
+              "sidebar": "NavigationSidebar",
+              "main": [
+                "WelcomeHero",
+                "QuickStatsGrid",
+                "RecentActivity",
+                "TrendingSnippets",
+                "AISuggestions",
+                "LearningPath"
+              ]
+            },
+            "state_properties": {
+              "user_stats": "object",
+              "recent_snippets": "array",
+              "trending_snippets": "array",
+              "ai_suggestions": "array",
+              "is_loading": "boolean"
+            },
+            "event_handlers": {
+              "handle_snippet_click": "navigate to snippet detail",
+              "handle_ai_suggestion_accept": "apply AI suggestion",
+              "handle_refresh": "refetch all data",
+              "handle_widget_reorder": "update layout preferences"
+            },
+            "business_logic_pseudocode": "ON MOUNT: FETCH user stats, recent snippets, trending snippets, AI suggestions; DISPLAY in respective components; ON snippet click: NAVIGATE to /snippets/{id}; ON AI suggestion accept: CALL AI API and APPLY to editor"
+          },
+          {
+            "name": "SnippetEditorPage",
+            "navigation_path": "/snippets/create",
+            "layout_grid": "editor layout with resizable panes",
+            "component_hierarchy": {
+              "root": "EditorLayout",
+              "toolbar": [
+                "SaveButton",
+                "LanguageSelector",
+                "VisibilityToggle",
+                "CollaborateButton",
+                "AIHelpButton"
+              ],
+              "editor": "CodeMirrorEditor",
+              "properties": [
+                "TitleInput",
+                "DescriptionInput",
+                "TagsInput",
+                "TemplateVariables"
+              ],
+              "preview": "LivePreview",
+              "assistant": "AIAssistantPanel"
+            },
+            "state_properties": {
+              "title": "string",
+              "description": "string",
+              "code": "string",
+              "language": "string",
+              "tags": "array",
+              "visibility": "string",
+              "is_template": "boolean",
+              "auto_save_timer": "number",
+              "ai_suggestions": "array"
+            },
+            "event_handlers": {
+              "handle_code_change": "update code state and start auto-save timer",
+              "handle_language_change": "update syntax highlighting",
+              "handle_save": "save to backend",
+              "handle_ai_request": "call Gemini API for suggestions",
+              "handle_collaboration_start": "create collaboration session"
+            },
+            "business_logic_pseudocode": "ON code change: START 2-second timer; ON timer end: CALL auto-save API; ON save button: VALIDATE fields THEN CALL create snippet API; ON AI request: SEND code to Gemini API WITH context, DISPLAY suggestions"
+          }
+        ]
+      }
+    }
+  },
+  "data_models": {
+    "entities": [
+      {
+        "name": "User",
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "constraints": "PRIMARY KEY",
+            "validation": "required"
+          },
+          {
+            "name": "username",
+            "type": "varchar(50)",
+            "constraints": "UNIQUE NOT NULL",
+            "validation": "alphanumeric, 3-50 chars"
+          },
+          {
+            "name": "email",
+            "type": "varchar(255)",
+            "constraints": "UNIQUE NOT NULL",
+            "validation": "email format"
+          },
+          {
+            "name": "password_hash",
+            "type": "varchar(255)",
+            "constraints": "NOT NULL",
+            "validation": "bcrypt hash"
+          },
+          {
+            "name": "display_name",
+            "type": "varchar(100)",
+            "constraints": "NULL",
+            "validation": "optional, 2-100 chars"
+          },
+          {
+            "name": "avatar_url",
+            "type": "text",
+            "constraints": "NULL",
+            "validation": "URL format"
+          },
+          {
+            "name": "bio",
+            "type": "text",
+            "constraints": "NULL",
+            "validation": "max 500 chars"
+          },
+          {
+            "name": "preferences",
+            "type": "jsonb",
+            "constraints": "DEFAULT {}",
+            "validation": "JSON schema validation"
+          },
+          {
+            "name": "coding_style_signature",
+            "type": "jsonb",
+            "constraints": "NULL",
+            "validation": "AI-generated signature"
+          },
+          {
+            "name": "ai_model_preferences",
+            "type": "jsonb",
+            "constraints": "DEFAULT {}",
+            "validation": "temperature, max_tokens"
+          },
+          {
+            "name": "achievement_points",
+            "type": "integer",
+            "constraints": "DEFAULT 0",
+            "validation": "min 0"
+          },
+          {
+            "name": "coding_streak",
+            "type": "integer",
+            "constraints": "DEFAULT 0",
+            "validation": "min 0"
+          },
+          {
+            "name": "last_active_at",
+            "type": "timestamptz",
+            "constraints": "NULL",
+            "validation": "past timestamp"
+          },
+          {
+            "name": "email_verified_at",
+            "type": "timestamptz",
+            "constraints": "NULL",
+            "validation": "past timestamp"
+          },
+          {
+            "name": "is_suspended",
+            "type": "boolean",
+            "constraints": "DEFAULT false",
+            "validation": "boolean"
+          },
+          {
+            "name": "suspended_reason",
+            "type": "text",
+            "constraints": "NULL",
+            "validation": "if suspended"
+          },
+          {
+            "name": "suspended_until",
+            "type": "timestamptz",
+            "constraints": "NULL",
+            "validation": "future timestamp if suspended"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "constraints": "DEFAULT NOW()",
+            "validation": "auto-generated"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "constraints": "DEFAULT NOW()",
+            "validation": "auto-updated"
+          },
+          {
+            "name": "deleted_at",
+            "type": "timestamptz",
+            "constraints": "NULL",
+            "validation": "soft delete"
+          }
+        ],
+        "relationships": [
+          {
+            "type": "one_to_many",
+            "target": "Snippet",
+            "foreign_key": "author_id"
+          },
+          {
+            "type": "one_to_many",
+            "target": "Organization",
+            "foreign_key": "owner_id"
+          },
+          {
+            "type": "many_to_many",
+            "target": "Organization",
+            "through": "organization_members"
+          },
+          {
+            "type": "one_to_many",
+            "target": "Achievement",
+            "foreign_key": "user_id"
+          },
+          {
+            "type": "many_to_many",
+            "target": "Snippet",
+            "through": "starred_snippets"
+          }
+        ],
+        "indexes": [
+          "username (unique)",
+          "email (unique)",
+          "achievement_points (desc)",
+          "created_at (desc)"
+        ]
+      },
+      {
+        "name": "Snippet",
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "constraints": "PRIMARY KEY",
+            "validation": "required"
+          },
+          {
+            "name": "author_id",
+            "type": "uuid",
+            "constraints": "NOT NULL REFERENCES users(id)",
+            "validation": "existing user"
+          },
+          {
+            "name": "organization_id",
+            "type": "uuid",
+            "constraints": "NULL REFERENCES organizations(id)",
+            "validation": "existing organization"
+          },
+          {
+            "name": "title",
+            "type": "varchar(255)",
+            "constraints": "NOT NULL",
+            "validation": "1-255 chars"
+          },
+          {
+            "name": "description",
+            "type": "text",
+            "constraints": "NULL",
+            "validation": "optional, max 5000 chars"
+          },
+          {
+            "name": "code",
+            "type": "text",
+            "constraints": "NOT NULL",
+            "validation": "max 1MB, UTF-8"
+          },
+          {
+            "name": "language",
+            "type": "varchar(50)",
+            "constraints": "NOT NULL",
+            "validation": "supported language"
+          },
+          {
+            "name": "tags",
+            "type": "text[]",
+            "constraints": "DEFAULT {}",
+            "validation": "max 10 tags, each 1-50 chars"
+          },
+          {
+            "name": "visibility",
+            "type": "varchar(20)",
+            "constraints": "DEFAULT 'public'",
+            "validation": "enum: public, private, organization, unlisted"
+          },
+          {
+            "name": "forked_from_id",
+            "type": "uuid",
+            "constraints": "NULL REFERENCES snippets(id)",
+            "validation": "existing snippet"
+          },
+          {
+            "name": "is_template",
+            "type": "boolean",
+            "constraints": "DEFAULT false",
+            "validation": "boolean"
+          },
+          {
+            "name": "template_variables",
+            "type": "jsonb",
+            "constraints": "NULL",
+            "validation": "JSON schema"
+          },
+          {
+            "name": "complexity_score",
+            "type": "float",
+            "constraints": "NULL",
+            "validation": "0-100"
+          },
+          {
+            "name": "security_scan_result",
+            "type": "jsonb",
+            "constraints": "NULL",
+            "validation": "scan results"
+          },
+          {
+            "name": "ai_generated",
+            "type": "boolean",
+            "constraints": "DEFAULT false",
+            "validation": "boolean"
+          },
+          {
+            "name": "ai_model_used",
+            "type": "varchar(100)",
+            "constraints": "NULL",
+            "validation": "model identifier"
+          },
+          {
+            "name": "view_count",
+            "type": "integer",
+            "constraints": "DEFAULT 0",
+            "validation": "min 0"
+          },
+          {
+            "name": "star_count",
+            "type": "integer",
+            "constraints": "DEFAULT 0",
+            "validation": "min 0"
+          },
+          {
+            "name": "fork_count",
+            "type": "integer",
+            "constraints": "DEFAULT 0",
+            "validation": "min 0"
+          },
+          {
+            "name": "last_edited_at",
+            "type": "timestamptz",
+            "constraints": "DEFAULT NOW()",
+            "validation": "timestamp"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "constraints": "DEFAULT NOW()",
+            "validation": "auto-generated"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "constraints": "DEFAULT NOW()",
+            "validation": "auto-updated"
+          },
+          {
+            "name": "deleted_at",
+            "type": "timestamptz",
+            "constraints": "NULL",
+            "validation": "soft delete"
+          }
+        ],
+        "relationships": [
+          {
+            "type": "many_to_one",
+            "target": "User",
+            "foreign_key": "author_id"
+          },
+          {
+            "type": "many_to_one",
+            "target": "Organization",
+            "foreign_key": "organization_id"
+          },
+          {
+            "type": "one_to_many",
+            "target": "SnippetVersion",
+            "foreign_key": "snippet_id"
+          },
+          {
+            "type": "one_to_many",
+            "target": "SnippetAnalysis",
+            "foreign_key": "snippet_id"
+          },
+          {
+            "type": "one_to_many",
+            "target": "CollaborationSession",
+            "foreign_key": "snippet_id"
+          },
+          {
+            "type": "self_referential",
+            "target": "Snippet",
+            "foreign_key": "forked_from_id"
+          }
+        ],
+        "indexes": [
+          "author_id",
+          "language",
+          "visibility",
+          "created_at (desc)",
+          "star_count (desc)",
+          "view_count (desc)",
+          "tags (GIN)",
+          "organization_id"
+        ]
+      }
+    ]
+  },
+  "screen_by_screen_specification": {
+    "screens": [
+      {
+        "screen_name": "LandingPage",
+        "navigation_path": "/",
+        "layout_grid": "Full-width hero section with features grid below",
+        "component_hierarchy": {
+          "root": "LandingLayout",
+          "sections": [
+            "HeroSection",
+            "FeaturesGrid",
+            "AIDemo",
+            "Testimonials",
+            "StatsSection",
+            "CTASection",
+            "Footer"
+          ]
+        },
+        "state_properties": {
+          "is_scrolled": "boolean",
+          "active_feature": "number",
+          "ai_demo_code": "string",
+          "ai_demo_output": "string"
+        },
+        "event_handlers": {
+          "handle_scroll": "update is_scrolled for navbar transparency",
+          "handle_feature_click": "set active_feature and scroll to section",
+          "handle_ai_demo_run": "send demo code to Gemini API and update output",
+          "handle_signup_click": "navigate to signup page",
+          "handle_login_click": "navigate to login page"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH stats (total users, snippets, collaborations); SET up scroll listener; ON AI demo run: CALL Gemini API with demo code and language, DISPLAY results with typing animation"
+      },
+      {
+        "screen_name": "LoginPage",
+        "navigation_path": "/auth/login",
+        "layout_grid": "Centered card on gradient background",
+        "component_hierarchy": {
+          "root": "AuthLayout",
+          "children": [
+            "LogoHeader",
+            "LoginForm",
+            "SocialLoginButtons",
+            "SignupPrompt",
+            "FooterLinks"
+          ]
+        },
+        "state_properties": {
+          "email": "string",
+          "password": "string",
+          "remember_me": "boolean",
+          "is_loading": "boolean",
+          "error": "string | null",
+          "show_password": "boolean"
+        },
+        "event_handlers": {
+          "handle_email_change": "update email state, clear error",
+          "handle_password_change": "update password state, clear error",
+          "handle_remember_me_toggle": "toggle remember_me",
+          "handle_submit": "validate form, call login API",
+          "handle_social_login": "initiate OAuth flow",
+          "handle_forgot_password": "navigate to forgot password page",
+          "toggle_show_password": "toggle password visibility"
+        },
+        "business_logic_pseudocode": "ON form submit: VALIDATE email format and password length; IF valid THEN CALL POST /api/auth/login WITH credentials; IF success THEN SET token in cookies, UPDATE user store, REDIRECT to dashboard; ELSE SET error message based on response"
+      },
+      {
+        "screen_name": "SignupPage",
+        "navigation_path": "/auth/register",
+        "layout_grid": "Centered card with multi-step form",
+        "component_hierarchy": {
+          "root": "AuthLayout",
+          "children": [
+            "LogoHeader",
+            "SignupStepper",
+            "BasicInfoForm",
+            "PreferencesForm",
+            "VerificationStep",
+            "FooterLinks"
+          ]
+        },
+        "state_properties": {
+          "step": "number (1-3)",
+          "username": "string",
+          "email": "string",
+          "password": "string",
+          "confirm_password": "string",
+          "display_name": "string",
+          "preferences": "object",
+          "verification_code": "string",
+          "is_loading": "boolean",
+          "errors": "object"
+        },
+        "event_handlers": {
+          "handle_next_step": "validate current step, increment step",
+          "handle_prev_step": "decrement step",
+          "handle_input_change": "update corresponding field",
+          "handle_preference_change": "update preferences object",
+          "handle_submit": "submit all data to registration API",
+          "handle_verification_submit": "verify email with code"
+        },
+        "business_logic_pseudocode": "ON step 1 validation: CHECK username availability via API, VALIDATE email format, CHECK password strength; ON final submit: CALL POST /api/auth/register WITH all data; IF success THEN SEND verification email, SHOW verification step; ON verification: CALL POST /api/auth/verify WITH code; IF success THEN REDIRECT to login with success message"
+      },
+      {
+        "screen_name": "DashboardHome",
+        "navigation_path": "/dashboard",
+        "layout_grid": "Bento grid with 12 responsive columns",
+        "component_hierarchy": {
+          "root": "DashboardLayout",
+          "sidebar": "NavigationSidebar",
+          "main": [
+            "WelcomeBanner",
+            "QuickStats",
+            "RecentSnippets",
+            "AISuggestions",
+            "CollaborationInvites",
+            "LearningProgress",
+            "TrendingNow"
+          ]
+        },
+        "state_properties": {
+          "user_data": "object",
+          "stats": "object",
+          "recent_snippets": "array",
+          "ai_suggestions": "array",
+          "collaboration_invites": "array",
+          "trending_snippets": "array",
+          "is_loading": "boolean",
+          "active_widget": "string | null"
+        },
+        "event_handlers": {
+          "handle_snippet_click": "navigate to snippet detail",
+          "handle_ai_suggestion_accept": "apply suggestion to relevant snippet",
+          "handle_collaboration_join": "join collaboration session",
+          "handle_widget_toggle": "expand/collapse widget",
+          "handle_refresh": "refetch all dashboard data",
+          "handle_quick_action": "execute quick action (create snippet, start pair, etc.)"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH user data, stats, recent snippets, AI suggestions, collaboration invites, trending snippets; SET loading states; ON data load: RENDER widgets with data; ON snippet click: NAVIGATE to /snippets/{id}; ON AI suggestion accept: CALL PATCH /api/snippets/{id} WITH updated code"
+      },
+      {
+        "screen_name": "SnippetExplorer",
+        "navigation_path": "/snippets",
+        "layout_grid": "Sidebar filters with main content grid",
+        "component_hierarchy": {
+          "root": "ExplorerLayout",
+          "sidebar": [
+            "SearchBar",
+            "LanguageFilter",
+            "TagFilter",
+            "DateRangeFilter",
+            "AdvancedFilters",
+            "SavedSearches"
+          ],
+          "main": [
+            "ResultsHeader",
+            "SnippetsGrid",
+            "Pagination",
+            "EmptyState",
+            "LoadingState"
+          ]
+        },
+        "state_properties": {
+          "search_query": "string",
+          "selected_languages": "array",
+          "selected_tags": "array",
+          "date_range": "object",
+          "sort_by": "string",
+          "current_page": "number",
+          "total_pages": "number",
+          "snippets": "array",
+          "is_loading": "boolean",
+          "has_more": "boolean"
+        },
+        "event_handlers": {
+          "handle_search": "debounced search API call",
+          "handle_filter_change": "update filters and refetch",
+          "handle_sort_change": "update sort and refetch",
+          "handle_page_change": "fetch page data",
+          "handle_snippet_click": "navigate to snippet detail",
+          "handle_save_search": "save current filter set",
+          "handle_load_more": "infinite scroll load"
+        },
+        "business_logic_pseudocode": "ON filter change: BUILD query params from all filters; CALL GET /api/snippets WITH query params; UPDATE snippets state with response; ON infinite scroll: IF has_more THEN FETCH next page and APPEND to snippets"
+      },
+      {
+        "screen_name": "SnippetEditor",
+        "navigation_path": "/snippets/create",
+        "layout_grid": "Four-pane editor with resizable dividers",
+        "component_hierarchy": {
+          "root": "EditorLayout",
+          "header": [
+            "TitleInput",
+            "SaveStatus",
+            "ActionButtons"
+          ],
+          "left_pane": [
+            "FileTree",
+            "SnippetProperties"
+          ],
+          "center_pane": [
+            "CodeEditor",
+            "EditorToolbar"
+          ],
+          "right_pane": [
+            "LivePreview",
+            "ConsoleOutput"
+          ],
+          "bottom_pane": [
+            "AIAssistant",
+            "ProblemsPanel"
+          ]
+        },
+        "state_properties": {
+          "title": "string",
+          "description": "string",
+          "code": "string",
+          "language": "string",
+          "tags": "array",
+          "visibility": "string",
+          "is_template": "boolean",
+          "template_variables": "object",
+          "auto_save_timer": "number | null",
+          "last_saved": "string | null",
+          "ai_suggestions": "array",
+          "errors": "array",
+          "warnings": "array"
+        },
+        "event_handlers": {
+          "handle_code_change": "update code, start auto-save timer, run analysis",
+          "handle_title_change": "update title",
+          "handle_language_change": "update syntax highlighting",
+          "handle_save": "manual save to API",
+          "handle_auto_save": "auto-save after delay",
+          "handle_ai_request": "get AI suggestions for current code",
+          "handle_ai_apply": "apply selected AI suggestion",
+          "handle_collaboration_toggle": "start/stop collaboration session"
+        },
+        "business_logic_pseudocode": "ON code change: CLEAR existing auto-save timer; SET new timer for 2000ms; RUN code analysis (complexity, security); ON timer end: CALL PATCH /api/snippets/{id} for auto-save; ON AI request: CALL POST /api/ai/assist WITH code and context; DISPLAY suggestions; ON AI apply: MERGE suggestion into code"
+      },
+      {
+        "screen_name": "SnippetDetail",
+        "navigation_path": "/snippets/[id]",
+        "layout_grid": "Header with code block and sidebar metadata",
+        "component_hierarchy": {
+          "root": "DetailLayout",
+          "header": [
+            "SnippetTitle",
+            "AuthorInfo",
+            "ActionButtons"
+          ],
+          "main": [
+            "CodeBlock",
+            "Description",
+            "CommentsSection",
+            "VersionHistory"
+          ],
+          "sidebar": [
+            "MetadataPanel",
+            "RelatedSnippets",
+            "AIAnalysis",
+            "ShareOptions"
+          ]
+        },
+        "state_properties": {
+          "snippet": "object",
+          "comments": "array",
+          "versions": "array",
+          "related_snippets": "array",
+          "ai_analysis": "object | null",
+          "is_starred": "boolean",
+          "is_forked": "boolean",
+          "active_tab": "string",
+          "comment_text": "string"
+        },
+        "event_handlers": {
+          "handle_star": "toggle star, update count",
+          "handle_fork": "create fork, navigate to editor",
+          "handle_share": "open share modal",
+          "handle_comment_submit": "post comment",
+          "handle_version_select": "load version code",
+          "handle_ai_analyze": "run AI analysis on snippet",
+          "handle_report": "open report modal",
+          "handle_edit": "navigate to edit page"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH snippet by ID, comments, versions, related snippets; CHECK if user has starred/forked; ON star: CALL POST /api/snippets/{id}/star; UPDATE star count and is_starred; ON fork: CALL POST /api/snippets/{id}/fork; NAVIGATE to editor with forked code"
+      },
+      {
+        "screen_name": "AIPairProgramming",
+        "navigation_path": "/ai/pair",
+        "layout_grid": "Split view with code editor and AI chat",
+        "component_hierarchy": {
+          "root": "PairProgrammingLayout",
+          "left_pane": [
+            "CodeEditor",
+            "ProblemStatement",
+            "TestCases"
+          ],
+          "right_pane": [
+            "AIChat",
+            "AISuggestions",
+            "HistoryPanel"
+          ],
+          "bottom_pane": [
+            "Terminal",
+            "Debugger",
+            "PerformanceMetrics"
+          ]
+        },
+        "state_properties": {
+          "code": "string",
+          "problem": "string",
+          "test_cases": "array",
+          "ai_conversation": "array",
+          "ai_suggestions": "array",
+          "is_ai_thinking": "boolean",
+          "execution_result": "object | null",
+          "ai_personality": "string",
+          "session_history": "array"
+        },
+        "event_handlers": {
+          "handle_code_change": "update code, send to AI for real-time suggestions",
+          "handle_ai_message": "send message to AI, receive response",
+          "handle_suggestion_apply": "apply AI suggestion to code",
+          "handle_run_tests": "execute code against test cases",
+          "handle_personality_change": "change AI assistant personality",
+          "handle_save_session": "save pair programming session",
+          "handle_reset": "reset code and conversation"
+        },
+        "business_logic_pseudocode": "ON code change: DEBOUNCE 1000ms, THEN CALL Gemini API with code context for suggestions; ON AI message: APPEND to conversation, CALL Gemini API with full conversation history; ON response: STREAM response token by token, UPDATE chat UI; ON test run: EXECUTE code in sandbox, COMPARE output with expected"
+      },
+      {
+        "screen_name": "CodeTranslator",
+        "navigation_path": "/ai/translate",
+        "layout_grid": "Two-column split with before/after comparison",
+        "component_hierarchy": {
+          "root": "TranslatorLayout",
+          "left_pane": [
+            "SourceCodeEditor",
+            "SourceLanguageSelector",
+            "SourceOptions"
+          ],
+          "right_pane": [
+            "TargetCodeEditor",
+            "TargetLanguageSelector",
+            "TranslationOptions"
+          ],
+          "center": [
+            "TranslateButton",
+            "AccuracyMetrics",
+            "PreservationCheck"
+          ],
+          "bottom": [
+            "ExecutionComparison",
+            "SideBySideDiff",
+            "TranslationHistory"
+          ]
+        },
+        "state_properties": {
+          "source_code": "string",
+          "source_language": "string",
+          "target_language": "string",
+          "translated_code": "string",
+          "is_translating": "boolean",
+          "accuracy_score": "number | null",
+          "preservation_checks": "array",
+          "execution_results": "object",
+          "translation_history": "array",
+          "translation_options": "object"
+        },
+        "event_handlers": {
+          "handle_source_change": "update source code",
+          "handle_language_change": "update language pair",
+          "handle_translate": "send to Gemini API for translation",
+          "handle_accuracy_check": "run accuracy analysis",
+          "handle_preservation_test": "test functional equivalence",
+          "handle_save_translation": "save as new snippet",
+          "handle_history_select": "load previous translation"
+        },
+        "business_logic_pseudocode": "ON translate: CALL Gemini API with source code, source language, target language, and translation options; STREAM translation response; ON completion: RUN accuracy analysis using token comparison; RUN preservation tests by executing both codes in sandbox; DISPLAY side-by-side diff"
+      },
+      {
+        "screen_name": "CollaborationSession",
+        "navigation_path": "/collaboration/sessions/[sessionToken]",
+        "layout_grid": "Multi-pane real-time editor with participant sidebar",
+        "component_hierarchy": {
+          "root": "CollaborationLayout",
+          "editor_pane": [
+            "MultiCursorEditor",
+            "ParticipantCursors",
+            "SelectionHighlights"
+          ],
+          "sidebar": [
+            "ParticipantList",
+            "ChatPanel",
+            "SessionControls"
+          ],
+          "toolbar": [
+            "SessionInfo",
+            "RecordingControls",
+            "ExportOptions",
+            "AIAssistButton"
+          ],
+          "bottom_pane": [
+            "Terminal",
+            "VersionHistory",
+            "ConflictResolver"
+          ]
+        },
+        "state_properties": {
+          "session_token": "string",
+          "participants": "array",
+          "chat_messages": "array",
+          "code_content": "string",
+          "cursor_positions": "object",
+          "selection_ranges": "object",
+          "is_recording": "boolean",
+          "recording_url": "string | null",
+          "conflicts": "array",
+          "is_connected": "boolean",
+          "connection_quality": "number"
+        },
+        "event_handlers": {
+          "handle_code_change": "broadcast change to other participants",
+          "handle_cursor_move": "broadcast cursor position",
+          "handle_chat_message": "send message to chat",
+          "handle_participant_join": "update participant list",
+          "handle_participant_leave": "remove from list",
+          "handle_recording_toggle": "start/stop session recording",
+          "handle_conflict_resolve": "resolve merge conflict",
+          "handle_ai_assist": "get AI help for current code"
+        },
+        "business_logic_pseudocode": "ON connect: JOIN WebSocket room with session token; LISTEN for code changes, cursor moves, chat messages; ON local change: SEND to server via WebSocket; ON remote change: APPLY to editor with conflict detection; ON conflict: SHOW resolution UI with three-way merge; ON recording: CAPTURE editor changes and audio/video if permitted"
+      },
+      {
+        "screen_name": "CodeReviewMatch",
+        "navigation_path": "/collaboration/reviews/match",
+        "layout_grid": "Matching interface with countdown and preferences",
+        "component_hierarchy": {
+          "root": "ReviewMatchLayout",
+          "matching_screen": [
+            "CountdownTimer",
+            "MatchingAnimation",
+            "PreferencesPanel"
+          ],
+          "match_found": [
+            "ReviewerInfo",
+            "RevieweeInfo",
+            "SnippetPreview",
+            "ActionButtons"
+          ],
+          "review_session": [
+            "CodeReviewer",
+            "CommentThreads",
+            "FeedbackForm",
+            "TimerDisplay"
+          ]
+        },
+        "state_properties": {
+          "matching_status": "string",
+          "time_remaining": "number",
+          "matched_user": "object | null",
+          "review_snippet": "object | null",
+          "review_comments": "array",
+          "session_timer": "number",
+          "user_preferences": "object",
+          "match_quality": "number"
+        },
+        "event_handlers": {
+          "handle_start_matching": "start looking for match",
+          "handle_cancel_matching": "cancel match search",
+          "handle_accept_match": "accept matched user",
+          "handle_reject_match": "reject and continue matching",
+          "handle_comment_add": "add review comment",
+          "handle_feedback_submit": "submit session feedback",
+          "handle_timer_end": "automatically end session"
+        },
+        "business_logic_pseudocode": "ON start matching: CALL WebSocket to join matching pool; SERVER finds compatible user based on language, experience, availability; ON match: SHOW match details with 30s acceptance window; ON accept: CREATE review session, START 10-minute timer; ON timer end: AUTO-submit feedback, END session"
+      },
+      {
+        "screen_name": "ProfilePage",
+        "navigation_path": "/profile/[username]",
+        "layout_grid": "Header with tabs for different sections",
+        "component_hierarchy": {
+          "root": "ProfileLayout",
+          "header": [
+            "ProfileHeader",
+            "StatsOverview",
+            "ActionButtons"
+          ],
+          "tabs": [
+            "OverviewTab",
+            "SnippetsTab",
+            "AchievementsTab",
+            "ActivityTab",
+            "OrganizationsTab"
+          ],
+          "content": {
+            "overview": [
+              "BioSection",
+              "CodingStyle",
+              "AIPersonality",
+              "RecentActivity"
             ],
-            "pages": {
-              "dashboard.html",
-              "snippet-editor.html",
-              "snippet-viewer.html",
-              "profile.html",
-              "admin.html",
-              "login.html",
-              "signup.html",
-              "organization.html",
-              "health.html"
+            "snippets": [
+              "SnippetsGrid",
+              "FilterBar",
+              "SortOptions"
+            ],
+            "achievements": [
+              "BadgeCollection",
+              "ProgressTrackers",
+              "LeaderboardPosition"
+            ],
+            "activity": [
+              "ActivityTimeline",
+              "ContributionGraph",
+              "CollaborationHistory"
+            ],
+            "organizations": [
+              "OrganizationCards",
+              "MembershipList",
+              "OwnedOrgs"
+            ]
+          }
+        },
+        "state_properties": {
+          "profile_user": "object",
+          "active_tab": "string",
+          "snippets": "array",
+          "achievements": "array",
+          "activity": "array",
+          "organizations": "array",
+          "coding_style_analysis": "object",
+          "is_current_user": "boolean",
+          "is_editing": "boolean"
+        },
+        "event_handlers": {
+          "handle_tab_change": "switch active tab, load data",
+          "handle_edit_profile": "enter edit mode",
+          "handle_save_profile": "save profile changes",
+          "handle_follow": "follow/unfollow user",
+          "handle_message": "open direct message modal",
+          "handle_achievement_click": "show achievement details",
+          "handle_organization_click": "navigate to organization"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH user profile by username; CHECK if current user; LOAD data for active tab; ON edit save: VALIDATE changes, CALL PATCH /api/users/{id}; ON follow: CALL POST /api/users/{id}/follow; UPDATE follow count and state"
+      },
+      {
+        "screen_name": "OrganizationDashboard",
+        "navigation_path": "/organizations/[slug]",
+        "layout_grid": "Organization layout with sidebar navigation",
+        "component_hierarchy": {
+          "root": "OrganizationLayout",
+          "sidebar": [
+            "OrgLogo",
+            "NavMenu",
+            "MemberPreview",
+            "QuickStats"
+          ],
+          "main": {
+            "overview": [
+              "OrgHeader",
+              "ActivityFeed",
+              "TopSnippets",
+              "MemberSpotlight"
+            ],
+            "members": [
+              "MemberList",
+              "InviteManager",
+              "RoleEditor",
+              "PendingInvites"
+            ],
+            "snippets": [
+              "OrgSnippetsGrid",
+              "VisibilityFilter",
+              "TemplateLibrary"
+            ],
+            "settings": [
+              "GeneralSettings",
+              "PrivacySettings",
+              "AISettings",
+              "DangerZone"
+            ]
+          }
+        },
+        "state_properties": {
+          "organization": "object",
+          "active_section": "string",
+          "members": "array",
+          "snippets": "array",
+          "activity": "array",
+          "user_role": "string",
+          "invite_link": "string | null",
+          "is_loading": "boolean"
+        },
+        "event_handlers": {
+          "handle_section_change": "change active section",
+          "handle_invite_member": "generate invite link or send email",
+          "handle_role_change": "update member role",
+          "handle_remove_member": "remove member from org",
+          "handle_settings_save": "save organization settings",
+          "handle_snippet_create": "create snippet in org context",
+          "handle_leave_org": "leave organization"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH organization by slug; VERIFY user membership and role; LOAD data for active section; ON invite: GENERATE unique invite token with expiry; ON role change: VERIFY permissions, CALL PATCH /api/organizations/{id}/members/{userId}; ON settings save: VALIDATE, CALL PATCH /api/organizations/{id}"
+      },
+      {
+        "screen_name": "LearningPaths",
+        "navigation_path": "/learning/paths",
+        "layout_grid": "Card grid with progress tracking",
+        "component_hierarchy": {
+          "root": "LearningLayout",
+          "header": [
+            "LearningHeader",
+            "ProgressOverview",
+            "Recommendations"
+          ],
+          "main": [
+            "PathCategories",
+            "FeaturedPaths",
+            "EnrolledPaths",
+            "CompletedPaths"
+          ],
+          "sidebar": [
+            "SkillAssessment",
+            "LearningStats",
+            "UpcomingChallenges"
+          ]
+        },
+        "state_properties": {
+          "learning_paths": "array",
+          "enrolled_paths": "array",
+          "completed_paths": "array",
+          "user_skills": "object",
+          "progress_data": "object",
+          "recommendations": "array",
+          "active_category": "string",
+          "is_assessment_active": "boolean"
+        },
+        "event_handlers": {
+          "handle_path_enroll": "enroll in learning path",
+          "handle_path_start": "start first lesson",
+          "handle_path_progress": "update progress",
+          "handle_skill_assess": "start skill assessment",
+          "handle_recommendation_click": "view recommended path",
+          "handle_category_change": "filter paths by category",
+          "handle_challenge_join": "join coding challenge"
+        },
+        "business_logic_pseudocode": "ON mount: FETCH all learning paths, user's enrolled/completed paths, skill assessment results; ON enroll: CALL POST /api/learning/paths/{id}/enroll; ADD to enrolled paths; ON progress: CALL PATCH /api/learning/progress with completion data; UPDATE achievement points if milestone reached"
+      },
+      {
+        "screen_name": "AdminDashboard",
+        "navigation_path": "/admin",
+        "layout_grid": "Admin layout with metrics dashboard and management panels",
+        "component_hierarchy": {
+          "root": "AdminLayout",
+          "sidebar": [
+            "AdminNav",
+            "SystemStatus",
+            "QuickActions"
+          ],
+          "main": {
+            "overview": [
+              "SystemMetrics",
+              "RecentActivity",
+              "ResourceUsage",
+              "AIUsageStats"
+            ],
+            "users": [
+              "UserManagementTable",
+              "UserSearch",
+              "BulkActions",
+              "UserDetailModal"
+            ],
+            "snippets": [
+              "SnippetModeration",
+              "ContentFlags",
+              "BulkModeration"
+            ],
+            "organizations": [
+              "OrgManagement",
+              "OwnershipTransfers",
+              "Analytics"
+            ],
+            "ai": [
+              "AIConfiguration",
+              "UsageLimits",
+              "ModelSettings",
+              "PromptTemplates"
+            ],
+            "system": [
+              "CacheManagement",
+              "DatabaseStatus",
+              "LogViewer",
+              "BackupControls"
+            ]
+          }
+        },
+        "state_properties": {
+          "admin_stats": "object",
+          "users": "array",
+          "snippets": "array",
+          "organizations": "array",
+          "content_flags": "array",
+          "system_health": "object",
+          "ai_usage": "object",
+          "selected_tab": "string",
+          "selected_item": "object | null"
+        },
+        "event_handlers": {
+          "handle_user_suspend": "suspend user account",
+          "handle_user_delete": "delete user permanently",
+          "handle_snippet_approve": "approve flagged snippet",
+          "handle_snippet_remove": "remove inappropriate snippet",
+          "handle_cache_clear": "clear specific cache",
+          "handle_backup_create": "create system backup",
+          "handle_ai_limit_update": "update AI usage limits",
+          "handle_export_data": "export admin data"
+        },
+        "business_logic_pseudocode": "ON admin login: VERIFY secret admin password (not in database, hardcoded env); GRANT super_admin role for session; LOAD all admin metrics; ON user suspend: UPDATE user is_suspended, SET reason and duration; NOTIFY user via email; ON cache clear: CALL Redis FLUSH for specific keys or all"
+      }
+    ]
+  },
+  "state_management_details": {
+    "store_structure": {
+      "auth_store": {
+        "state": {
+          "user": {
+            "id": "string | null",
+            "username": "string | null",
+            "email": "string | null",
+            "avatar_url": "string | null",
+            "role": "string",
+            "preferences": "object",
+            "achievement_points": "number",
+            "is_verified": "boolean"
+          },
+          "token": "string | null",
+          "refresh_token": "string | null",
+          "is_loading": "boolean",
+          "error": "string | null",
+          "login_redirect": "string | null"
+        },
+        "actions": {
+          "login": "(credentials) => Promise<void>",
+          "register": "(userData) => Promise<void>",
+          "logout": "() => void",
+          "refresh_token": "() => Promise<boolean>",
+          "update_user": "(updates) => void",
+          "clear_error": "() => void"
+        },
+        "persist": [
+          "user",
+          "token",
+          "refresh_token"
+        ]
+      },
+      "ui_store": {
+        "state": {
+          "theme": "string",
+          "sidebar_collapsed": "boolean",
+          "notifications": "array",
+          "modals": {
+            "active": "string | null",
+            "props": "object"
+          },
+          "toasts": "array",
+          "command_palette_open": "boolean",
+          "mobile_menu_open": "boolean",
+          "loading_overlay": "boolean"
+        },
+        "actions": {
+          "toggle_theme": "() => void",
+          "toggle_sidebar": "() => void",
+          "add_notification": "(notification) => void",
+          "remove_notification": "(id) => void",
+          "open_modal": "(name, props) => void",
+          "close_modal": "() => void",
+          "add_toast": "(toast) => void",
+          "remove_toast": "(id) => void",
+          "toggle_command_palette": "() => void",
+          "set_loading": "(isLoading) => void"
+        }
+      },
+      "editor_store": {
+        "state": {
+          "current_snippet": {
+            "id": "string | null",
+            "title": "string",
+            "code": "string",
+            "language": "string",
+            "tags": "array",
+            "visibility": "string"
+          },
+          "is_dirty": "boolean",
+          "last_saved": "string | null",
+          "auto_save_interval": "number",
+          "editor_settings": {
+            "font_size": "number",
+            "theme": "string",
+            "line_numbers": "boolean",
+            "minimap": "boolean",
+            "word_wrap": "boolean"
+          },
+          "ai_suggestions": "array",
+          "errors": "array",
+          "warnings": "array"
+        },
+        "actions": {
+          "update_code": "(code) => void",
+          "update_title": "(title) => void",
+          "update_language": "(language) => void",
+          "update_tags": "(tags) => void",
+          "mark_saved": "() => void",
+          "mark_dirty": "() => void",
+          "set_editor_settings": "(settings) => void",
+          "add_ai_suggestion": "(suggestion) => void",
+          "clear_ai_suggestions": "() => void",
+          "set_errors": "(errors) => void",
+          "set_warnings": "(warnings) => void"
+        }
+      },
+      "collaboration_store": {
+        "state": {
+          "active_session": {
+            "token": "string | null",
+            "participants": "array",
+            "host_id": "string | null",
+            "is_recording": "boolean"
+          },
+          "connection_status": "string",
+          "chat_messages": "array",
+          "cursor_positions": "object",
+          "selection_ranges": "object",
+          "conflicts": "array",
+          "recording_url": "string | null"
+        },
+        "actions": {
+          "join_session": "(token) => Promise<void>",
+          "leave_session": "() => void",
+          "update_participants": "(participants) => void",
+          "add_chat_message": "(message) => void",
+          "update_cursor": "(userId, position) => void",
+          "add_conflict": "(conflict) => void",
+          "resolve_conflict": "(conflictId) => void",
+          "set_recording": "(isRecording, url) => void",
+          "set_connection_status": "(status) => void"
+        }
+      },
+      "ai_store": {
+        "state": {
+          "active_feature": "string | null",
+          "conversation_history": "array",
+          "is_processing": "boolean",
+          "last_response": "string | null",
+          "usage_stats": {
+            "tokens_used": "number",
+            "requests_today": "number",
+            "cost_today": "number"
+          },
+          "model_settings": {
+            "temperature": "number",
+            "max_tokens": "number",
+            "model": "string"
+          },
+          "personality": "string"
+        },
+        "actions": {
+          "set_active_feature": "(feature) => void",
+          "add_to_conversation": "(role, content) => void",
+          "clear_conversation": "() => void",
+          "set_processing": "(isProcessing) => void",
+          "update_usage_stats": "(tokens) => void",
+          "update_model_settings": "(settings) => void",
+          "set_personality": "(personality) => void",
+          "reset_usage": "() => void"
+        }
+      }
+    },
+    "data_flow_diagrams": {
+      "user_login_flow": {
+        "steps": [
+          "User enters credentials on login page",
+          "Frontend validates form locally",
+          "POST /api/auth/login with credentials",
+          "Backend validates credentials against database",
+          "If valid: generate JWT access_token and refresh_token",
+          "Return tokens and user data",
+          "Frontend stores tokens in secure HTTP-only cookies",
+          "Update auth store with user data",
+          "Redirect to dashboard or intended page",
+          "Start token refresh timer (14 minutes)"
+        ],
+        "error_paths": [
+          "Invalid credentials: return 401, show error message",
+          "Account suspended: return 403 with reason",
+          "Email not verified: return 403, offer resend verification",
+          "Rate limit exceeded: return 429, show retry time"
+        ]
+      },
+      "snippet_creation_flow": {
+        "steps": [
+          "User opens snippet editor",
+          "User enters code, title, language, tags",
+          "Auto-save triggers after 2 seconds of inactivity",
+          "PATCH /api/snippets/{id} for auto-save (if existing)",
+          "User clicks Save button",
+          "Validate all required fields",
+          "If new: POST /api/snippets with snippet data",
+          "Backend validates, creates record, returns ID",
+          "Frontend navigates to snippet detail page",
+          "Start real-time analysis in background",
+          "POST /api/ai/analyze for code analysis",
+          "Update snippet with analysis results"
+        ],
+        "ai_integration": [
+          "While typing, debounced AI suggestions every 1000ms",
+          "On explicit AI help request, show suggestions panel",
+          "User selects AI suggestion",
+          "Apply suggestion to code with diff preview",
+          "Log AI usage for user"
+        ]
+      },
+      "collaboration_session_flow": {
+        "steps": [
+          "User starts collaboration from snippet editor",
+          "POST /api/collaboration/sessions with snippet ID",
+          "Backend generates session token, WebSocket room",
+          "Return session token and WebSocket URL",
+          "Frontend connects to WebSocket with token",
+          "Broadcast join event to existing participants",
+          "On code change: send delta to server via WebSocket",
+          "Server broadcasts delta to all other participants",
+          "Participants apply delta locally",
+          "Conflict detection on simultaneous edits",
+          "Three-way merge resolution if conflict",
+          "Periodic snapshot to database every 30 seconds",
+          "On leave: broadcast leave event, clean up if empty"
+        ],
+        "fallback_mechanisms": [
+          "WebSocket fails: fallback to HTTP long polling",
+          "Long polling: POST updates, GET poll every 2 seconds",
+          "Offline: queue changes, sync on reconnect"
+        ]
+      },
+      "ai_translation_flow": {
+        "steps": [
+          "User selects source code and language",
+          "User selects target language",
+          "Click Translate button",
+          "POST /api/ai/translate with code and language pair",
+          "Backend sends to Gemini API with translation prompt",
+          "Stream response token by token to frontend",
+          "Display translated code in real-time",
+          "Run accuracy analysis on completion",
+          "Execute both codes in sandbox for functional test",
+          "Compare outputs for equivalence",
+          "Display accuracy score and any issues",
+          "Offer to save as new snippet"
+        ],
+        "optimizations": [
+          "Cache translations for identical code/language pairs",
+          "Use incremental translation for large codebases",
+          "Parallel execution tests for speed"
+        ]
+      }
+    }
+  },
+  "api_specifications": {
+    "endpoints": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "request_headers": {
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "email",
+            "password"
+          ],
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "remember_me": {
+              "type": "boolean"
             }
           }
         },
-        "config": {
-          "tailwind.config.js",
-          "postcss.config.js",
-          "service-worker.js",
-          ".env.frontend"
-        }
-      },
-      "backend": {
-        "public": [
-          "index.php",
-          ".htaccess"
-        ],
-        "app": {
-          "Controllers": {
-            "Api": [
-              "AuthController.php",
-              "SnippetController.php",
-              "CollaborationController.php",
-              "AnalysisController.php",
-              "UserController.php",
-              "AdminController.php",
-              "ExportController.php",
-              "HealthController.php",
-              "OrganizationController.php"
-            ]
+        "response_schema": {
+          "success": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "access_token": {
+                "type": "string"
+              },
+              "refresh_token": {
+                "type": "string"
+              },
+              "expires_in": {
+                "type": "number"
+              }
+            }
           },
-          "Services": {
-            "AuthService.php",
-            "SnippetService.php",
-            "CollaborationService.php",
-            "AnalysisService.php",
-            "GamificationService.php",
-            "SearchService.php",
-            "ExportService.php",
-            "CacheService.php",
-            "OrganizationService.php"
-          },
-          "Repositories": {
-            "UserRepository.php",
-            "SnippetRepository.php",
-            "CollaborationRepository.php",
-            "AnalysisRepository.php",
-            "AchievementRepository.php",
-            "AuditRepository.php",
-            "OrganizationRepository.php"
-          },
-          "Models": {
-            "User.php",
-            "Snippet.php",
-            "SnippetVersion.php",
-            "Tag.php",
-            "Organization.php",
-            "Role.php",
-            "Permission.php",
-            "Achievement.php",
-            "AuditLog.php",
-            "CollaborationSession.php"
-          },
-          "Middleware": {
-            "AuthMiddleware.php",
-            "CorsMiddleware.php",
-            "RateLimitMiddleware.php",
-            "CsrfMiddleware.php",
-            "RoleMiddleware.php",
-            "CollaborationMiddleware.php",
-            "CacheMiddleware.php"
-          },
-          "Helpers": {
-            "ApiResponse.php",
-            "ValidationHelper.php",
-            "CodeHelper.php",
-            "SecurityHelper.php",
-            "FormatHelper.php"
+          "error": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              }
+            }
           }
         },
-        "config": {
-          "database.php",
-          "app.php",
-          "cache.php",
-          "auth.php",
-          "api.php",
-          ".env"
+        "error_codes": {
+          "400": "Invalid request format",
+          "401": "Invalid credentials",
+          "403": "Account suspended or not verified",
+          "429": "Too many attempts",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "none"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "request_headers": {
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "username",
+            "email",
+            "password"
+          ],
+          "properties": {
+            "username": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9_]+$"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "display_name": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "preferences": {
+              "type": "object"
+            }
+          }
+        },
+        "response_schema": {
+          "success": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "verification_required": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Validation failed",
+          "409": "Username or email already exists",
+          "429": "Too many registrations from IP",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "none"
+      },
+      {
+        "method": "GET",
+        "path": "/api/snippets",
+        "query_parameters": {
+          "page": {
+            "type": "number",
+            "default": 1
+          },
+          "limit": {
+            "type": "number",
+            "default": 20,
+            "max": 100
+          },
+          "language": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "organization"
+            ]
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "newest",
+              "popular",
+              "trending"
+            ]
+          },
+          "search": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "snippets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Snippet"
+              }
+            },
+            "pagination": {
+              "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "limit": {
+                  "type": "number"
+                },
+                "total": {
+                  "type": "number"
+                },
+                "pages": {
+                  "type": "number"
+                }
+              }
+            },
+            "filters": {
+              "type": "object"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid query parameters",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "optional"
+      },
+      {
+        "method": "POST",
+        "path": "/api/snippets",
+        "request_headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {token}"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "title",
+            "code",
+            "language"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 1048576
+            },
+            "language": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
+            },
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "organization",
+                "unlisted"
+              ]
+            },
+            "organization_id": {
+              "type": "string"
+            },
+            "is_template": {
+              "type": "boolean"
+            },
+            "template_variables": {
+              "type": "object"
+            }
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "snippet": {
+              "$ref": "#/components/schemas/Snippet"
+            },
+            "analysis": {
+              "$ref": "#/components/schemas/AnalysisResult"
+            },
+            "ai_suggestions": {
+              "type": "array"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid snippet data",
+          "401": "Unauthorized",
+          "403": "Organization permissions required",
+          "413": "Code too large",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "POST",
+        "path": "/api/ai/translate",
+        "request_headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {token}"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "code",
+            "source_language",
+            "target_language"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "source_language": {
+              "type": "string"
+            },
+            "target_language": {
+              "type": "string"
+            },
+            "options": {
+              "type": "object",
+              "properties": {
+                "preserve_comments": {
+                  "type": "boolean"
+                },
+                "idiomatic": {
+                  "type": "boolean"
+                },
+                "include_tests": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "translated_code": {
+              "type": "string"
+            },
+            "accuracy_score": {
+              "type": "number"
+            },
+            "preservation_checks": {
+              "type": "array"
+            },
+            "execution_comparison": {
+              "type": "object"
+            },
+            "warnings": {
+              "type": "array"
+            },
+            "tokens_used": {
+              "type": "number"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid translation request",
+          "401": "Unauthorized",
+          "429": "AI rate limit exceeded",
+          "500": "Translation failed"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "POST",
+        "path": "/api/ai/pair",
+        "request_headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {token}"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "code",
+            "task"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "conversation_history": {
+              "type": "array"
+            },
+            "personality": {
+              "type": "string",
+              "enum": [
+                "helpful",
+                "critical",
+                "concise",
+                "educational"
+              ]
+            },
+            "options": {
+              "type": "object",
+              "properties": {
+                "suggest_improvements": {
+                  "type": "boolean"
+                },
+                "write_tests": {
+                  "type": "boolean"
+                },
+                "explain_changes": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "response": {
+              "type": "string"
+            },
+            "suggested_code": {
+              "type": "string"
+            },
+            "explanations": {
+              "type": "array"
+            },
+            "tests": {
+              "type": "array"
+            },
+            "conversation_id": {
+              "type": "string"
+            },
+            "tokens_used": {
+              "type": "number"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid request",
+          "401": "Unauthorized",
+          "429": "AI rate limit exceeded",
+          "500": "AI service unavailable"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collaboration/sessions",
+        "request_headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {token}"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "required": [
+            "snippet_id"
+          ],
+          "properties": {
+            "snippet_id": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "object",
+              "properties": {
+                "allow_recording": {
+                  "type": "boolean"
+                },
+                "max_participants": {
+                  "type": "number"
+                },
+                "require_approval": {
+                  "type": "boolean"
+                },
+                "session_duration": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "session_token": {
+              "type": "string"
+            },
+            "websocket_url": {
+              "type": "string"
+            },
+            "participants": {
+              "type": "array"
+            },
+            "expires_at": {
+              "type": "string"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid snippet",
+          "401": "Unauthorized",
+          "403": "No permission to collaborate on snippet",
+          "404": "Snippet not found",
+          "500": "Failed to create session"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "GET",
+        "path": "/api/collaboration/sessions/{sessionToken}/updates",
+        "query_parameters": {
+          "since": {
+            "type": "string",
+            "format": "timestamp"
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "updates": {
+              "type": "array"
+            },
+            "participants": {
+              "type": "array"
+            },
+            "last_update": {
+              "type": "string"
+            },
+            "has_more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid session token",
+          "404": "Session not found",
+          "410": "Session expired",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collaboration/reviews/match",
+        "request_headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {token}"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "properties": {
+            "preferences": {
+              "type": "object",
+              "properties": {
+                "languages": {
+                  "type": "array"
+                },
+                "experience_level": {
+                  "type": "string"
+                },
+                "review_type": {
+                  "type": "string"
+                },
+                "duration": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "match_id": {
+              "type": "string"
+            },
+            "matched_user": {
+              "$ref": "#/components/schemas/User"
+            },
+            "snippet": {
+              "$ref": "#/components/schemas/Snippet"
+            },
+            "time_limit": {
+              "type": "number"
+            },
+            "session_token": {
+              "type": "string"
+            }
+          }
+        },
+        "error_codes": {
+          "400": "Invalid preferences",
+          "401": "Unauthorized",
+          "404": "No match found",
+          "429": "Too many match requests",
+          "500": "Matching service error"
+        },
+        "authentication_requirement": "required"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/metrics",
+        "request_headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "system": {
+              "type": "object",
+              "properties": {
+                "uptime": {
+                  "type": "number"
+                },
+                "memory_usage": {
+                  "type": "number"
+                },
+                "cpu_usage": {
+                  "type": "number"
+                },
+                "database_connections": {
+                  "type": "number"
+                }
+              }
+            },
+            "users": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "active_today": {
+                  "type": "number"
+                },
+                "new_today": {
+                  "type": "number"
+                },
+                "suspended": {
+                  "type": "number"
+                }
+              }
+            },
+            "snippets": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "created_today": {
+                  "type": "number"
+                },
+                "public": {
+                  "type": "number"
+                },
+                "ai_generated": {
+                  "type": "number"
+                }
+              }
+            },
+            "ai": {
+              "type": "object",
+              "properties": {
+                "requests_today": {
+                  "type": "number"
+                },
+                "tokens_today": {
+                  "type": "number"
+                },
+                "cost_today": {
+                  "type": "number"
+                },
+                "popular_features": {
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "error_codes": {
+          "401": "Unauthorized",
+          "403": "Admin access required",
+          "500": "Internal server error"
+        },
+        "authentication_requirement": "required (admin)"
+      }
+    ]
+  },
+  "security_implementation": {
+    "data_in_transit": {
+      "tls_configuration": {
+        "version": "TLS 1.3",
+        "ciphers": [
+          "TLS_AES_256_GCM_SHA384",
+          "TLS_CHACHA20_POLY1305_SHA256",
+          "TLS_AES_128_GCM_SHA256"
+        ],
+        "certificate_pinning": {
+          "enabled": true,
+          "public_keys": [
+            "sha256/..."
+          ],
+          "backup_pin": true
+        }
+      },
+      "hsts": {
+        "enabled": true,
+        "max_age": 31536000,
+        "include_subdomains": true,
+        "preload": true
+      }
+    },
+    "data_at_rest": {
+      "encryption_methods": {
+        "database_fields": {
+          "method": "AES-256-GCM",
+          "fields": [
+            "password_hash",
+            "api_keys",
+            "tokens"
+          ],
+          "key_rotation": "90 days"
+        },
+        "file_storage": {
+          "method": "Server-side encryption with customer-managed keys",
+          "bucket_default": true
+        }
+      },
+      "key_management": {
+        "storage": "Hashicorp Vault or AWS KMS",
+        "rotation": "automatic quarterly",
+        "backup": "encrypted offline storage"
+      }
+    },
+    "threat_mitigation": {
+      "xss_protection": {
+        "input_sanitization": {
+          "html": "DOMPurify for all user-generated HTML",
+          "code": "validate language-specific syntax",
+          "json": "JSON.parse with reviver function"
+        },
+        "output_encoding": {
+          "html_context": "React automatic escaping",
+          "javascript_context": "JSON.stringify",
+          "url_context": "encodeURIComponent"
+        },
+        "content_security_policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.gemini.google.com wss:"
+      },
+      "csrf_protection": {
+        "tokens": {
+          "generation": "per-session CSRF token",
+          "validation": "check on state-changing requests",
+          "storage": "HTTP-only cookie"
+        },
+        "same_site_cookies": "Lax for auth, Strict for CSRF tokens"
+      },
+      "sql_injection": {
+        "prevention": "Parameterized queries exclusively",
+        "orm_usage": "Supabase client with built-in sanitization",
+        "input_validation": "type and length checking before queries"
+      },
+      "rate_limiting": {
+        "strategy": "Token bucket algorithm",
+        "limits": {
+          "auth_endpoints": "5 attempts per 15 minutes per IP",
+          "api_endpoints": "100 requests per minute per user",
+          "ai_endpoints": "60 requests per minute per user",
+          "admin_endpoints": "1000 requests per minute per admin"
+        },
+        "storage": "Redis for distributed rate limiting"
+      },
+      "admin_security": {
+        "secret_login": {
+          "password": "hardcoded in environment variable ADMIN_SECRET_PASSWORD",
+          "no_database_storage": true,
+          "single_session_only": true,
+          "ip_whitelist": "configurable"
+        },
+        "audit_logging": {
+          "all_actions": true,
+          "immutable_logs": true,
+          "regular_reviews": "weekly"
         }
       }
     }
   },
-  "features": {
-    "1_core_platform": {
-      "auth_security": {
-        "backend": [
-          "JWT refresh token rotation",
-          "Session invalidation on password change",
-          "Email verification flow (token generation + expiry)",
-          "Password reset workflow (email -> token -> reset)",
-          "Login attempt throttling + account lockout",
-          "Device/session tracking (active sessions list)",
-          "CSRF protection",
-          "Secure API key generation & revocation"
-        ],
-        "frontend": [
-          "Email verification UI",
-          "Password reset screens",
-          "Active session management UI",
-          "Security settings panel",
-          "Password strength meter"
-        ]
-      },
-      "profiles": {
-        "backend": [
-          "User preference persistence",
-          "Avatar upload + validation + storage",
-          "Activity history aggregation",
-          "Public/private profile logic"
-        ],
-        "frontend": [
-          "Profile editor with live preview",
-          "Preferences UI (theme, editor mode)",
-          "Activity timeline visualization",
-          "Public profile showcase"
-        ]
-      }
-    },
-    "2_snippet_management": {
-      "lifecycle": {
-        "backend": [
-          "Soft-delete + Restore",
-          "Permanent delete (admin)",
-          "Duplication/Forking lineage",
-          "Ownership transfer",
-          "Visibility enforcement",
-          "Locking during collaboration",
-          "View count tracking (debounced)",
-          "Star/unstar logic"
-        ],
-        "frontend": [
-          "Create/Edit UI",
-          "Fork UI with attribution",
-          "Visibility selector",
-          "Star button + count",
-          "Restore flow",
-          "Ownership badges"
-        ]
-      },
-      "versioning": {
-        "backend": [
-          "Auto-increment version on edit",
-          "Checksum deduplication",
-          "Version rollback support",
-          "Version metadata"
-        ],
-        "frontend": [
-          "Version timeline slider",
-          "Side-by-side diff viewer",
-          "Rollback confirmation",
-          "Change summary editor"
-        ]
-      }
-    },
-    "3_collaboration": {
-      "sessions": {
-        "backend": [
-          "Session token generation",
-          "Participant join/leave tracking",
-          "Cursor position storage",
-          "Three-way merge conflict resolution",
-          "Long-poll update queue",
-          "EventSource fallback",
-          "Session expiration cleanup"
-        ],
-        "frontend": [
-          "Live cursor rendering",
-          "Participant avatar stack",
-          "Join modal",
-          "Conflict resolution UI",
-          "Status indicator",
-          "Polling retry/backoff"
-        ]
-      },
-      "chat": {
-        "backend": [
-          "Message persistence",
-          "Snippet-line references",
-          "Mentions parsing"
-        ],
-        "frontend": [
-          "Chat panel UI",
-          "Code reference highlighting",
-          "Mention notifications"
-        ]
-      }
-    },
-    "4_editor_productivity": {
-      "advanced_editor": {
-        "frontend": [
-          "CodeMirror 6 integration",
-          "Themes (Dracula, Nord, Monokai)",
-          "Minimap",
-          "Region folding",
-          "Cursor animation",
-          "Markdown split preview",
-          "Focus mode",
-          "Shortcuts manager"
-        ]
-      },
-      "command_palette": {
-        "frontend": [
-          "Ctrl/Cmd+K trigger",
-          "Fuzzy search",
-          "Command registry",
-          "Keyboard navigation",
-          "Recent history"
-        ]
-      }
-    },
-    "5_code_analysis": {
-      "backend": [
-        "Cyclomatic complexity calculator",
-        "Regex vulnerability scanner",
-        "Performance anti-pattern detection",
-        "Duplicate code detection",
-        "Code smell heuristics",
-        "Result caching",
-        "History persistence"
-      ],
-      "frontend": [
-        "Analysis trigger UI",
-        "Results visualization",
-        "Inline annotations",
-        "Complexity meter"
-      ]
-    },
-    "6_search_discovery": {
-      "search": {
-        "backend": [
-          "MySQL FULLTEXT",
-          "Semantic n-gram similarity",
-          "Tag filtering",
-          "Popularity ranking",
-          "Sorting"
-        ],
-        "frontend": [
-          "Search bar + suggestions",
-          "Filter panel",
-          "Sort selector",
-          "Infinite scroll"
-        ]
-      },
-      "graph": {
-        "backend": [
-          "Relationship scoring",
-          "Edge strength"
-        ],
-        "frontend": [
-          "Graph visualization (D3/Canvas)",
-          "Interactive navigation"
-        ]
-      }
-    },
-    "7_gamification": {
-      "backend": [
-        "Event triggers",
-        "Badge tier logic",
-        "Points aggregation",
-        "Leaderboards"
-      ],
-      "frontend": [
-        "Unlock animations",
-        "Badge showcase",
-        "Leaderboard pages",
-        "Progress bars"
-      ]
-    },
-    "8_organizations": {
-      "backend": [
-        "Org creation",
-        "Invitations",
-        "Role enforcement",
-        "Visibility rules",
-        "Settings"
-      ],
-      "frontend": [
-        "Org dashboard",
-        "Member management",
-        "Role controls",
-        "Theme preview"
-      ]
-    },
-    "9_export": {
-      "backend": [
-        "Markdown",
-        "VS Code snippets",
-        "JetBrains templates",
-        "Gist sync",
-        "ZIP batch",
-        "Scheduled cron"
-      ],
-      "frontend": [
-        "Export modal",
-        "Format selection",
-        "Progress feedback",
-        "Download history"
-      ]
-    },
-    "10_admin": {
-      "backend": [
-        "Moderation tools",
-        "Role assignment",
-        "Takedowns",
-        "Audit logs",
-        "Cache clearing",
-        "Health checks"
-      ],
-      "frontend": [
-        "Admin tables",
-        "Audit viewer",
-        "Health dashboard",
-        "Cache controls"
-      ]
-    },
-    "11_security": {
-      "backend": [
-        "Input sanitization",
-        "Output escaping",
-        "Rate-limiting",
-        "CSP headers",
-        "Malware scanning hook",
-        "IP reputation"
-      ],
-      "frontend": [
-        "Secure cookies",
-        "XSS-safe rendering"
-      ]
-    },
-    "12_performance_offline": {
-      "frontend": [
-        "Service Worker",
-        "IndexedDB caching",
-        "Offline editing",
-        "Predictive prefetch",
-        "Skeleton loaders"
-      ],
-      "backend": [
-        "Query EXPLAIN tuning",
-        "Composite indexes",
-        "File-based cache",
-        "APCu",
-        "OPcache preload"
-      ]
-    },
-    "13_observability": {
-      "backend": [
-        "Structured JSON logging",
-        "Slow query detection",
-        "API latency tracking",
-        "Error classification"
-      ],
-      "frontend": [
-        "Error boundary",
-        "Friendly error states"
-      ]
-    },
-    "14_devops": {
-      "infrastructure": [
-        "Deployment scripts",
-        "Cloudflare cache rules",
-        "Cron setup",
-        "Backup automation",
-        "Rollback scripts"
-      ]
-    },
-    "15_documentation": {
-      "dx": [
-        "API docs generation",
-        "Architecture diagrams",
-        "Contribution guidelines",
-        "Setup walkthroughs"
-      ]
-    }
-  },
-  "database_schema": {
-    "engine": "MySQL 8.0+",
-    "character_set": "utf8mb4",
-    "collation": "utf8mb4_unicode_ci",
-    "tables": {
-      "users": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "username VARCHAR(50) UNIQUE NOT NULL",
-          "email VARCHAR(255) UNIQUE NOT NULL",
-          "password_hash VARCHAR(255) NOT NULL",
-          "display_name VARCHAR(100)",
-          "avatar_url VARCHAR(500)",
-          "bio TEXT",
-          "preferences JSON DEFAULT (JSON_OBJECT('theme', 'dark', 'editor_mode', 'default'))",
-          "achievement_points INT DEFAULT 0",
-          "last_active_at TIMESTAMP NULL",
-          "email_verified_at TIMESTAMP NULL",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-          "deleted_at TIMESTAMP NULL"
-        ],
-        "indexes": [
-          "INDEX idx_users_username (username)",
-          "INDEX idx_users_email (email)",
-          "INDEX idx_users_achievement_points (achievement_points DESC)"
-        ]
-      },
-      "snippets": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "author_id INT NOT NULL",
-          "organization_id INT NULL",
-          "title VARCHAR(255) NOT NULL",
-          "description TEXT",
-          "visibility ENUM('public', 'private', 'organization') DEFAULT 'public'",
-          "language VARCHAR(50) NOT NULL",
-          "forked_from_id INT NULL",
-          "is_template BOOLEAN DEFAULT FALSE",
-          "template_variables JSON NULL",
-          "view_count INT DEFAULT 0",
-          "star_count INT DEFAULT 0",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-          "deleted_at TIMESTAMP NULL",
-          "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE",
-          "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
-          "FOREIGN KEY (forked_from_id) REFERENCES snippets(id) ON DELETE SET NULL"
-        ],
-        "indexes": [
-          "INDEX idx_snippets_author (author_id, created_at DESC)",
-          "INDEX idx_snippets_language (language, created_at DESC)",
-          "INDEX idx_snippets_visibility (visibility, created_at DESC)",
-          "INDEX idx_snippets_organization (organization_id, visibility)",
-          "FULLTEXT idx_snippets_search (title, description)"
-        ]
-      },
-      "snippet_versions": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "snippet_id INT NOT NULL",
-          "version_number INT NOT NULL",
-          "code LONGTEXT NOT NULL",
-          "checksum VARCHAR(64) NOT NULL",
-          "editor_id INT NOT NULL",
-          "change_summary VARCHAR(500)",
-          "analysis_results JSON NULL",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE",
-          "FOREIGN KEY (editor_id) REFERENCES users(id) ON DELETE CASCADE",
-          "UNIQUE KEY (snippet_id, version_number)"
-        ],
-        "indexes": [
-          "INDEX idx_snippet_versions_snippet (snippet_id, version_number DESC)",
-          "INDEX idx_snippet_versions_editor (editor_id, created_at DESC)",
-          "FULLTEXT idx_snippet_versions_code (code)"
-        ]
-      },
-      "collaboration_sessions": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "snippet_id INT NOT NULL",
-          "session_token VARCHAR(64) UNIQUE NOT NULL",
-          "participants JSON DEFAULT (JSON_ARRAY())",
-          "cursor_positions JSON DEFAULT (JSON_OBJECT())",
-          "messages JSON DEFAULT (JSON_ARRAY())",
-          "last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE"
-        ],
-        "indexes": [
-          "INDEX idx_collab_sessions_token (session_token)",
-          "INDEX idx_collab_sessions_snippet (snippet_id)",
-          "INDEX idx_collab_sessions_activity (last_activity)"
-        ]
-      },
-      "organizations": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "name VARCHAR(255) NOT NULL",
-          "slug VARCHAR(100) UNIQUE NOT NULL",
-          "description TEXT",
-          "owner_id INT NOT NULL",
-          "color_theme VARCHAR(50) DEFAULT 'blue'",
-          "settings JSON DEFAULT (JSON_OBJECT())",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-          "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
-        ]
-      },
-      "organization_members": {
-        "columns": [
-          "organization_id INT NOT NULL",
-          "user_id INT NOT NULL",
-          "role ENUM('owner', 'admin', 'member', 'viewer') DEFAULT 'member'",
-          "joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "PRIMARY KEY (organization_id, user_id)",
-          "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
-          "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-        ]
-      },
-      "audit_logs": {
-        "columns": [
-          "id INT AUTO_INCREMENT PRIMARY KEY",
-          "actor_id INT NULL",
-          "action_type VARCHAR(100) NOT NULL",
-          "entity_type VARCHAR(50) NOT NULL",
-          "entity_id INT NULL",
-          "old_values JSON NULL",
-          "new_values JSON NULL",
-          "ip_address VARCHAR(45)",
-          "user_agent TEXT",
-          "request_id VARCHAR(64)",
-          "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-          "FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL"
-        ],
-        "indexes": [
-          "INDEX idx_audit_logs_actor (actor_id, created_at DESC)",
-          "INDEX idx_audit_logs_action (action_type, created_at DESC)"
-        ]
-      }
-    }
-  }
-}
-  "frontend_pages_and_designs": {
-  "dashboard_page": {
-    "layout": "Responsive Bento Grid layout",
-    "sections": [
-      "Welcome Hero with daily coding streak visualization",
-      "Key Metrics Cards (Glassmorphism style)",
-      "Recent Snippets Carousel",
-      "Activity Heatmap (GitHub style)",
-      "Community Trends / Leaderboard Ticker"
-    ],
-    "design": {
-      "theme": "Midnight Blue & Neon accents",
-      "style": "Glassmorphism with noise textures",
-      "typography": "Sans-serif headings, Monospace data values"
-    },
-    "interactions": [
-      "Drag-and-drop widget customization",
-      "Hover glow effects",
-      "Skeleton loading states",
-      "Animated count-up for statistics"
-    ]
-  },
-  "snippet_editor_page": {
-    "layout": "Immersive IDE-like layout (Sidebar | Editor | Context Panel)",
-    "editor_features": [
-      "CodeMirror 6 Custom Theme (Dracula/Nord/Monokai)",
-      "Smooth cursor animations & caret blinking",
-      "Minimap scrollbar",
-      "Collapsible region folding",
-      "Live markdown preview split-pane"
-    ],
-    "properties_panel": {
-      "style": "Floating glass panel or collapsible sidebar",
-      "elements": [
-        "Smart tag suggestion chips",
-        "Language icon selector",
-        "Visibility toggle switch with animation",
-        "Live collaboration avatars stack"
-      ]
-    },
-    "design": "Distraction-free focus mode, translucent UI elements"
-  },
-  "snippet_viewer_page": {
-    "layout": "Modern showcase layout (Hero header + Code Block + Metadata Rail)",
-    "code_display": [
-      "Rich syntax highlighting with ligatures",
-      "Floating action bar (Copy, Download, Raw)",
-      "Line highlighting and permalinks",
-      "Embedded terminal-like output preview"
-    ],
-    "side_panel": [
-      "Interactive version timeline slider",
-      "Comment threads with rich text support",
-      "Related snippets graph visualization"
-    ],
-    "design": "Clean, documentation-style readability, high contrast code blocks"
-  },
-  "collaboration_page": {
-    "layout": "Editor + participant sidebar + chat panel",
-    "features": [
-      "Real-time cursor sharing",
-      "Participant video/audio (WebRTC if available)",
-      "Collaborative chat with code references",
-      "Edit conflict resolution UI",
-      "Session recording playback"
-    ],
-    "design": "Multi-user color coding, animated cursor trails"
-  },
-  "profile_page": {
-    "layout": "Tabbed interface: Overview, Snippets, Achievements, Settings",
-    "sections": [
-      "User info with avatar upload",
-      "Activity timeline",
-      "Achievement showcase",
-      "Snippet statistics",
-      "API key management",
-      "Export data options"
-    ],
-    "design": "Personalized theme based on achievement level"
-  },
-  "admin_dashboard": {
-    "layout": "Metrics overview + management tables",
-    "sections": [
-      "System health metrics",
-      "User management with bulk actions",
-      "Snippet moderation queue",
-      "Audit log viewer with filtering",
-      "Organization management",
-      "Cache management controls"
-    ],
-    "design": "Data-heavy with charts and tables, export functionality"
-  },
-  "login_signup_pages": {
-    "layout": "Split screen (Product Showcase Art | Interactive Form)",
-    "features": [
-      "Social login with particle effects",
-      "Password strength visualizer (progress bar)",
-      "Animated form field labels (Floating labels)",
-      "Success confetti animation"
-    ],
-    "design": "Premium brand showcase, 3D illustrative elements"
-  },
-  "command_palette": {
-    "trigger": "Ctrl+K or Cmd+K",
-    "features": [
-      "Fuzzy search across snippets, users, commands",
-      "Quick actions without navigation",
-      "Recent items history",
-      "Command categories",
-      "Keyboard-only navigation"
-    ],
-    "design": "Centered modal with backdrop blur, dark theme"
-  },
-  "mobile_responsive": {
-    "breakpoints": [
-      "Mobile (< 640px): Bottom navigation bar app-like capability",
-      "Tablet (640px-1024px): Adaptive grid layouts",
-      "Desktop (> 1024px): Expanded multi-column views"
-    ],
-    "touch_interactions": [
-      "Swipe-to-action list items",
-      "Pull-to-refresh",
-      "Haptic feedback triggers (if supported)"
-    ]
-  },
-  "design_system_tokens": {
-    "colors": {
-      "primary": "Violet/Indigo gradients",
-      "background": "Deep Space Black (#0B0F19)",
-      "surface": "Translucent Grey (#1F293780)",
-      "accent": "Cyberpunk Neon (#00F0FF, #7000FF)"
-    },
-    "shadows": {
-      "card": "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-      "glow": "0 0 20px rgba(112, 0, 255, 0.5)"
-    },
-    "radius": {
-      "default": "1rem (rounded-2xl)",
-      "button": "0.75rem (rounded-xl)"
-    }
-  }
-},
-"api_endpoints": {
-  "auth_endpoints": {
-    "POST /api/auth/login": "Authenticate user, return session",
-    "POST /api/auth/register": "Create new user account",
-    "POST /api/auth/logout": "Invalidate session",
-    "GET /api/auth/me": "Get current user info",
-    "POST /api/auth/refresh": "Refresh expired tokens"
-  },
-  "snippet_endpoints": {
-    "GET /api/snippets": "List snippets with filtering",
-    "POST /api/snippets": "Create new snippet",
-    "GET /api/snippets/{id}": "Get snippet details",
-    "PUT /api/snippets/{id}": "Update snippet",
-    "DELETE /api/snippets/{id}": "Soft delete snippet",
-    "POST /api/snippets/{id}/fork": "Fork snippet",
-    "GET /api/snippets/{id}/versions": "Get version history",
-    "POST /api/snippets/{id}/star": "Star/unstar snippet",
-    "GET /api/snippets/{id}/analyses": "Get code analyses"
-  },
-  "collaboration_endpoints": {
-    "POST /api/collaboration/sessions": "Create collaboration session",
-    "GET /api/collaboration/sessions/{token}": "Join session",
-    "POST /api/collaboration/sessions/{token}/updates": "Push updates",
-    "GET /api/collaboration/sessions/{token}/updates": "Poll for updates",
-    "DELETE /api/collaboration/sessions/{token}": "End session"
-  },
-  "user_endpoints": {
-    "GET /api/users/{id}": "Get user profile",
-    "PUT /api/users/{id}": "Update profile",
-    "GET /api/users/{id}/snippets": "Get user's snippets",
-    "GET /api/users/{id}/achievements": "Get user achievements",
-    "GET /api/users/leaderboard": "Get leaderboard"
-  },
-  "admin_endpoints": {
-    "GET /api/admin/users": "List all users",
-    "PUT /api/admin/users/{id}/roles": "Update user roles",
-    "GET /api/admin/audit-logs": "View audit logs",
-    "POST /api/admin/cache/clear": "Clear cache",
-    "GET /api/admin/health": "System health check"
-  }
-},
-"deployment_configuration": {
-  "infinityfree_backend": {
-    "requirements": [
-      "PHP 8.0+",
-      "MySQL 5.7+",
-      "HTTPS enabled"
-    ],
-    "setup_steps": [
-      "Upload backend files to InfinityFree hosting",
-      "Create MySQL database via phpMyAdmin",
-      "Import database schema",
-      "Configure .env file with database credentials",
-      "Set up cron jobs via cron-job.org for maintenance tasks"
-    ],
-    "configuration": {
-      "max_upload_size": "64M",
-      "memory_limit": "256M",
-      "max_execution_time": "120",
-      "session_lifetime": "7200"
-    }
-  },
-  "cloudflare_frontend": {
-    "deployment_options": [
-      "Cloudflare Pages (static hosting)",
-      "Netlify (free tier)",
-      "Vercel (free tier)",
-      "GitHub Pages"
-    ],
-    "setup_steps": [
-      "Build frontend with npm run build",
-      "Deploy to chosen static hosting",
-      "Configure API base URL",
-      "Set up custom domain with SSL",
-      "Configure redirects for client-side routing"
-    ]
-  },
-  "single_server_deployment": {
-    "setup": "Both frontend and backend on same InfinityFree account",
-    "configuration": {
-      "frontend_path": "/public_html",
-      "backend_path": "/public_html/api",
-      "shared_database": "Same MySQL instance",
-      ".htaccess_rules": "Rewrite API calls to backend, serve frontend for other routes"
-    }
-  },
-  "environment_variables": {
+  "performance_optimizations": {
     "frontend": {
-      "VITE_API_BASE_URL": "https://api.yourdomain.com",
-      "VITE_APP_NAME": "CodeEngage",
-      "VITE_APP_VERSION": "1.0.0",
-      "VITE_ENABLE_PWA": "true"
+      "code_splitting": {
+        "route_based": "Automatic with Next.js App Router",
+        "component_level": "React.lazy for heavy components",
+        "vendor_splitting": "Separate chunks for large libraries"
+      },
+      "lazy_loading": {
+        "images": "Next.js Image component with priority",
+        "components": "Intersection Observer API",
+        "data": "React Query with placeholder data"
+      },
+      "image_optimization": {
+        "formats": "WebP with JPEG/PNG fallback",
+        "sizes": "Responsive srcset",
+        "compression": "85% quality for WebP"
+      },
+      "caching_strategy": {
+        "service_worker": {
+          "strategy": "Stale-While-Revalidate",
+          "cache_names": {
+            "static": "sunder-static-v1",
+            "api": "sunder-api-v1",
+            "images": "sunder-images-v1"
+          }
+        },
+        "browser_cache": {
+          "static_assets": "max-age=31536000, immutable",
+          "api_responses": "max-age=60, stale-while-revalidate=300"
+        }
+      }
     },
     "backend": {
-      "APP_ENV": "production",
-      "APP_URL": "https://api.yourdomain.com",
-      "DB_HOST": "localhost",
-      "DB_NAME": "codeengage_db",
-      "DB_USER": "codeengage_user",
-      "DB_PASSWORD": "secure_password",
-      "SESSION_SECRET": "random_32_character_string",
-      "CACHE_DRIVER": "file",
-      "MAINTENANCE_MODE": "false"
-    }
-  }
-},
-"security_configuration": {
-  "input_validation": {
-    "snippet_code": "Max 1MB, UTF-8 encoding, no null bytes",
-    "user_input": "Trim, strip tags, length limits per field",
-    "file_uploads": "Only allow specific MIME types, scan for malware patterns"
-  },
-  "output_escaping": {
-    "html_context": "htmlspecialchars with ENT_QUOTES",
-    "json_context": "json_encode with JSON_HEX_TAG",
-    "javascript_context": "Custom escaping for JS templates"
-  },
-  "content_security_policy": {
-    "default_src": "'self'",
-    "script_src": "'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-    "style_src": "'self' 'unsafe-inline'",
-    "connect_src": "'self' api.yourdomain.com",
-    "frame_src": "'self' sandbox.yourdomain.com"
-  },
-  "session_security": {
-    "cookie_httponly": true,
-    "cookie_secure": true,
-    "cookie_samesite": "Lax",
-    "session_regenerate": true,
-    "session_timeout": 7200
-  },
-  "rate_limiting": {
-    "general": "100 requests/minute per IP",
-    "auth": "5 attempts/15 minutes per IP",
-    "api": "1000 requests/hour per user"
-  }
-},
-"performance_optimization": {
-  "frontend": {
-    "asset_optimization": [
-      "Tailwind CSS purged for production",
-      "JavaScript code splitting by route",
-      "SVG icons sprite sheet",
-      "Fonts subset and woff2 format",
-      "Lazy loading for images and below-fold content"
-    ],
-    "caching_strategy": [
-      "Service Worker for offline caching",
-      "IndexedDB for snippet data",
-      "LocalStorage for user preferences",
-      "Cache API for API responses"
-    ]
-  },
-  "backend": {
-    "database": [
-      "Query optimization with EXPLAIN analysis",
-      "Composite indexes for common queries",
-      "Query caching via MySQL query cache",
-      "Connection pooling with persistent connections"
-    ],
-    "php": [
-      "OPcache enabled with preloading",
-      "Realpath cache size increased",
-      "Output buffering for compression",
-      "Early gzip compression check"
-    ],
-    "caching_layers": [
-      "APCu for user session data",
-      "File cache for expensive computations",
-      "Cloudflare edge cache for public content",
-      "Browser cache headers optimized"
-    ]
-  }
-},
-"monitoring_and_maintenance": {
-  "health_checks": [
-    "Database connectivity",
-    "Filesystem writability",
-    "Cache functionality",
-    "API response times",
-    "Error rate monitoring"
-  ],
-  "logging": {
-    "error_logs": "Structured JSON to /storage/logs/error.log",
-    "access_logs": "Request/response logging",
-    "audit_logs": "All security-relevant actions",
-    "performance_logs": "Slow queries, high memory usage"
-  },
-  "backup_strategy": {
-    "database": "Daily automated backups via cron-job.org",
-    "files": "Weekly backup of uploaded files",
-    "retention": "30 days for logs, 7 days for temp files",
-    "verification": "Monthly restore test from backups"
-  },
-  "cleanup_tasks": {
-    "daily": [
-      "Expired collaboration sessions",
-      "Old temporary files",
-      "Invalid cache entries"
-    ],
-    "weekly": [
-      "Soft-deleted records older than 30 days",
-      "Old audit logs (archive)",
-      "Orphaned file cleanup"
-    ],
-    "monthly": [
-      "Update leaderboard calculations",
-      "Database optimization",
-      "Security review"
-    ]
-  }
-},
-"development_workflow": {
-  "local_development": {
-    "requirements": [
-      "PHP 8.0+",
-      "Node.js 16+",
-      "MySQL 8.0",
-      "Git"
-    ],
-    "setup": [
-      "Clone repository",
-      "Run composer install (backend)",
-      "Run npm install (frontend)",
-      "Copy .env.example to .env",
-      "Run database migrations",
-      "Start development servers"
-    ],
-    "scripts": {
-      "dev:frontend": "npm run dev",
-      "dev:backend": "php -S localhost:8000 -t backend/public",
-      "build": "npm run build",
-      "test": "npm test && ./vendor/bin/phpunit"
+      "database_indexing": {
+        "composite_indexes": [
+          "snippets(language, created_at DESC)",
+          "snippets(author_id, visibility, created_at DESC)",
+          "users(achievement_points DESC, created_at)"
+        ],
+        "partial_indexes": [
+          "WHERE deleted_at IS NULL",
+          "WHERE is_active = true"
+        ],
+        "monitoring": "Weekly EXPLAIN ANALYZE on slow queries"
+      },
+      "query_optimization": {
+        "pagination": "Keyset pagination for large datasets",
+        "batch_operations": "Combine multiple queries where possible",
+        "connection_pooling": "PgBouncer for PostgreSQL connections"
+      },
+      "caching_strategies": {
+        "redis_usage": {
+          "user_sessions": "TTL 7 days",
+          "api_responses": "TTL based on data volatility",
+          "rate_limits": "TTL based on window"
+        },
+        "database_query_cache": "2nd level cache for frequent queries",
+        "cdn_caching": "Cloudflare for static assets"
+      }
+    },
+    "network": {
+      "request_deduplication": {
+        "concurrent_identical_requests": "dedupe within 100ms window",
+        "implementation": "Request deduplication middleware"
+      },
+      "prefetching": {
+        "link_prefetch": "Next.js Link prefetch for likely navigation",
+        "data_prefetch": "React Query prefetch on hover"
+      },
+      "compression": {
+        "brotli": "for modern browsers",
+        "gzip": "fallback",
+        "minification": "HTML, CSS, JS with source maps"
+      },
+      "http2": {
+        "enabled": true,
+        "server_push": "for critical assets",
+        "header_compression": "HPACK"
+      }
     }
   },
-  "testing": {
-    "unit_tests": "PHPUnit for backend, Jest for frontend",
-    "integration_tests": "API endpoint testing",
-    "e2e_tests": "Cypress for critical user flows",
-    "performance_tests": "Lighthouse audits, load testing"
+  "testing_strategy": {
+    "unit_tests": {
+      "framework": "Jest + React Testing Library",
+      "coverage_goals": {
+        "statements": "90%",
+        "branches": "85%",
+        "functions": "90%",
+        "lines": "90%"
+      },
+      "example_test_cases": {
+        "auth_store": [
+          "login action success",
+          "login action failure",
+          "token refresh logic",
+          "logout clears state"
+        ],
+        "snippet_editor": [
+          "auto-save timer logic",
+          "code change detection",
+          "AI suggestion application",
+          "conflict resolution"
+        ]
+      }
+    },
+    "integration_tests": {
+      "framework": "Cypress + Jest for API",
+      "scenarios": [
+        "User registration flow",
+        "Snippet creation and editing",
+        "AI translation workflow",
+        "Collaboration session",
+        "Admin user management"
+      ],
+      "mock_configurations": {
+        "api_mocks": "MSW (Mock Service Worker)",
+        "database": "Test containers with PostgreSQL",
+        "external_apis": "Mock Gemini API responses"
+      }
+    },
+    "ui_tests": {
+      "framework": "Playwright",
+      "device_matrix": [
+        "Desktop Chrome",
+        "Desktop Firefox",
+        "Desktop Safari",
+        "Mobile Chrome",
+        "Mobile Safari"
+      ],
+      "key_user_journeys": [
+        "Complete new user onboarding",
+        "Create, edit, and publish snippet",
+        "Use AI pair programming",
+        "Collaborate with another user",
+        "Admin moderation workflow"
+      ],
+      "visual_regression": {
+        "tool": "Percy",
+        "baseline_branch": "main",
+        "review_process": "Required for UI changes"
+      }
+    },
+    "performance_tests": {
+      "load_testing": {
+        "tool": "k6",
+        "scenarios": [
+          "100 concurrent users browsing snippets",
+          "50 concurrent users creating snippets",
+          "20 concurrent AI translation requests",
+          "10 concurrent collaboration sessions"
+        ],
+        "acceptance_criteria": {
+          "p95_response_time": "< 2 seconds",
+          "error_rate": "< 1%",
+          "throughput": "> 100 requests/second"
+        }
+      },
+      "lighthouse_audits": {
+        "performance": "> 90",
+        "accessibility": "> 90",
+        "best_practices": "> 90",
+        "seo": "> 90"
+      }
+    }
   },
-  "deployment_pipeline": {
-    "staging": "Automatic deploy on push to develop branch",
-    "production": "Manual deploy from main branch",
-    "rollback": "Database migration rollback scripts",
-    "monitoring": "Error tracking via logs, uptime monitoring"
+  "deployment_configuration": {
+    "environments": {
+      "development": {
+        "frontend_url": "http://localhost:3000",
+        "backend_url": "http://localhost:3001",
+        "database": "Local PostgreSQL or Supabase local",
+        "ai_api": "Gemini API with development key",
+        "features": {
+          "debug_mode": true,
+          "mock_ai": false,
+          "slow_network_simulation": true
+        }
+      },
+      "staging": {
+        "frontend_url": "https://staging.sunder.app",
+        "backend_url": "https://api.staging.sunder.app",
+        "database": "Supabase staging project",
+        "ai_api": "Gemini API with staging key",
+        "features": {
+          "debug_mode": false,
+          "mock_ai": false,
+          "performance_monitoring": true
+        },
+        "resource_allocation": {
+          "memory": "2GB",
+          "cpu": "2 cores",
+          "storage": "50GB"
+        }
+      },
+      "production": {
+        "frontend_url": "https://sunder.app",
+        "backend_url": "https://api.sunder.app",
+        "database": "Supabase production project with read replicas",
+        "ai_api": "Gemini API with production key, multiple fallbacks",
+        "features": {
+          "debug_mode": false,
+          "mock_ai": false,
+          "full_monitoring": true,
+          "cdn_enabled": true
+        },
+        "resource_allocation": {
+          "memory": "8GB",
+          "cpu": "4 cores",
+          "storage": "500GB with auto-scaling",
+          "backup": "Daily automated backups"
+        }
+      }
+    },
+    "rollout_strategy": {
+      "phased_release_percentages": {
+        "day_1": "1% of users",
+        "day_2": "5% of users",
+        "day_3": "25% of users",
+        "day_4": "50% of users",
+        "day_5": "100% of users"
+      },
+      "feature_flag_configurations": {
+        "new_ai_features": {
+          "type": "percentage",
+          "default": false,
+          "rollout_percentage": 10
+        },
+        "experimental_ui": {
+          "type": "user_segment",
+          "default": false,
+          "segments": [
+            "beta_testers",
+            "internal"
+          ]
+        },
+        "collaboration_recording": {
+          "type": "environment",
+          "default": false,
+          "enabled_in": [
+            "staging",
+            "production"
+          ]
+        }
+      },
+      "rollback_procedures": {
+        "database_migrations": "Versioned migrations with down scripts",
+        "frontend": "Instant rollback via Vercel deployment history",
+        "api": "Blue-green deployment with traffic switching"
+      }
+    },
+    "monitoring_and_alerting": {
+      "uptime_monitoring": {
+        "service": "Better Uptime",
+        "check_interval": "60 seconds",
+        "endpoints": [
+          "/api/health",
+          "/",
+          "/api/snippets"
+        ]
+      },
+      "error_tracking": {
+        "frontend": "Sentry",
+        "backend": "Sentry with source maps",
+        "notification_channels": [
+          "Slack",
+          "Email",
+          "PagerDuty for critical"
+        ]
+      },
+      "performance_monitoring": {
+        "frontend": "Vercel Analytics + Custom metrics",
+        "backend": "Datadog APM",
+        "database": "Supabase performance insights"
+      },
+      "business_metrics": {
+        "daily_active_users": "Goal: 10% growth month-over-month",
+        "ai_feature_adoption": "Goal: 40% of active users weekly",
+        "snippet_creation_rate": "Goal: 5 snippets per active user monthly",
+        "collaboration_sessions": "Goal: 20% of snippets involve collaboration"
+      }
+    }
   }
-}
 }

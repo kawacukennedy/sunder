@@ -1,0 +1,91 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+    LayoutDashboard,
+    FileCode,
+    Building2,
+    GraduationCap,
+    BrainCircuit,
+    User,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    Sun,
+    Moon,
+    Search,
+    TrendingUp
+} from 'lucide-react';
+import { useUIStore } from '@/store/uiStore';
+import { cn } from '@/lib/utils';
+
+export default function Sidebar() {
+    const pathname = usePathname();
+    const { sidebarCollapsed, toggleSidebar, theme, toggleTheme } = useUIStore();
+
+    const navItems = [
+        { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+        { label: 'Search', icon: Search, href: '/snippets/search' },
+        { label: 'Snippets', icon: FileCode, href: '/snippets' },
+        { label: 'Organizations', icon: Building2, href: '/organizations' },
+        { label: 'Learning Paths', icon: GraduationCap, href: '/learning/paths' },
+        { label: 'Leaderboard', icon: TrendingUp, href: '/learning/leaderboard' },
+        { label: 'AI Pair', icon: BrainCircuit, href: '/ai/pair' },
+        { label: 'Profile', icon: User, href: '/profile/edit' },
+    ];
+
+    return (
+        <aside
+            className={cn(
+                "h-screen glass border-r border-white/10 flex flex-col transition-all duration-300 z-50",
+                sidebarCollapsed ? "w-20" : "w-64"
+            )}
+        >
+            <div className="p-6 flex items-center justify-between">
+                {!sidebarCollapsed && (
+                    <span className="text-2xl font-bold bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">
+                        Sunder
+                    </span>
+                )}
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 hover:bg-white/10 rounded-xl transition-colors text-slate-400"
+                >
+                    {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                </button>
+            </div>
+
+            <nav className="flex-1 px-4 py-6 space-y-2">
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                                "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 group",
+                                isActive
+                                    ? "bg-violet-600/20 text-violet-400 border border-violet-500/30"
+                                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                            )}
+                        >
+                            <item.icon size={22} className={cn(isActive ? "text-violet-400" : "group-hover:text-white")} />
+                            {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
+                        </Link>
+                    );
+                })}
+            </nav>
+
+            <div className="p-4 border-t border-white/10 space-y-2">
+                <button
+                    onClick={toggleTheme}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-white/5 hover:text-white rounded-2xl transition-all"
+                >
+                    {theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
+                    {!sidebarCollapsed && <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+                </button>
+            </div>
+        </aside>
+    );
+}

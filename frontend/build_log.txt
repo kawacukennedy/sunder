@@ -1,0 +1,22 @@
+
+> frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.8s
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/snippets/page.tsx:148:54
+Type error: Cannot find name 'FileCode'.
+
+[0m [90m 146 |[39m                                             [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex items-center gap-3"[39m[33m>[39m
+ [90m 147 |[39m                                                 [33m<[39m[33mdiv[39m className[33m=[39m[32m"w-10 h-10 rounded-xl bg-violet-600/20 flex items-center justify-center border border-violet-500/20"[39m[33m>[39m
+[31m[1m>[22m[39m[90m 148 |[39m                                                     [33m<[39m[33mFileCode[39m className[33m=[39m[32m"text-violet-400"[39m size[33m=[39m{[35m20[39m} [33m/[39m[33m>[39m
+ [90m     |[39m                                                      [31m[1m^[22m[39m
+ [90m 149 |[39m                                                 [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 150 |[39m                                                 [33m<[39m[33mdiv[39m[33m>[39m
+ [90m 151 |[39m                                                     [33m<[39m[33mh3[39m className[33m=[39m[32m"font-bold text-white group-hover:text-violet-400 transition-colors uppercase tracking-tight"[39m[33m>[39m{snippet[33m.[39mtitle}[33m<[39m[33m/[39m[33mh3[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null
