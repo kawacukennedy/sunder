@@ -77,8 +77,7 @@ app.use((err, req, res, next) => {
     const statusCode = err.status || 500;
     const isDev = process.env.NODE_ENV === 'development';
 
-    console.error(`[${new Date().toISOString()}] ${req.method} ${req.url} - Error: ${err.message}`);
-    if (isDev) console.error(err.stack);
+    console.error(`[FATAL ERROR] [${new Date().toISOString()}] ${req.method} ${req.url}:`, err);
 
     res.status(statusCode).json({
         status: 'error',

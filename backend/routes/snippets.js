@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
         let query = supabase
             .from('snippets')
-            .select('*, author:users(username, avatar_url)', { count: 'exact' });
+            .select('*, author:author_id(username, avatar_url)', { count: 'exact' });
 
         // Visibility filtering
         if (visibility) query = query.eq('visibility', visibility);

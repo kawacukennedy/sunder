@@ -59,6 +59,12 @@ router.post('/register', async (req, res) => {
             verification_required: !data.session // If no session, usually means email confirm is on
         });
     } catch (error) {
+        console.error('[Registration Error]', {
+            message: error.message,
+            email: req.body.email,
+            username: req.body.username,
+            stack: error.stack
+        });
         res.status(500).json({ error: error.message });
     }
 });
