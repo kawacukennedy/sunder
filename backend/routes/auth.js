@@ -82,13 +82,8 @@ router.post('/register', async (req, res) => {
         const isRateLimit = error.message.toLowerCase().includes('rate limit exceeded');
 
         if (isRateLimit) {
-            // Special fallback: Allow them to proceed to Step 3 and use 123456
-            return res.status(200).json({
-                success: true,
-                message: 'Provider rate limit hit. Using bypass code 123456.',
-                bypass_otp: true,
-                verification_required: true,
-                user: { email: req.body.email, username: req.body.username }
+            return res.status(429).json({
+                error: 'Too many registration attempts. Please wait a few minutes and try again.'
             });
         }
 
@@ -96,31 +91,10 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Verify Email (Real Supabase OTP with 123456 Bypass)
+// Verify Email (Real Supabase OTP)
 router.post('/verify', async (req, res) => {
     const { email, code } = req.body;
     try {
-        // 123456 Master Bypass Code
-        if (code === '123456') {
-            // Generate a local JWT since Supabase didn't issue one
-            const token = jwt.sign(
-                {
-                    sub: '00000000-0000-0000-0000-000000000000', // Root dummy ID or lookup by email
-                    email: email,
-                    username: 'n3on', // Fallback for demo
-                    role: 'user'
-                },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-
-            return res.json({
-                success: true,
-                message: 'Bypass verification successful',
-                user: { email, username: 'n3on' },
-                access_token: token
-            });
-        }
 
         const { data, error } = await supabase.auth.verifyOtp({
             email,
