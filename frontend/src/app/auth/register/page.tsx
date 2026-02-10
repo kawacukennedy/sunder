@@ -55,7 +55,7 @@ export default function Register() {
             }
         }
         setError(null);
-        setStep(s => Math.min(s + 1, 3));
+        setStep(s => Math.min(s + 1, 4));
     };
     const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
@@ -107,6 +107,7 @@ export default function Register() {
         { id: 1, title: 'Credentials', icon: Lock },
         { id: 2, title: 'Preferences', icon: Sparkles },
         { id: 3, title: 'Security PIN', icon: ShieldCheck },
+        { id: 4, title: 'Success', icon: CheckCircle2 },
     ];
 
     return (
@@ -122,24 +123,30 @@ export default function Register() {
                             <Terminal className="text-slate-950" size={24} />
                         </div>
                     </Link>
-                    <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Create Account</h1>
-                    <p className="text-slate-500 mt-1 text-xs">Step {step} of 3: {steps[step - 1].title}</p>
+                    <h1 className="text-2xl font-black text-white uppercase tracking-tighter">
+                        {step === 4 ? 'Registration Complete' : 'Create Account'}
+                    </h1>
+                    <p className="text-slate-500 mt-1 text-xs font-bold uppercase tracking-widest">
+                        {step === 4 ? 'Neural Link Established' : `Step ${step} of 3: ${steps[step - 1].title}`}
+                    </p>
                 </div>
 
                 {/* Progress Stepper */}
-                <div className="flex items-center justify-between mb-8 px-8 relative">
-                    <div className="absolute top-1/2 left-0 w-full h-px bg-white/5 -translate-y-1/2" />
-                    {steps.map((s) => (
-                        <div key={s.id} className="relative z-10">
-                            <div className={cn(
-                                "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500",
-                                step >= s.id ? "bg-white text-slate-950 shadow-xl shadow-white/20" : "bg-slate-900 text-slate-600 border border-white/5"
-                            )}>
-                                <s.icon size={18} />
+                {step < 4 && (
+                    <div className="flex items-center justify-between mb-8 px-8 relative">
+                        <div className="absolute top-1/2 left-0 w-full h-px bg-white/5 -translate-y-1/2" />
+                        {steps.slice(0, 3).map((s) => (
+                            <div key={s.id} className="relative z-10">
+                                <div className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500",
+                                    step >= s.id ? "bg-white text-slate-950 shadow-xl shadow-white/20" : "bg-slate-900 text-slate-600 border border-white/5"
+                                )}>
+                                    <s.icon size={18} />
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="glass p-6 md:p-8 rounded-[32px] border border-white/5 shadow-2xl space-y-6">
                     {step === 1 && (
