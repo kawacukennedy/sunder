@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAIUsage, callGemini } = require('../lib/ai');
 

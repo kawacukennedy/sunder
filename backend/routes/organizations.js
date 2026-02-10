@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const { authenticate, supabase, authorizeRole } = require('../middleware/auth');
 const { logAudit } = require('../lib/audit');
 

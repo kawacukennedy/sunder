@@ -1,3 +1,7 @@
+const express = require('express');
+const router = express.Router();
+const { authenticate, supabase } = require('../middleware/auth');
+
 // Get all learning paths
 router.get('/paths', async (req, res) => {
     try {
