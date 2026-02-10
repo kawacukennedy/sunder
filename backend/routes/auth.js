@@ -39,19 +39,8 @@ router.post('/register', async (req, res) => {
 
         if (error) throw error;
 
-        // Create a entry in our local 'users' table
-        const { error: dbError } = await supabase.from('users').insert({
-            id: data.user.id,
-            username,
-            email,
-            password_hash: 'managed_by_supabase',
-            display_name: displayName,
-            preferences: preferences || { theme: 'dark', editor_mode: 'advanced' },
-            coding_streak: 0,
-            achievement_points: 0
-        });
-
-        if (dbError) throw dbError;
+        // Note: Profile creation and entry in 'users' table is now handled 
+        // by a database trigger (on_auth_user_created) for RLS safety.
 
         res.json({
             user: data.user,

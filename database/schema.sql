@@ -9,7 +9,7 @@ CREATE TABLE users (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     username varchar(50) UNIQUE NOT NULL,
     email varchar(255) UNIQUE NOT NULL,
-    password_hash varchar(255) NOT NULL,
+    password_hash varchar(255),
     display_name varchar(100),
     avatar_url text,
     bio text,
@@ -339,6 +339,31 @@ BEGIN
     EXECUTE format('UPDATE %I SET %I = %I + 1 WHERE id = %L', table_name, column_name, column_name, row_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to sync auth.users to public.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.users (id, email, username, display_name, password_hash, preferences)
+  VALUES (
+    new.id, 
+    new.email, 
+    COALESCE(new.raw_user_meta_data->>'username', 'user_' || substr(new.id::text, 1, 8)),
+    COALESCE(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'username'),
+    'managed_by_supabase',
+    COALESCE(new.raw_user_meta_data->'preferences', '{"theme": "dark", "editor_mode": "advanced"}'::jsonb)
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    username = COALESCE(EXCLUDED.username, users.username),
+    display_name = COALESCE(EXCLUDED.display_name, users.display_name);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- Row Level Security (RLS) Configuration
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
