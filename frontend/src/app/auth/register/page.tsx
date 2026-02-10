@@ -34,6 +34,15 @@ export default function Register() {
         theme: 'dark'
     });
 
+    const [cooldown, setCooldown] = useState(0);
+
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldown]);
+
     const nextStep = () => {
         if (step === 1) {
             if (!formData.username || !formData.email || !formData.password) {
@@ -53,6 +62,7 @@ export default function Register() {
     const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
 
     const handleRegister = async () => {
+        if (isLoading || cooldown > 0) return;
         setIsLoading(true);
         setError(null);
         try {
@@ -63,6 +73,10 @@ export default function Register() {
             nextStep(); // Move to verification step
         } catch (err: any) {
             setError(err.message);
+            if (err.message.includes('wait')) {
+                const match = err.message.match(/(\d+)/);
+                if (match) setCooldown(parseInt(match[1]));
+            }
             setStep(1);
         } finally {
             setIsLoading(false);
@@ -70,10 +84,13 @@ export default function Register() {
     };
 
     const handleVerify = async () => {
+        if (isLoading || cooldown > 0) return;
         setIsLoading(true);
         setError(null);
         try {
             const code = verificationCode.join('');
+            if (code.length < 6) throw new Error('Please enter all 6 digits');
+
             const data = await fetchApi('/auth/verify', {
                 method: 'POST',
                 body: JSON.stringify({ email: formData.email, code })
@@ -88,6 +105,10 @@ export default function Register() {
             }
         } catch (err: any) {
             setError(err.message);
+            if (err.message.includes('wait')) {
+                const match = err.message.match(/(\d+)/);
+                if (match) setCooldown(parseInt(match[1]));
+            }
         } finally {
             setIsLoading(false);
         }

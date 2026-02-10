@@ -20,11 +20,30 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret';
 
+// Local Rate Limit Store (Simple in-memory for 30s requirement)
+const registrationAttempts = new Map();
+const COOLDOWN_MS = 30000;
+
 // Register
 router.post('/register', async (req, res) => {
     const { email, password, username, displayName, preferences } = req.body;
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const key = email || ip;
+
+    // Local Cooldown Check
+    const lastAttempt = registrationAttempts.get(key);
+    if (lastAttempt && Date.now() - lastAttempt < COOLDOWN_MS) {
+        const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - lastAttempt)) / 1000);
+        return res.status(429).json({
+            error: `Please wait ${remaining} seconds before trying again.`,
+            retryAfter: remaining
+        });
+    }
 
     try {
+        // Record attempt
+        registrationAttempts.set(key, Date.now());
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
