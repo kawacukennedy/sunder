@@ -73,15 +73,12 @@ export default function Register() {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await fetchApi('/auth/register', {
+            await fetchApi('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({ ...formData, pin })
             });
 
-            // Registration successful, now redirect to login or auto-login?
-            // User requested login with only PIN, so let's redirect to login.
-            alert('Account created! Please login with your PIN.');
-            router.push('/auth/login');
+            setStep(4);
         } catch (err: any) {
             setError(err.message);
             if (err.message.includes('wait')) {
@@ -255,23 +252,49 @@ export default function Register() {
                         </div>
                     )}
 
-                    <div className="flex gap-4 pt-4">
-                        {step > 1 && (
+                    {step === 4 && (
+                        <div className="text-center py-12 space-y-6 animate-in fade-in zoom-in-95 duration-700">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                                <div className="relative w-24 h-24 bg-white rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                                    <CheckCircle2 className="text-slate-950" size={48} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Welcome Agent</h1>
+                                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Account secured with PIN</p>
+                            </div>
+                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">
+                                Your neural uplink is ready. You can now access your dashboard using your security PIN.
+                            </p>
                             <button
-                                onClick={prevStep}
-                                className="px-6 py-4 border border-white/10 text-slate-400 hover:text-white font-bold rounded-xl hover:bg-white/5 transition-all text-sm uppercase tracking-widest flex items-center gap-2"
+                                onClick={() => router.push('/auth/login')}
+                                className="w-full py-5 bg-white text-slate-950 rounded-2xl font-black transition-all shadow-xl shadow-white/10 uppercase tracking-widest flex items-center justify-center gap-3 group"
                             >
-                                <ChevronLeft size={18} /> Back
+                                Enter Dashboard <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
                             </button>
+                        </div>
+                    ) || (
+                            <div className="flex gap-4 pt-4">
+                                {step > 1 && step < 4 && (
+                                    <button
+                                        onClick={prevStep}
+                                        className="px-6 py-4 border border-white/10 text-slate-400 hover:text-white font-bold rounded-xl hover:bg-white/5 transition-all text-sm uppercase tracking-widest flex items-center gap-2"
+                                    >
+                                        <ChevronLeft size={18} /> Back
+                                    </button>
+                                )}
+                                {step < 4 && (
+                                    <button
+                                        disabled={isLoading || cooldown > 0}
+                                        onClick={step === 1 || step === 2 ? nextStep : handleRegister}
+                                        className="flex-1 py-4 bg-white text-slate-950 font-black rounded-xl hover:bg-slate-200 transition-all shadow-xl shadow-white/10 uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isLoading ? 'Processing...' : cooldown > 0 ? `Wait ${cooldown}s` : (step === 3 ? 'Complete Setup' : 'Continue')} <ChevronRight size={18} />
+                                    </button>
+                                )}
+                            </div>
                         )}
-                        <button
-                            disabled={isLoading || cooldown > 0}
-                            onClick={step === 1 || step === 2 ? nextStep : handleRegister}
-                            className="flex-1 py-4 bg-white text-slate-950 font-black rounded-xl hover:bg-slate-200 transition-all shadow-xl shadow-white/10 uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {isLoading ? 'Processing...' : cooldown > 0 ? `Wait ${cooldown}s` : (step === 3 ? 'Complete Setup' : 'Continue')} <ChevronRight size={18} />
-                        </button>
-                    </div>
                     {error && <p className="text-center text-red-400 text-xs font-bold uppercase tracking-tight">{error}</p>}
                 </div>
 
