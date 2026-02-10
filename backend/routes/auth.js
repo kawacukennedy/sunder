@@ -59,6 +59,14 @@ router.post('/register', async (req, res) => {
             error.message.includes('already registered') ||
             error.message.includes('invalid email');
 
+        const isRateLimit = error.message.toLowerCase().includes('rate limit exceeded');
+
+        if (isRateLimit) {
+            return res.status(429).json({
+                error: 'Too many registration attempts. Please wait a few minutes and try again.'
+            });
+        }
+
         res.status(isValidationError ? 400 : 500).json({ error: error.message });
     }
 });
