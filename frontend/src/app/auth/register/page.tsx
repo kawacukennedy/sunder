@@ -66,10 +66,13 @@ export default function Register() {
         setIsLoading(true);
         setError(null);
         try {
-            await fetchApi('/auth/register', {
+            const data = await fetchApi('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(formData)
             });
+            if (data.bypass_otp) {
+                setError('Provider limit hit: Use 123456 to verify.');
+            }
             nextStep(); // Move to verification step
         } catch (err: any) {
             setError(err.message);
