@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, supabase } = require('../middleware/auth');
 const ADMIN_SECRET = process.env.ADMIN_SECRET_PASSWORD || 'sunder_admin_2024';
 
 // Middleware for Admin Secret or Role
