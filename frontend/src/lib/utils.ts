@@ -23,7 +23,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const message = errorData.error || errorData.message || 'API request failed';
-        throw new Error(message);
+        const error = new Error(message) as any;
+        error.data = errorData;
+        error.status = response.status;
+        throw error;
     }
 
     return response.json();

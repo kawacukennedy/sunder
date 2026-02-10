@@ -22,7 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret';
 
 // Local Rate Limit Store (Simple in-memory for 30s requirement)
 const registrationAttempts = new Map();
-const COOLDOWN_MS = 30000;
+const COOLDOWN_MS = 60000;
 
 // Register
 router.post('/register', async (req, res) => {
@@ -87,10 +87,12 @@ router.post('/register', async (req, res) => {
         const isRateLimit = error.message.toLowerCase().includes('rate limit exceeded');
 
         if (isRateLimit) {
-            // Force a 30s wait on provider rate limits too
+            // Reset the local timer to force a full 60s wait from THIS failure
+            registrationAttempts.set(key, Date.now());
+
             return res.status(429).json({
-                error: 'System rate limit hit: please wait 30 seconds and try again.',
-                retryAfter: 30
+                error: 'System rate limit hit: protecting your account. Please wait 60 seconds.',
+                retryAfter: 60
             });
         }
 

@@ -81,7 +81,10 @@ export default function Register() {
             setStep(4);
         } catch (err: any) {
             setError(err.message);
-            if (err.message.includes('wait')) {
+            // Use structured retryAfter if available, fallback to message parsing
+            if (err.data?.retryAfter) {
+                setCooldown(err.data.retryAfter);
+            } else if (err.message.toLowerCase().includes('wait')) {
                 const match = err.message.match(/(\d+)/);
                 if (match) setCooldown(parseInt(match[1]));
             }
