@@ -19,40 +19,76 @@ import {
     Share2,
     Shield
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fetchApi } from '@/lib/utils';
 import { useCollaborationStore } from '@/store/collaborationStore';
 import { useAuthStore } from '@/store/authStore';
 
 export default function CollaborationSession() {
     const params = useParams();
     const router = useRouter();
+    const { sessionToken } = params;
     const { user } = useAuthStore();
     const {
         participants,
         chatMessages,
         connectionStatus,
         addChatMessage,
+        setParticipants,
         setConnectionStatus
     } = useCollaborationStore();
 
     const [message, setMessage] = useState('');
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [videoEnabled, setVideoEnabled] = useState(false);
+    const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
     useEffect(() => {
-        setConnectionStatus('connected');
-        return () => setConnectionStatus('disconnected');
-    }, []);
+        setConnectionStatus('connecting');
 
-    const handleSendMessage = (e: React.FormEvent) => {
+        // Initial participants fetch or mock
+        setParticipants([
+            { user_id: user?.id, username: user?.username, role: 'host' },
+            { user_id: 'sarah-id', username: 'sarah_dev', role: 'reviewer' }
+        ]);
+
+        const pollUpdates = async () => {
+            try {
+                const data = await fetchApi(`/collaboration/sessions/${sessionToken}/updates${lastUpdate ? `?since=${lastUpdate}` : ''}`);
+                if (data.updates) {
+                    data.updates.forEach((msg: any) => addChatMessage(msg));
+                }
+                if (data.last_update) setLastUpdate(data.last_update);
+                setConnectionStatus('connected');
+            } catch (error) {
+                console.error('Failed to fetch updates:', error);
+                setConnectionStatus('disconnected');
+            }
+        };
+
+        const interval = setInterval(pollUpdates, 5000);
+        pollUpdates();
+
+        return () => {
+            clearInterval(interval);
+            setConnectionStatus('disconnected');
+        };
+    }, [sessionToken]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!message.trim()) return;
-        addChatMessage({
+
+        const newMsg = {
             user: user?.display_name || user?.username || 'Anonymous',
             text: message,
             userId: user?.id
-        });
+        };
+
+        addChatMessage(newMsg);
         setMessage('');
+
+        // In a real app, this would POST to a message endpoint
+        // For now, it updates local store which is then synced via polling (if others also send)
     };
 
     return (
@@ -149,31 +185,32 @@ export default function CollaborationSession() {
                             </h2>
                         </div>
                         <div className="p-4 space-y-3">
-                            {/* Current User */}
-                            <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/10 group">
-                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-black text-sm italic">
-                                    {(user?.display_name || user?.username || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-xs font-bold text-white uppercase tracking-tight italic">{user?.display_name || user?.username} (You)</p>
-                                    <p className="text-[10px] text-emerald-400 uppercase tracking-widest">Synthesizing...</p>
-                                </div>
-                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            </div>
-                            {/* Mock Participants */}
-                            {['sarah_dev', 'cortex_ai', 'mark_iv'].map((name, i) => (
-                                <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all group grayscale hover:grayscale-0">
+                            {participants.map((p, i) => (
+                                <div key={p.user_id || i} className={cn(
+                                    "flex items-center gap-3 p-2 rounded-xl border transition-all group",
+                                    p.user_id === user?.id
+                                        ? "bg-white/5 border-white/10"
+                                        : "hover:bg-white/5 border-transparent grayscale hover:grayscale-0"
+                                )}>
                                     <div className={cn(
                                         "w-10 h-10 rounded-lg flex items-center justify-center text-white font-black text-sm italic",
-                                        i === 0 ? "bg-emerald-500" : i === 1 ? "bg-violet-600" : "bg-blue-600"
+                                        p.role === 'host' ? "bg-violet-500" : "bg-emerald-500"
                                     )}>
-                                        {name.charAt(0).toUpperCase()}
+                                        {(p.username || 'U').charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-xs font-bold text-slate-400 group-hover:text-white uppercase tracking-tight italic">{name}</p>
-                                        <p className="text-[10px] text-slate-600 uppercase tracking-widest">Watching...</p>
+                                        <p className={cn(
+                                            "text-xs font-bold uppercase tracking-tight italic",
+                                            p.user_id === user?.id ? "text-white" : "text-slate-400 group-hover:text-white"
+                                        )}>
+                                            {p.username} {p.user_id === user?.id && '(You)'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">{p.role === 'host' ? 'Synthesizing...' : 'Watching...'}</p>
                                     </div>
-                                    <div className="w-2 h-2 rounded-full bg-slate-800 group-hover:bg-emerald-500 transition-colors" />
+                                    <div className={cn(
+                                        "w-2 h-2 rounded-full",
+                                        p.user_id === user?.id ? "bg-emerald-500" : "bg-slate-800 group-hover:bg-emerald-500"
+                                    )} />
                                 </div>
                             ))}
                         </div>

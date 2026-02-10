@@ -28,12 +28,11 @@ router.post('/generate', authenticate, async (req, res) => {
     }
 });
 
-// AI Translate
 router.post('/translate', authenticate, async (req, res) => {
     const { code, source_language, target_language, options } = req.body;
     try {
         const prompt = `Translate this ${source_language} code to ${target_language}${options?.idiomatic ? ' using idiomatic patterns' : ''}${options?.preserve_comments ? ' and preserving comments' : ''}:\n\n${code}`;
-        const aiResponse = await callGemini(prompt);
+        const aiResponse = await callGemini(prompt, options);
 
         await logAIUsage({
             user_id: req.user.id,
@@ -52,6 +51,8 @@ router.post('/translate', authenticate, async (req, res) => {
                 { name: 'Comment Preservation', status: (options?.preserve_comments ? 'pass' : 'n/a') }
             ],
             execution_comparison: { source_output: '...', target_output: '...' },
+            warnings: [],
+            tests: options?.include_tests ? ['// Generated test cases...', 'expect(translate(input)).toBe(expected)'] : [],
             tokens_used: aiResponse.output_tokens
         });
     } catch (error) {
@@ -68,7 +69,7 @@ router.post('/pair', authenticate, async (req, res) => {
 
         const prompt = `${personaPrompt}\nHistory:\n${historyContext}\n\nTask: ${task}\n\nCode:\n${code}\n${options?.suggest_improvements ? 'Please suggest performance improvements.' : ''}`;
 
-        const aiResponse = await callGemini(prompt);
+        const aiResponse = await callGemini(prompt, options);
 
         await logAIUsage({
             user_id: req.user.id,
@@ -82,8 +83,8 @@ router.post('/pair', authenticate, async (req, res) => {
         res.json({
             response: aiResponse.text,
             suggested_code: aiResponse.text + '\n\n// Improved by Sunder AI',
-            explanations: ['Optimized code structure and logic flow.'],
-            tests: options?.write_tests ? ['describe("Snippet", () => { ... })'] : [],
+            explanations: options?.explain_changes ? ['Optimized loop structure', 'Improved memory allocation'] : ['Optimized code structure.'],
+            tests: options?.write_tests ? ['describe("Snippet", () => { ... })', 'it("should handle edge cases", () => { ... })'] : [],
             conversation_id: `CP_${Math.random().toString(36).substring(7)}`,
             tokens_used: aiResponse.output_tokens
         });

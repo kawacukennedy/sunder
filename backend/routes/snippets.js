@@ -43,10 +43,10 @@ router.get('/', async (req, res) => {
 
         if (error) throw error;
 
-        // Pagination Headers
+        // Pagination Headers (Spec Requirement)
         res.setHeader('X-Total-Count', count || 0);
-        res.setHeader('X-Page', page);
-        res.setHeader('X-Per-Page', limit);
+        res.setHeader('X-Page', parseInt(page));
+        res.setHeader('X-Per-Page', parseInt(limit));
 
         res.json({
             snippets: data,
@@ -77,12 +77,25 @@ router.post('/', authenticate, async (req, res) => {
         template_variables
     } = req.body;
 
+    // Payload Size Validation (Spec Requirement: 413 error)
+    if (code && code.length > 1048576) { // 1MB
+        return res.status(413).json({
+            error: 'Payload Too Large',
+            message: 'Code snippet exceeds the 1MB limit'
+        });
+    }
+
+    // Basic Input Sanitization (Spec Requirement)
+    const sanitize = (str) => str ? str.replace(/[<>]/g, '') : str;
+    const cleanTitle = sanitize(title);
+    const cleanDescription = sanitize(description);
+
     try {
         const { data: snippet, error } = await supabase
             .from('snippets')
             .insert({
-                title,
-                description,
+                title: cleanTitle,
+                description: cleanDescription,
                 code,
                 language,
                 tags: tags || [],
@@ -97,12 +110,8 @@ router.post('/', authenticate, async (req, res) => {
 
         if (error) throw error;
 
-        // Simulated AI analysis and suggestions (Spec parity requirement)
-        const analysis = {
-            complexity_score: 0.72,
-            security_issues: [],
-            performance_metrics: { runtime: 'O(n)', memory: 'O(1)' }
-        };
+        const { analyzeCode } = require('../lib/ai');
+        const analysis = analyzeCode(code);
         const ai_suggestions = [
             "Consider adding JSDoc comments for better documentation.",
             "Potential optimization for the loop structure detected."

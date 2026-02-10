@@ -3,15 +3,24 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Mail, ChevronLeft, ArrowRight } from 'lucide-react';
+import { fetchApi } from '@/lib/utils';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitted(true);
-        // In a real app, send reset link here
+        try {
+            await fetchApi('/auth/reset-password', {
+                method: 'POST',
+                body: JSON.stringify({ email })
+            });
+            setIsSubmitted(true);
+        } catch (error) {
+            console.error('Password reset request failed:', error);
+            // In a real app, show a toast here
+        }
     };
 
     return (

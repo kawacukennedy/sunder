@@ -56,10 +56,34 @@ const paths = [
     }
 ];
 
+import { fetchApi } from '@/lib/utils';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 export default function LearningPathsPage() {
+    const queryClient = useQueryClient();
     const [filter, setFilter] = useState('all');
     const [showAssessment, setShowAssessment] = useState(false);
     const [assessmentStep, setAssessmentStep] = useState(0);
+
+    const { data: learningPaths, isLoading: pathsLoading } = useQuery({
+        queryKey: ['learning-paths'],
+        queryFn: () => fetchApi('/learning/paths')
+    });
+
+    const { data: userProgress } = useQuery({
+        queryKey: ['learning-progress'],
+        queryFn: () => fetchApi('/learning/progress')
+    });
+
+    const enrollMutation = useMutation({
+        mutationFn: (pathId: string) => fetchApi('/learning/enroll', {
+            method: 'POST',
+            body: JSON.stringify({ path_id: pathId })
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['learning-progress'] });
+        }
+    });
 
     const challenges = [
         { title: 'Neural Refactor 2024', duration: '14h 22m', players: 124, type: 'Global Hack' },
@@ -131,69 +155,90 @@ export default function LearningPathsPage() {
 
                     {/* Paths Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {paths.map((path) => (
-                            <div
-                                key={path.id}
-                                className="group relative p-8 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl hover:border-white/10 transition-all duration-500 overflow-hidden"
-                            >
-                                <div className={cn(
-                                    "absolute -right-20 -top-20 w-80 h-80 blur-[100px] opacity-0 group-hover:opacity-10 transition-opacity duration-700 rounded-full",
-                                    path.bgColor
-                                )} />
+                        {pathsLoading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-64 bg-slate-900/40 rounded-[3rem] animate-pulse border border-white/5" />
+                            ))
+                        ) : (
+                            learningPaths?.filter((p: any) => filter === 'all' || p.category === filter).map((path: any) => {
+                                const progress = userProgress?.find((up: any) => up.path_id === path.id);
+                                const isEnrolled = !!progress;
 
-                                <div className="flex items-start justify-between mb-8 relative z-10">
-                                    <div className={cn(
-                                        "w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 shadow-xl group-hover:scale-110 transition-transform duration-500",
-                                        path.bgColor
-                                    )}>
-                                        <BrainCircuit className={path.color} size={32} />
-                                    </div>
-                                    <button
-                                        onClick={() => setShowAssessment(true)}
-                                        className="text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 bg-white/5 rounded-full border border-white/5 text-violet-400 hover:bg-violet-500 hover:text-white transition-all"
+                                return (
+                                    <div
+                                        key={path.id}
+                                        className="group relative p-8 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl hover:border-white/10 transition-all duration-500 overflow-hidden"
                                     >
-                                        Certify Now
-                                    </button>
-                                </div>
+                                        <div className={cn(
+                                            "absolute -right-20 -top-20 w-80 h-80 blur-[100px] opacity-0 group-hover:opacity-10 transition-opacity duration-700 rounded-full bg-violet-500/10"
+                                        )} />
 
-                                <div className="space-y-4 relative z-10 mb-8">
-                                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r from-white to-slate-500 transition-all">
-                                        {path.title}
-                                    </h3>
-                                    <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-sm">
-                                        {path.description}
-                                    </p>
-                                </div>
+                                        <div className="flex items-start justify-between mb-8 relative z-10">
+                                            <div className={cn(
+                                                "w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 shadow-xl group-hover:scale-110 transition-transform duration-500 bg-violet-500/10"
+                                            )}>
+                                                <BrainCircuit className="text-violet-400" size={32} />
+                                            </div>
+                                            {!isEnrolled ? (
+                                                <button
+                                                    onClick={() => enrollMutation.mutate(path.id)}
+                                                    disabled={enrollMutation.isPending}
+                                                    className="text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 bg-violet-600 rounded-xl text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20"
+                                                >
+                                                    {enrollMutation.isPending ? 'Enrolling...' : 'Enroll Path'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setShowAssessment(true)}
+                                                    className="text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 bg-white/5 rounded-full border border-white/5 text-violet-400 hover:bg-violet-500 hover:text-white transition-all"
+                                                >
+                                                    Certify Now
+                                                </button>
+                                            )}
+                                        </div>
 
-                                <div className="grid grid-cols-3 gap-4 mb-8 relative z-10">
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <LayoutGrid size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">{path.modules} Modules</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <Clock size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">{path.duration}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-amber-500/80">
-                                        <Zap size={14} className="fill-amber-500" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">+{path.xp} XP</span>
-                                    </div>
-                                </div>
+                                        <div className="space-y-4 relative z-10 mb-8">
+                                            <h3 className="text-2xl font-black text-white uppercase italic tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r from-white to-slate-500 transition-all">
+                                                {path.title}
+                                            </h3>
+                                            <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-sm">
+                                                {path.description}
+                                            </p>
+                                        </div>
 
-                                <div className="space-y-4 relative z-10">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className="text-slate-500 italic">Expedition Progress</span>
-                                        <span className="text-white">{path.progress}%</span>
+                                        <div className="grid grid-cols-3 gap-4 mb-8 relative z-10">
+                                            <div className="flex items-center gap-2 text-slate-500">
+                                                <LayoutGrid size={14} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">{path.modules || 10} Modules</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-500">
+                                                <Clock size={14} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">{path.duration || '12h'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-amber-500/80">
+                                                <Zap size={14} className="fill-amber-500" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">+{path.xp_reward || 500} XP</span>
+                                            </div>
+                                        </div>
+
+                                        {isEnrolled && (
+                                            <div className="space-y-4 relative z-10">
+                                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                                                    <span className="text-slate-500 italic">Expedition Progress</span>
+                                                    <span className="text-white">{progress.progress_percent || 0}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-1000 bg-violet-400"
+                                                        style={{ width: `${progress.progress_percent || 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <div
-                                            className={cn("h-full rounded-full transition-all duration-1000", path.color.replace('text-', 'bg-'))}
-                                            style={{ width: `${path.progress}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 

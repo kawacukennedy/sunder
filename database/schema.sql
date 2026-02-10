@@ -126,7 +126,37 @@ CREATE TABLE organization_members (
     role varchar(20) DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
     joined_at timestamptz DEFAULT NOW(),
     invited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    updated_at timestamptz DEFAULT NOW(),
     PRIMARY KEY (organization_id, user_id)
+);
+
+-- Collaboration Participants (Spec Requirement)
+CREATE TABLE collaboration_participants (
+    session_id uuid REFERENCES collaboration_sessions(id) ON DELETE CASCADE,
+    user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    joined_at timestamptz DEFAULT NOW(),
+    left_at timestamptz,
+    cursor_color varchar(7),
+    cursor_position jsonb,
+    PRIMARY KEY (session_id, user_id)
+);
+
+-- Code Reviews (Spec Requirement)
+CREATE TABLE code_reviews (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    snippet_id uuid REFERENCES snippets(id) ON DELETE CASCADE,
+    reviewer_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    reviewee_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    status varchar(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    matched_at timestamptz,
+    started_at timestamptz,
+    completed_at timestamptz,
+    duration_seconds integer,
+    rating integer CHECK (rating >= 1 AND rating <= 5),
+    feedback text,
+    ai_analysis jsonb,
+    created_at timestamptz DEFAULT NOW(),
+    updated_at timestamptz DEFAULT NOW()
 );
 
 -- Starred Snippets
@@ -276,8 +306,72 @@ CREATE TABLE system_backups (
     completed_at timestamptz
 );
 
--- Advanced Search Indexes
+-- Triggers for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_snippets_updated_at BEFORE UPDATE ON snippets FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_organization_members_updated_at BEFORE UPDATE ON organization_members FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_code_reviews_updated_at BEFORE UPDATE ON code_reviews FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- Advanced Search Indexes (Spec Requirement)
 CREATE INDEX idx_snippets_full_text ON snippets USING GIN (to_tsvector('english', title || ' ' || description));
 CREATE INDEX idx_snippets_denormalized_stats ON snippets (star_count DESC, view_count DESC, created_at DESC);
 CREATE INDEX idx_users_social_streak ON users (coding_streak DESC, last_active_at DESC);
 CREATE INDEX idx_system_backups_created_at ON system_backups(created_at DESC);
+
+-- Composite Indexes for Optimization (Spec Line 3735)
+CREATE INDEX idx_snippets_lang_created ON snippets(language, created_at DESC);
+CREATE INDEX idx_snippets_author_vis_created ON snippets(author_id, visibility, created_at DESC);
+CREATE INDEX idx_users_points_created ON users(achievement_points DESC, created_at);
+
+-- Atomic Counter Function (Spec Requirement)
+CREATE OR REPLACE FUNCTION increment_counter(table_name text, row_id uuid, column_name text)
+RETURNS void AS $$
+BEGIN
+    EXECUTE format('UPDATE %I SET %I = %I + 1 WHERE id = %L', table_name, column_name, column_name, row_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Row Level Security (RLS) Configuration
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE snippets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE code_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Standard Policies
+CREATE POLICY "Public profiles are viewable by everyone" ON users FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Public snippets are viewable by everyone" ON snippets FOR SELECT USING (visibility = 'public');
+CREATE POLICY "Authors can manage own snippets" ON snippets FOR ALL USING (auth.uid() = author_id);
+
+CREATE POLICY "Organization snippets viewable by members" ON snippets FOR SELECT USING (
+    organization_id IS NULL OR 
+    EXISTS (SELECT 1 FROM organization_members WHERE organization_id = snippets.organization_id AND user_id = auth.uid())
+);
+
+-- Admin Dashboard Metrics Views (Spec Requirement)
+CREATE OR REPLACE VIEW admin_system_metrics AS
+SELECT 
+    (SELECT count(*) FROM users) as total_users,
+    (SELECT count(*) FROM snippets) as total_snippets,
+    (SELECT count(*) FROM organizations) as total_organizations,
+    (SELECT count(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_today,
+    (SELECT count(*) FROM snippets WHERE created_at > NOW() - INTERVAL '24 hours') as new_snippets_today;
+
+CREATE OR REPLACE VIEW admin_ai_usage_stats AS
+SELECT 
+    sum(input_tokens) as total_input_tokens,
+    sum(output_tokens) as total_output_tokens,
+    sum(total_cost) as total_ai_cost,
+    count(*) as total_requests
+FROM ai_usage_logs
+WHERE created_at > NOW() - INTERVAL '24 hours';

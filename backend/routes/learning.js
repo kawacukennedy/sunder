@@ -71,20 +71,65 @@ router.patch('/progress/:pathId', authenticate, async (req, res) => {
     }
 });
 
-// Skill Assessment (Simulated)
+// Skill Assessment (Absolute Spec Parity)
 router.post('/assess', authenticate, async (req, res) => {
     try {
-        // Simulated AI analysis of snippets to determine skill level
-        const skills = {
-            react: 'advanced',
-            typescript: 'intermediate',
-            postgres: 'expert',
-            system_design: 'intermediate'
-        };
+        // Real logic: analyze the user's snippets to determine skill distribution
+        const { data: snippets } = await supabase
+            .from('snippets')
+            .select('language')
+            .eq('author_id', req.user.id);
+
+        const languageCounts = {};
+        snippets?.forEach(s => {
+            languageCounts[s.language] = (languageCounts[s.language] || 0) + 1;
+        });
+
+        const skills = {};
+        Object.entries(languageCounts).forEach(([lang, count]) => {
+            if (count > 10) skills[lang] = 'expert';
+            else if (count > 5) skills[lang] = 'advanced';
+            else skills[lang] = 'intermediate';
+        });
+
+        // Default if no snippets
+        if (Object.keys(skills).length === 0) {
+            skills['general'] = 'novice';
+        }
+
         await supabase.from('users').update({ coding_style_signature: skills }).eq('id', req.user.id);
+
+        await logAudit({
+            actor_id: req.user.id,
+            action_type: 'skill_assessment',
+            entity_type: 'user',
+            new_values: { skills }
+        });
+
         res.json({ success: true, skills });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Global XP Awarding System
+ */
+router.post('/xp/award', authenticate, async (req, res) => {
+    const { points, reason } = req.body;
+    try {
+        await supabase.rpc('award_achievement_points', { user_id: req.user.id, points });
+
+        await logAudit({
+            actor_id: req.user.id,
+            action_type: 'award_xp',
+            entity_type: 'user',
+            new_values: { points, reason }
+        });
+
+        res.json({ success: true, points_awarded: points });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to award XP' });
     }
 });
 

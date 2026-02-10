@@ -90,7 +90,7 @@ export default function ProfilePage() {
     const username = params.username as string;
     const [activeTab, setActiveTab] = useState('Overview');
 
-    const tabs = ['Overview', 'Snippets', 'Achievements', 'Activity', 'Organizations'];
+    const tabs = ['Overview', 'Snippets', 'Achievements', 'Activity', 'Organizations', 'Network'];
 
     const { data: profile, isLoading, error } = useQuery({
         queryKey: ['profile', username],
@@ -350,6 +350,48 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                        {activeTab === 'Network' && (
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Mutual Nodes */}
+                                    <div className="glass p-10 rounded-[48px] border border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent">
+                                        <h3 className="text-xs font-black text-white uppercase tracking-[0.3em] mb-8 flex items-center gap-3 italic">
+                                            <Users size={18} className="text-blue-400" /> Mutual Neural Nodes
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/10 transition-all">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10" />
+                                                        <div>
+                                                            <p className="text-xs font-black text-white uppercase">Nexus_Walker_{i}</p>
+                                                            <p className="text-[9px] text-slate-500 font-bold uppercase">Mutual Connections: {12 - i}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button className="p-2 text-slate-500 hover:text-white"><LinkIcon size={14} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Social Graph Teaser */}
+                                    <div className="glass p-10 rounded-[48px] border border-white/5 flex flex-col items-center justify-center text-center space-y-6">
+                                        <div className="w-24 h-24 bg-violet-600/10 rounded-full flex items-center justify-center border border-violet-500/20">
+                                            <Activity size={40} className="text-violet-400 animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-black text-white uppercase tracking-tight italic">Social Graph v2.0</h4>
+                                            <p className="text-xs text-slate-500 max-w-[240px] mt-2 leading-relaxed">Visualize your influence across the Sunder network in 3D (Coming Soon to Desktop Nodes).</p>
+                                        </div>
+                                        <div className="flex -space-x-3">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <div key={i} className="w-10 h-10 rounded-full bg-slate-800 border-4 border-[#0f172a] shadow-xl" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </motion.div>

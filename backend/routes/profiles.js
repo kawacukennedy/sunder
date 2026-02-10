@@ -160,4 +160,26 @@ router.post('/api-keys', authenticate, async (req, res) => {
     }
 });
 
+router.delete('/api-keys/:keyId', authenticate, async (req, res) => {
+    try {
+        const { data: user } = await supabase.from('users').select('preferences').eq('id', req.user.id).single();
+        const currentKeys = user.preferences.api_keys || [];
+        const updatedKeys = currentKeys.filter(k => k.id !== req.params.keyId);
+
+        await supabase
+            .from('users')
+            .update({
+                preferences: {
+                    ...user.preferences,
+                    api_keys: updatedKeys
+                }
+            })
+            .eq('id', req.user.id);
+
+        res.json({ success: true, message: 'API key revoked' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to revoke API key' });
+    }
+});
+
 module.exports = router;

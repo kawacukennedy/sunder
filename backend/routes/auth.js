@@ -1,6 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../middleware/auth');
+const { authenticate, supabase } = require('../middleware/auth');
+
+// CSRF Protection Stub (Spec Requirement)
+const generateCsrfToken = () => Math.random().toString(36).substring(2, 15);
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    };
+    res.cookie('access_token', accessToken, cookieOptions);
+    res.cookie('refresh_token', refreshToken, cookieOptions);
+    res.cookie('csrf_token', generateCsrfToken(), { ...cookieOptions, httpOnly: false });
+};
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret';
@@ -75,9 +90,12 @@ router.post('/login', async (req, res) => {
         // Simulate 2FA Requirement for 20% of logins
         const mfaEnabled = email.includes('admin') || Math.random() > 0.8;
 
+        setAuthCookies(res, data.session.access_token, data.session.refresh_token);
+
         res.json({
             user: data.user,
             access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
             mfa_required: mfaEnabled,
             mfa_token: mfaEnabled ? 'MFA_TEMP_' + Math.random().toString(36).substring(7) : null
         });
@@ -93,6 +111,23 @@ router.post('/2fa/verify', async (req, res) => {
         res.json({ success: true, message: '2FA verified' });
     } else {
         res.status(401).json({ error: 'Invalid 2FA code' });
+    }
+});
+
+// Refresh Token (Spec Requirement)
+router.post('/refresh', async (req, res) => {
+    const { refresh_token } = req.body;
+    try {
+        const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+        if (error) throw error;
+
+        res.json({
+            user: data.user,
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+        });
+    } catch (error) {
+        res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 });
 
