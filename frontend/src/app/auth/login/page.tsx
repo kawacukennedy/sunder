@@ -1,13 +1,17 @@
-'use client';
-
-import { Lock, Mail, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import Link from 'next/link';
+import { cn, fetchApi } from '@/lib/utils';
+import { Lock, Mail, ShieldAlert, Terminal } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
     const router = useRouter();
     const { setUser, setToken } = useAuthStore();
+    const [email, setEmail] = useState('');
     const [pin, setPin] = useState(['', '', '', '']);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
