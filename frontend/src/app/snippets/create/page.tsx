@@ -36,7 +36,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-rust';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-ruby';
-import { cn, fetchApi } from '@/lib/utils';
+import { cn, fetchApi, formatRelativeTime } from '@/lib/utils';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
