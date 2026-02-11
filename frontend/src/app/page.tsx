@@ -13,7 +13,6 @@ import {
   Star,
   MessageSquare,
   Sparkles,
-  Zap,
   Fingerprint,
   Radio,
   Infinity
