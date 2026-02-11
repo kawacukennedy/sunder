@@ -15,14 +15,14 @@ router.post('/generate', authenticate, async (req, res) => {
             ai_feature: 'generate',
             input_tokens: aiResponse.input_tokens,
             output_tokens: aiResponse.output_tokens,
-            model_used: 'gemini-1.5-pro',
+            model_used: aiResponse.model_used,
             request_duration_ms: aiResponse.duration
         });
 
         res.json({
             code: aiResponse.text,
             language,
-            model: 'gemini-1.5-pro',
+            model: aiResponse.model_used,
             tokens: aiResponse.output_tokens
         });
     } catch (error) {
@@ -41,7 +41,7 @@ router.post('/translate', authenticate, async (req, res) => {
             ai_feature: 'translate',
             input_tokens: aiResponse.input_tokens,
             output_tokens: aiResponse.output_tokens,
-            model_used: 'gemini-1.5-pro',
+            model_used: aiResponse.model_used,
             request_duration_ms: aiResponse.duration
         });
 
@@ -84,7 +84,7 @@ router.post('/pair', authenticate, async (req, res) => {
             ai_feature: 'pair',
             input_tokens: aiResponse.input_tokens,
             output_tokens: aiResponse.output_tokens,
-            model_used: 'gemini-1.5-pro',
+            model_used: aiResponse.model_used,
             request_duration_ms: aiResponse.duration
         });
 
@@ -113,7 +113,7 @@ router.post('/explain', authenticate, async (req, res) => {
             ai_feature: 'explain',
             input_tokens: aiResponse.input_tokens,
             output_tokens: aiResponse.output_tokens,
-            model_used: 'gemini-1.5-pro',
+            model_used: aiResponse.model_used,
             request_duration_ms: aiResponse.duration
         });
 

@@ -82,10 +82,56 @@ const analyzeCode = (code) => {
 
 const axios = require('axios');
 
+let cachedModel = null;
+
 /**
- * Real Gemini API call with option support.
+ * Dynamically fetches available models and selects the best one.
  */
-const callGemini = async (prompt, options = {}, model = 'gemini-1.5-pro') => {
+const getBestAvailableModel = async (apiKey) => {
+    if (cachedModel) return cachedModel;
+
+    try {
+        const response = await axios.get(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+        );
+
+        const models = response.data.models || [];
+        const modelNames = models.map(m => m.name);
+
+        // Priority order for models
+        const priority = [
+            'models/gemini-1.5-pro-latest',
+            'models/gemini-1.5-pro',
+            'models/gemini-1.5-flash-latest',
+            'models/gemini-1.5-flash',
+            'models/gemini-1.0-pro'
+        ];
+
+        for (const target of priority) {
+            if (modelNames.includes(target)) {
+                cachedModel = target;
+                console.log(`[AI] Auto-detected best model: ${cachedModel}`);
+                return cachedModel;
+            }
+        }
+
+        // Fallback to whatever is available first if no priority matches
+        if (modelNames.length > 0) {
+            cachedModel = modelNames[0];
+            return cachedModel;
+        }
+
+        return 'models/gemini-1.5-flash'; // Last resort
+    } catch (error) {
+        console.error('[AI] Model detection failed, using fallback:', error.message);
+        return 'models/gemini-1.5-flash';
+    }
+};
+
+/**
+ * Real Gemini API call with auto-model detection.
+ */
+const callGemini = async (prompt, options = {}, modelOverride = null) => {
     const start = Date.now();
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -93,9 +139,12 @@ const callGemini = async (prompt, options = {}, model = 'gemini-1.5-pro') => {
         throw new Error('GEMINI_API_KEY is not configured');
     }
 
+    // Auto-detect model if not provided or if we want to follow user's request to "remove specific model"
+    const model = modelOverride || await getBestAvailableModel(apiKey);
+
     try {
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`,
             {
                 contents: [
                     {
@@ -119,18 +168,19 @@ const callGemini = async (prompt, options = {}, model = 'gemini-1.5-pro') => {
         const aiResponse = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!aiResponse) {
-            throw new Error('Invalid response from Gemini API');
+            throw new Error('Invalid response structure from Gemini API');
         }
 
         return {
             text: aiResponse,
-            input_tokens: Math.floor(prompt.length / 4), // Approximation if not provided by API
+            input_tokens: Math.floor(prompt.length / 4),
             output_tokens: Math.floor(aiResponse.length / 4),
-            duration: Date.now() - start
+            duration: Date.now() - start,
+            model_used: model
         };
     } catch (error) {
         console.error('Gemini API Error:', error.response?.data || error.message);
-        throw new Error(`AI processing failed: ${error.message}`);
+        throw new Error(`AI processing failed (${model}): ${error.message}`);
     }
 };
 
