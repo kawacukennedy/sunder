@@ -87,9 +87,9 @@ export default function AIPairPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center p-1 bg-slate-900/50 border border-white/5 rounded-2xl">
-                            {['helpful', 'critical', 'concise', 'educational'].map((p) => (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide no-scrollbar">
+                        <div className="flex items-center p-1 bg-slate-900/50 border border-white/5 rounded-2xl shrink-0">
+                            {['helpful', 'educational'].map((p) => (
                                 <button
                                     key={p}
                                     onClick={() => setPersonality(p as any)}
@@ -104,24 +104,24 @@ export default function AIPairPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="h-8 w-px bg-white/5 mx-2" />
-                        <button className="p-3 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                        <div className="h-8 w-px bg-white/5 mx-2 hidden sm:block" />
+                        <button className="p-3 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all shrink-0">
                             <History size={18} />
                         </button>
-                        <button className="p-3 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                        <button className="p-3 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all shrink-0">
                             <Settings size={18} />
                         </button>
-                        <button className="px-6 py-3 rounded-2xl bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-violet-500/20 flex items-center gap-2">
+                        <button className="px-6 py-3 rounded-2xl bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-violet-500/20 flex items-center gap-2 shrink-0">
                             <Play size={16} fill="white" />
-                            Run Context
+                            <span className="hidden sm:inline">Run Context</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Main Workspace Grid */}
-                <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden md:pr-2 custom-scrollbar">
                     {/* Left Sidebar: Context & Files */}
-                    <div className="col-span-2 flex flex-col gap-4 overflow-hidden">
+                    <div className="col-span-1 md:col-span-4 lg:col-span-2 flex flex-col gap-4">
                         <div className="flex-1 p-6 rounded-[2.5rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col gap-6">
                             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Knowledge Base</h3>
                             <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar">
@@ -158,8 +158,8 @@ export default function AIPairPage() {
                     </div>
 
                     {/* Middle: Code Editor Placeholder */}
-                    <div className="col-span-7 flex flex-col gap-6 overflow-hidden">
-                        <div className="flex-1 p-8 rounded-[3rem] bg-slate-900/60 border border-white/5 backdrop-blur-3xl relative group overflow-hidden">
+                    <div className="col-span-1 md:col-span-8 lg:col-span-7 flex flex-col gap-6">
+                        <div className="flex-1 p-6 sm:p-8 rounded-[3rem] bg-slate-900/60 border border-white/5 backdrop-blur-3xl relative group overflow-hidden min-h-[400px]">
                             <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
                             <div className="relative z-10 h-full flex flex-col">
@@ -210,8 +210,8 @@ export default function AIPairPage() {
                     </div>
 
                     {/* Right: Neural Chat Interface */}
-                    <div className="col-span-3 flex flex-col gap-6 overflow-hidden">
-                        <div className="flex-1 p-6 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col overflow-hidden relative group">
+                    <div className="col-span-1 md:col-span-12 lg:col-span-3 flex flex-col gap-6">
+                        <div className="flex-1 p-6 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col relative group min-h-[500px] lg:overflow-hidden">
                             <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar pb-6">
                                 {history.length === 0 && (
                                     <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 opacity-40">

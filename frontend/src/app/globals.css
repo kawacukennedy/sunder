@@ -23,6 +23,24 @@ body {
   background: var(--background);
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Responsiveness Utilities */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
 }
 
 .glass {

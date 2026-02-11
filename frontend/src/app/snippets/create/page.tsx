@@ -145,8 +145,8 @@ export default function SnippetEditor() {
                             type="text"
                             value={currentSnippet.title}
                             onChange={(e) => updateTitle(e.target.value)}
-                            className="bg-transparent text-white font-bold text-sm focus:outline-none w-64 border-b border-transparent focus:border-violet-500/50 transition-all placeholder:text-slate-600"
-                            placeholder="Enter snippet title..."
+                            className="bg-transparent text-white font-bold text-sm focus:outline-none w-32 sm:w-64 border-b border-transparent focus:border-violet-500/50 transition-all placeholder:text-slate-600 truncate"
+                            placeholder="Untitled"
                         />
                     </div>
                 </div>
@@ -173,7 +173,7 @@ export default function SnippetEditor() {
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Pane: FileTree & Properties */}
                 {panes.left && (
-                    <aside className="w-64 border-r border-white/5 bg-slate-900/30 flex flex-col shrink-0 animate-in slide-in-from-left duration-300">
+                    <aside className="fixed inset-y-0 left-0 z-40 w-full sm:w-64 border-r border-white/5 bg-slate-900/95 sm:bg-slate-900/30 backdrop-blur-3xl sm:backdrop-blur-none flex flex-col shrink-0 animate-in slide-in-from-left duration-300 md:relative">
                         <div className="p-4 border-b border-white/5 flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Explorer</span>
                             <button onClick={() => togglePane('left')} className="text-slate-600 hover:text-white transition-colors">
@@ -266,7 +266,7 @@ export default function SnippetEditor() {
 
                         {/* Right Pane: Live Preview */}
                         {panes.right && (
-                            <aside className="w-80 border-l border-white/5 bg-slate-900/30 flex flex-col shrink-0 animate-in slide-in-from-right duration-300">
+                            <aside className="fixed inset-y-0 right-0 z-40 w-full sm:w-80 border-l border-white/5 bg-slate-900/95 sm:bg-slate-900/30 backdrop-blur-3xl sm:backdrop-blur-none flex flex-col shrink-0 animate-in slide-in-from-right duration-300 md:relative">
                                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic flex items-center gap-2">
                                         <Layout size={14} className="text-blue-400" /> Preview
