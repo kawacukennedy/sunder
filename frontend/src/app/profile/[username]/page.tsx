@@ -172,12 +172,22 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mt-16 pt-12 border-t border-white/5">
-                        {stats.map(stat => (
-                            <div key={stat.label} className="group cursor-default">
-                                <p className="text-3xl font-black text-white italic group-hover:text-violet-400 transition-colors">{stat.value}</p>
-                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">{stat.label}</p>
-                            </div>
-                        ))}
+                        <div className="group cursor-default">
+                            <p className="text-3xl font-black text-white italic group-hover:text-violet-400 transition-colors">{profile?.snippets?.length || 0}</p>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Snippets</p>
+                        </div>
+                        <div className="group cursor-default">
+                            <p className="text-3xl font-black text-white italic group-hover:text-violet-400 transition-colors">{profile?.achievement_points || 0}</p>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Achievements</p>
+                        </div>
+                        <div className="group cursor-default">
+                            <p className="text-3xl font-black text-white italic group-hover:text-violet-400 transition-colors">{profile?.coding_streak || 0}</p>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Streak</p>
+                        </div>
+                        <div className="group cursor-default">
+                            <p className="text-3xl font-black text-white italic group-hover:text-violet-400 transition-colors">2.4k</p>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Network</p>
+                        </div>
                     </div>
                 </div>
 

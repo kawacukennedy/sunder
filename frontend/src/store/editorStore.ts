@@ -14,10 +14,14 @@ interface EditorState {
         right: boolean;
         bottom: boolean;
     };
+    executionResult: string | null;
+    isRunning: boolean;
     updateCode: (code: string) => void;
     updateTitle: (title: string) => void;
     updateLanguage: (language: string) => void;
     togglePane: (pane: 'left' | 'right' | 'bottom') => void;
+    setExecutionResult: (result: string | null) => void;
+    setIsRunning: (isRunning: boolean) => void;
     setSnippet: (snippet: any) => void;
     resetEditor: () => void;
 }
@@ -30,12 +34,8 @@ export const useEditorStore = create<EditorState>((set) => ({
         language: 'javascript',
         tags: [],
     },
-    isDirty: false,
-    panes: {
-        left: true,
-        right: true,
-        bottom: false,
-    },
+    executionResult: null,
+    isRunning: false,
     updateCode: (code: string) => set((state) => ({
         currentSnippet: { ...state.currentSnippet, code },
         isDirty: true
@@ -51,6 +51,8 @@ export const useEditorStore = create<EditorState>((set) => ({
     togglePane: (pane: 'left' | 'right' | 'bottom') => set((state) => ({
         panes: { ...state.panes, [pane]: !state.panes[pane] }
     })),
+    setExecutionResult: (executionResult) => set({ executionResult }),
+    setIsRunning: (isRunning) => set({ isRunning }),
     setSnippet: (snippet: any) => set({ currentSnippet: snippet, isDirty: false }),
     resetEditor: () => set({
         currentSnippet: {
@@ -60,6 +62,8 @@ export const useEditorStore = create<EditorState>((set) => ({
             language: 'javascript',
             tags: [],
         },
+        executionResult: null,
+        isRunning: false,
         isDirty: false
     }),
 }));

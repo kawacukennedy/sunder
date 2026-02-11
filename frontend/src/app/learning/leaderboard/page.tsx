@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
 
 const ranks = [
     {
@@ -78,8 +79,19 @@ const ranks = [
     }
 ];
 
+import { fetchApi } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+
 export default function LeaderboardPage() {
-    const [timeframe, setTimeframe] = useState('Weekly');
+    const [timeframe, setTimeframe] = useState('All Time');
+
+    const { data: leaderboardData, isLoading } = useQuery({
+        queryKey: ['leaderboard', timeframe],
+        queryFn: () => fetchApi('/leaderboard') // timeframe filtering can be added to backend later
+    });
+
+    const displayRanks = leaderboardData || [];
+    const { user } = useAuthStore();
 
     return (
         <DashboardLayout>
@@ -117,70 +129,82 @@ export default function LeaderboardPage() {
                 </div>
 
                 {/* Top 3 Podium */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end px-4">
-                    {/* Rank 2 */}
-                    <div className="order-2 md:order-1 flex flex-col items-center space-y-4">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-3xl bg-slate-400 flex items-center justify-center text-2xl font-black text-slate-800 rotate-3 group-hover:rotate-0 transition-transform duration-500 shadow-2xl overflow-hidden">
-                                {ranks[1].avatar}
-                                <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end px-4 min-h-[400px]">
+                    {isLoading ? (
+                        <div className="col-span-3 flex items-center justify-center p-20 opacity-20">
+                            <Sparkles className="animate-pulse" size={48} />
+                        </div>
+                    ) : displayRanks.length >= 3 ? (
+                        <>
+                            {/* Rank 2 */}
+                            <div className="order-2 md:order-1 flex flex-col items-center space-y-4">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-3xl bg-slate-400 flex items-center justify-center text-2xl font-black text-slate-800 rotate-3 group-hover:rotate-0 transition-transform duration-500 shadow-2xl overflow-hidden">
+                                        {displayRanks[1]?.avatar_url ? <img src={displayRanks[1].avatar_url} alt="" className="w-full h-full object-cover" /> : displayRanks[1]?.username?.slice(0, 2).toUpperCase()}
+                                        <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20" />
+                                    </div>
+                                    <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-slate-400">
+                                        <Medal size={20} />
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-lg font-black text-white italic tracking-tight uppercase truncate max-w-[200px]">{displayRanks[1]?.display_name || displayRanks[1]?.username}</h3>
+                                    <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase italic">{displayRanks[1]?.achievement_points?.toLocaleString()} XP</p>
+                                </div>
+                                <div className="w-full h-32 bg-slate-800/30 border-t-4 border-slate-400/50 rounded-t-3xl flex items-center justify-center">
+                                    <span className="text-4xl font-black text-slate-400 italic">2</span>
+                                </div>
                             </div>
-                            <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-slate-400">
-                                <Medal size={20} />
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-lg font-black text-white italic tracking-tight uppercase">{ranks[1].user}</h3>
-                            <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase italic">{ranks[1].xp} XP</p>
-                        </div>
-                        <div className="w-full h-32 bg-slate-800/30 border-t-4 border-slate-400/50 rounded-t-3xl flex items-center justify-center">
-                            <span className="text-4xl font-black text-slate-400 italic">2</span>
-                        </div>
-                    </div>
 
-                    {/* Rank 1 */}
-                    <div className="order-1 md:order-2 flex flex-col items-center space-y-6">
-                        <div className="relative group">
-                            <div className="absolute -inset-4 bg-amber-500/20 blur-2xl rounded-full group-hover:bg-amber-500/30 transition-all duration-700 animate-pulse" />
-                            <div className="w-32 h-32 rounded-[2rem] bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-4xl font-black text-amber-900 -rotate-3 group-hover:rotate-0 transition-transform duration-500 shadow-2xl relative z-10 overflow-hidden">
-                                {ranks[0].avatar}
-                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {/* Rank 1 */}
+                            <div className="order-1 md:order-2 flex flex-col items-center space-y-6">
+                                <div className="relative group">
+                                    <div className="absolute -inset-4 bg-amber-500/20 blur-2xl rounded-full group-hover:bg-amber-500/30 transition-all duration-700 animate-pulse" />
+                                    <div className="w-32 h-32 rounded-[2rem] bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-4xl font-black text-amber-900 -rotate-3 group-hover:rotate-0 transition-transform duration-500 shadow-2xl relative z-10 overflow-hidden">
+                                        {displayRanks[0]?.avatar_url ? <img src={displayRanks[0].avatar_url} alt="" className="w-full h-full object-cover" /> : displayRanks[0]?.username?.slice(0, 2).toUpperCase()}
+                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                    <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-amber-500 border-4 border-[#0f172a] flex items-center justify-center text-white shadow-xl z-20">
+                                        <Trophy size={24} />
+                                    </div>
+                                </div>
+                                <div className="text-center relative z-10">
+                                    <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase truncate max-w-[250px]">{displayRanks[0]?.display_name || displayRanks[0]?.username}</h3>
+                                    <div className="flex items-center justify-center gap-2 mt-1">
+                                        <Zap className="text-amber-400 fill-amber-400" size={14} />
+                                        <span className="text-xs font-black text-amber-400 tracking-[0.2em] uppercase italic">{displayRanks[0]?.achievement_points?.toLocaleString()} XP</span>
+                                    </div>
+                                </div>
+                                <div className="w-full h-48 bg-amber-500/10 border-t-4 border-amber-400 rounded-t-[3rem] flex items-center justify-center relative shadow-[0_-20px_40px_rgba(245,158,11,0.05)] border-x border-amber-500/10">
+                                    <span className="text-6xl font-black text-amber-500 italic pb-10">1</span>
+                                </div>
                             </div>
-                            <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-amber-500 border-4 border-[#0f172a] flex items-center justify-center text-white shadow-xl z-20">
-                                <Trophy size={24} />
-                            </div>
-                        </div>
-                        <div className="text-center relative z-10">
-                            <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">{ranks[0].user}</h3>
-                            <div className="flex items-center justify-center gap-2 mt-1">
-                                <Zap className="text-amber-400 fill-amber-400" size={14} />
-                                <span className="text-xs font-black text-amber-400 tracking-[0.2em] uppercase italic">{ranks[0].xp} XP</span>
-                            </div>
-                        </div>
-                        <div className="w-full h-48 bg-amber-500/10 border-t-4 border-amber-400 rounded-t-[3rem] flex items-center justify-center relative shadow-[0_-20px_40px_rgba(245,158,11,0.05)] border-x border-amber-500/10">
-                            <span className="text-6xl font-black text-amber-500 italic pb-10">1</span>
-                        </div>
-                    </div>
 
-                    {/* Rank 3 */}
-                    <div className="order-3 flex flex-col items-center space-y-4">
-                        <div className="relative group">
-                            <div className="w-20 h-20 rounded-2xl bg-orange-700 flex items-center justify-center text-xl font-black text-orange-200 -rotate-6 group-hover:rotate-0 transition-transform duration-500 shadow-2xl overflow-hidden">
-                                {ranks[2].avatar}
-                                <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20" />
+                            {/* Rank 3 */}
+                            <div className="order-3 flex flex-col items-center space-y-4">
+                                <div className="relative group">
+                                    <div className="w-20 h-20 rounded-2xl bg-orange-700 flex items-center justify-center text-xl font-black text-orange-200 -rotate-6 group-hover:rotate-0 transition-transform duration-500 shadow-2xl overflow-hidden">
+                                        {displayRanks[2]?.avatar_url ? <img src={displayRanks[2].avatar_url} alt="" className="w-full h-full object-cover" /> : displayRanks[2]?.username?.slice(0, 2).toUpperCase()}
+                                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20" />
+                                    </div>
+                                    <div className="absolute -top-3 -right-3 w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-orange-400">
+                                        <Award size={16} />
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-base font-black text-white italic tracking-tight uppercase truncate max-w-[180px]">{displayRanks[2]?.display_name || displayRanks[2]?.username}</h3>
+                                    <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase italic">{displayRanks[2]?.achievement_points?.toLocaleString()} XP</p>
+                                </div>
+                                <div className="w-full h-24 bg-orange-900/10 border-t-4 border-orange-700/50 rounded-t-2xl flex items-center justify-center">
+                                    <span className="text-3xl font-black text-orange-700 italic">3</span>
+                                </div>
                             </div>
-                            <div className="absolute -top-3 -right-3 w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-orange-400">
-                                <Award size={16} />
-                            </div>
+                        </>
+                    ) : (
+                        <div className="col-span-3 text-center p-20 opacity-50 uppercase tracking-[0.3em] font-black text-xs italic">
+                            Insufficient data for podium
                         </div>
-                        <div className="text-center">
-                            <h3 className="text-base font-black text-white italic tracking-tight uppercase">{ranks[2].user}</h3>
-                            <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase italic">{ranks[2].xp} XP</p>
-                        </div>
-                        <div className="w-full h-24 bg-orange-900/10 border-t-4 border-orange-700/50 rounded-t-2xl flex items-center justify-center">
-                            <span className="text-3xl font-black text-orange-700 italic">3</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Extended Leaderboard */}
@@ -192,18 +216,16 @@ export default function LeaderboardPage() {
                         </div>
                         <div className="flex-1 flex justify-center gap-16">
                             <span>Intelligence Score</span>
-                            <span>Code Snippets</span>
                             <span>Daily Streak</span>
                         </div>
-                        <span className="w-32 text-right">Momentum</span>
                     </div>
 
-                    {ranks.slice(3).concat(ranks.slice(4)).map((user, idx) => (
+                    {!isLoading && displayRanks.slice(3).map((item: any, idx: number) => (
                         <div
-                            key={`${user.user}-${idx}`}
+                            key={item.username}
                             className={cn(
                                 "p-6 rounded-[2.5rem] bg-slate-900/40 border transition-all duration-300 group",
-                                user.isMe
+                                item.username === user?.username
                                     ? "border-violet-500/50 bg-violet-500/5 scale-[1.02] shadow-2xl shadow-violet-500/10"
                                     : "border-white/5 hover:border-white/10"
                             )}
@@ -212,61 +234,39 @@ export default function LeaderboardPage() {
                                 <div className="flex items-center gap-8">
                                     <span className={cn(
                                         "w-8 text-center text-sm font-black italic",
-                                        user.isMe ? "text-violet-400" : "text-slate-600"
+                                        item.username === user?.username ? "text-violet-400" : "text-slate-600"
                                     )}>
-                                        #{user.rank}
+                                        #{idx + 4}
                                     </span>
                                     <div className="flex items-center gap-4 w-64">
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-xl",
-                                            user.isMe ? "bg-violet-600" : "bg-slate-800"
+                                            "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-xl overflow-hidden",
+                                            item.username === user?.username ? "bg-violet-600" : "bg-slate-800"
                                         )}>
-                                            {user.avatar}
+                                            {item.avatar_url ? <img src={item.avatar_url} alt="" className="w-full h-full object-cover" /> : item.username?.slice(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-bold text-white uppercase tracking-tight italic flex items-center gap-2">
-                                                {user.user}
-                                                {user.isMe && <Sparkles size={12} className="text-violet-400" />}
+                                                {item.display_name || item.username}
+                                                {item.username === user?.username && <Sparkles size={12} className="text-violet-400" />}
                                             </h4>
-                                            {user.isMe && <p className="text-[8px] font-black text-violet-500 uppercase tracking-widest">You</p>}
+                                            {item.username === user?.username && <p className="text-[8px] font-black text-violet-500 uppercase tracking-widest">You</p>}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex-1 flex justify-center gap-24 items-center">
                                     <div className="text-center group-hover:scale-110 transition-transform">
-                                        <div className="text-sm font-black text-white tracking-widest">{user.xp}</div>
+                                        <div className="text-sm font-black text-white tracking-widest">{item.achievement_points?.toLocaleString()}</div>
                                         <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">XP Points</div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-sm font-black text-slate-300 tracking-widest">{user.snippets}</div>
-                                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Snippets</div>
-                                    </div>
-                                    <div className="text-center">
                                         <div className="flex items-center justify-center gap-1">
-                                            <Flame size={12} className={cn(user.streak > 10 ? "text-orange-500 fill-orange-500" : "text-slate-600")} />
-                                            <span className="text-sm font-black text-slate-300 tracking-widest">{user.streak}d</span>
+                                            <Flame size={12} className={cn(item.coding_streak > 10 ? "text-orange-500 fill-orange-500" : "text-slate-600")} />
+                                            <span className="text-sm font-black text-slate-300 tracking-widest">{item.coding_streak || 0}d</span>
                                         </div>
                                         <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Streak</div>
                                     </div>
-                                </div>
-
-                                <div className="w-32 flex justify-end">
-                                    {user.change === 'up' && (
-                                        <div className="flex items-center gap-1 text-emerald-400 bg-emerald-500/5 px-2 py-1 rounded-lg border border-emerald-500/10">
-                                            <ArrowUp size={14} />
-                                            <span className="text-[10px] font-black">2.4%</span>
-                                        </div>
-                                    )}
-                                    {user.change === 'down' && (
-                                        <div className="flex items-center gap-1 text-red-400 bg-red-500/5 px-2 py-1 rounded-lg border border-red-500/10">
-                                            <ArrowDown size={14} />
-                                            <span className="text-[10px] font-black">1.8%</span>
-                                        </div>
-                                    )}
-                                    {user.change === 'none' && (
-                                        <div className="w-2 h-2 rounded-full bg-slate-700" />
-                                    )}
                                 </div>
                             </div>
                         </div>

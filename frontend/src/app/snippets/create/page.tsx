@@ -27,6 +27,14 @@ import {
     X,
     Activity
 } from 'lucide-react';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-ruby';
 import { cn, fetchApi } from '@/lib/utils';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuthStore } from '@/store/authStore';
@@ -42,7 +50,11 @@ export default function SnippetEditor() {
         updateLanguage,
         panes,
         togglePane,
-        resetEditor
+        resetEditor,
+        executionResult,
+        setExecutionResult,
+        isRunning,
+        setIsRunning
     } = useEditorStore();
     const { addToast } = useUIStore();
 
@@ -50,6 +62,45 @@ export default function SnippetEditor() {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState('');
     const [aiInput, setAiInput] = useState('');
+    const [history, setHistory] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+
+    useEffect(() => {
+        Prism.highlightAll();
+    }, [currentSnippet.code, currentSnippet.language]);
+
+    const handleRun = async () => {
+        setIsRunning(true);
+        setExecutionResult('> Compiling and preparing runtime...\n');
+
+        try {
+            const result = await fetchApi('/snippets/run', {
+                method: 'POST',
+                body: JSON.stringify({
+                    code: currentSnippet.code,
+                    language: currentSnippet.language
+                })
+            });
+            setExecutionResult(result.output);
+            addToast({ title: "Execution Success", message: `Result returned in ${result.duration}`, type: "success" });
+        } catch (error) {
+            setExecutionResult('> ERROR: Execution environment failed to respond.\nPlease check your connectivity or try again later.');
+            addToast({ title: "Runtime Error", message: "Failed to connect to execution engine", type: "error" });
+        } finally {
+            setIsRunning(false);
+        }
+    };
+
+    const fetchHistory = async () => {
+        if (!currentSnippet.id) return;
+        try {
+            const data = await fetchApi(`/snippets/${currentSnippet.id}/versions`);
+            setHistory(data);
+            setShowHistory(true);
+        } catch (error) {
+            addToast({ title: "History Error", message: "Failed to fetch version history", type: "error" });
+        }
+    };
 
     const handleSave = async () => {
         if (!user) {
@@ -168,10 +219,18 @@ export default function SnippetEditor() {
                         <main className="flex-1 flex flex-col bg-slate-950 min-w-0">
                             <div className="h-10 border-b border-white/5 px-4 flex items-center justify-between bg-black/20">
                                 <div className="flex gap-4">
-                                    <button className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest">
-                                        <Play size={12} className="text-emerald-500" /> Run
+                                    <button
+                                        onClick={handleRun}
+                                        disabled={isRunning}
+                                        className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest disabled:opacity-50"
+                                    >
+                                        <Play size={12} className={cn("text-emerald-500", isRunning && "animate-pulse")} />
+                                        {isRunning ? 'Running...' : 'Run'}
                                     </button>
-                                    <button className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest">
+                                    <button
+                                        onClick={fetchHistory}
+                                        className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest"
+                                    >
                                         <History size={12} /> History
                                     </button>
                                 </div>
@@ -179,14 +238,28 @@ export default function SnippetEditor() {
                                     L1, C1 • {currentSnippet.language}
                                 </div>
                             </div>
-                            <div className="flex-1 relative overflow-hidden group">
-                                <textarea
-                                    className="absolute inset-0 w-full h-full bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 resize-none focus:outline-none selection:bg-violet-500/20"
-                                    value={currentSnippet.code}
-                                    onChange={(e) => updateCode(e.target.value)}
-                                    spellCheck={false}
-                                />
-                                <div className="absolute top-0 left-0 w-12 h-full bg-white/[0.01] pointer-events-none border-r border-white/5" />
+                            <div className="flex-1 relative overflow-auto custom-scrollbar group">
+                                <div className="absolute top-0 left-0 w-12 h-full bg-white/[0.01] pointer-events-none border-r border-white/5 z-10" />
+
+                                <div className="relative min-h-full font-mono text-sm leading-relaxed p-6 pl-16">
+                                    {/* Syntax Highlighting Layer */}
+                                    <pre
+                                        className={cn(`language-${currentSnippet.language.toLowerCase()} !bg-transparent !m-0 !p-0 pointer-events-none absolute inset-0 p-6 pl-16`)}
+                                        aria-hidden="true"
+                                    >
+                                        <code className={`language-${currentSnippet.language.toLowerCase()} !bg-transparent`}>
+                                            {currentSnippet.code + (currentSnippet.code.endsWith('\n') ? ' ' : '')}
+                                        </code>
+                                    </pre>
+
+                                    {/* Input Layer */}
+                                    <textarea
+                                        className="absolute inset-0 w-full h-full bg-transparent p-6 pl-16 font-mono text-sm leading-relaxed text-transparent caret-white resize-none focus:outline-none selection:bg-violet-500/30 overflow-hidden whitespace-pre border-none outline-none"
+                                        value={currentSnippet.code}
+                                        onChange={(e) => updateCode(e.target.value)}
+                                        spellCheck={false}
+                                    />
+                                </div>
                             </div>
                         </main>
 
@@ -214,8 +287,8 @@ export default function SnippetEditor() {
                                         <div className="p-3 bg-black/40 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                             <TerminalIcon size={12} /> Console
                                         </div>
-                                        <div className="flex-1 p-3 font-mono text-[10px] text-emerald-400/70">
-                                            &gt; Process started
+                                        <div className="flex-1 p-3 font-mono text-[10px] text-emerald-400/80 overflow-y-auto whitespace-pre-wrap custom-scrollbar">
+                                            {executionResult || '> Sunder Compiler v1.0.0 Ready\n> Waiting for execution...'}
                                         </div>
                                     </div>
                                 </div>
@@ -294,21 +367,75 @@ export default function SnippetEditor() {
                 </div>
             </div>
 
-            {/* Float Toolbar Overlay */}
-            <div className="fixed bottom-16 right-8 flex flex-col gap-3">
-                <button
-                    onClick={() => togglePane('left')}
-                    className={cn("w-10 h-10 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center transition-all hover:scale-110", panes.left ? "text-violet-400" : "text-slate-600")}
-                >
-                    <PanelLeftClose size={20} />
-                </button>
-                <button
-                    onClick={() => togglePane('right')}
-                    className={cn("w-10 h-10 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center transition-all hover:scale-110", panes.right ? "text-violet-400" : "text-slate-600")}
-                >
-                    <PanelRightClose size={20} />
-                </button>
-            </div>
+            {/* History Drawer */}
+            <AnimatePresence>
+                {showHistory && (
+                    <div className="fixed inset-0 z-[100] flex justify-end">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                            onClick={() => setShowHistory(false)}
+                        />
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="w-96 bg-slate-900 border-l border-white/10 relative z-10 flex flex-col shadow-2xl"
+                        >
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                <div className="flex items-center gap-3">
+                                    <History className="text-violet-400" size={18} />
+                                    <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Version History</h3>
+                                </div>
+                                <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-500">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                                {history.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center opacity-50 px-8">
+                                        <History size={48} className="mb-4 text-slate-700" />
+                                        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">No versions recorded yet</p>
+                                    </div>
+                                ) : (
+                                    history.map((version, i) => (
+                                        <div
+                                            key={version.id}
+                                            className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-violet-500/30 transition-all cursor-pointer group"
+                                            onClick={() => {
+                                                updateCode(version.code);
+                                                setShowHistory(false);
+                                                addToast({ title: "Version Restored", message: `Rolled back to v${version.version_number}`, type: "success" });
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-black text-violet-400 uppercase tracking-widest">v{version.version_number}</span>
+                                                <span className="text-[10px] text-slate-500 font-medium">{new Date(version.created_at).toLocaleString()}</span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 line-clamp-2 italic mb-3">
+                                                {version.change_summary || "No description provided"}
+                                            </p>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[8px] font-black text-white">
+                                                        {version.author?.username?.slice(0, 1).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{version.author?.username}</span>
+                                                </div>
+                                                <button className="text-[8px] font-black text-slate-600 group-hover:text-violet-400 uppercase tracking-widest">Restore</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

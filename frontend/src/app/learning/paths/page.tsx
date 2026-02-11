@@ -135,9 +135,9 @@ export default function LearningPathsPage() {
                     {/* Progress Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {[
-                            { label: 'Active Paths', value: '2', icon: Rocket, color: 'text-violet-400' },
-                            { label: 'Modules Finished', value: '14/55', icon: CheckCircle2, color: 'text-emerald-400' },
-                            { label: 'XP Gathered', value: '3.4k', icon: Zap, color: 'text-amber-400' },
+                            { label: 'Active Paths', value: userProgress?.filter((p: any) => p.status === 'enrolled')?.length || 0, icon: Rocket, color: 'text-violet-400' },
+                            { label: 'Modules Finished', value: `${userProgress?.reduce((acc: number, p: any) => acc + (p.completed_modules || 0), 0) || 0}/55`, icon: CheckCircle2, color: 'text-emerald-400' },
+                            { label: 'XP Gathered', value: '3.4k', icon: Zap, color: 'text-amber-400' }, // This would ideally come from the global profile XP
                             { label: 'Global Standing', value: '#128', icon: Trophy, color: 'text-fuchsia-400' }
                         ].map((stat) => (
                             <div key={stat.label} className="p-6 rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl space-y-2 group">
