@@ -93,7 +93,6 @@ router.post('/', authenticate, async (req, res) => {
         });
     }
 
-    // Basic Input Sanitization (Spec Requirement)
     const sanitize = (str) => str ? str.replace(/[<>]/g, '') : str;
     const cleanTitle = sanitize(title);
     const cleanDescription = sanitize(description);
@@ -119,22 +118,16 @@ router.post('/', authenticate, async (req, res) => {
         if (error) throw error;
 
         const { analyzeCode } = require('../lib/ai');
-        const analysis = analyzeCode(code);
-        const ai_suggestions = [
-            "Consider adding JSDoc comments for better documentation.",
-            "Potential optimization for the loop structure detected.",
-            "Type safety could be improved in the core logic."
-        ];
+        // Use AI analysis for new snippets as per spec "Neural Analysis"
+        const analysis = await analyzeCode(code, { useAI: true, language });
 
         res.status(201).json({
             snippet,
-            analysis: {
-                complexity: 'O(n)',
-                security_score: 95,
-                maintainability: 88,
-                test_coverage: 'Inferred 0%'
-            },
-            ai_suggestions
+            analysis,
+            ai_suggestions: analysis.neural_analysis?.readability?.suggestions || [
+                "Consider adding JSDoc comments for better documentation.",
+                "Type safety could be improved in the core logic."
+            ]
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -253,41 +246,50 @@ router.post('/:id/comments', authenticate, async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Run snippet (Sandboxed execution simulation)
-router.post('/run', authenticate, async (req, res) => {
+const axios = require('axios');
+
+// Run snippet (Piston API Integration)
+const { adminOnly } = require('./admin');
+router.post('/run', (req, res, next) => {
+    if (req.headers['x-admin-secret']) return adminOnly(req, res, next);
+    authenticate(req, res, next);
+}, async (req, res) => {
     const { code, language } = req.body;
+
+    const pistonMap = {
+        'javascript': { language: 'js', version: '18.15.0' },
+        'typescript': { language: 'ts', version: '5.0.3' },
+        'python': { language: 'python', version: '3.10.0' },
+        'rust': { language: 'rust', version: '1.68.2' },
+        'go': { language: 'go', version: '1.16.2' },
+        'ruby': { language: 'ruby', version: '3.0.1' }
+    };
+
+    const config = pistonMap[language?.toLowerCase()] || pistonMap['javascript'];
+
     try {
-        // In a real prod env, this would use a secure runner like Piston or specialized VMs
-        // For this implementation, we provide high-fidelity simulation for the UX
-        const runtimeMap = {
-            'javascript': 'Node.js 18.x',
-            'typescript': 'Deno 1.3x',
-            'python': 'Python 3.11',
-            'rust': 'Rust 1.72 (v1)',
-            'go': 'Go 1.21',
-            'ruby': 'Ruby 3.2'
-        };
+        const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+            language: config.language,
+            version: config.version,
+            files: [{ content: code }]
+        });
 
-        const startTime = Date.now();
-
-        // Simulate execution delay based on complexity (length)
-        await new Promise(resolve => setTimeout(resolve, 600 + (code?.length % 1000)));
-
-        const execution_id = Math.random().toString(36).substring(7);
-        const duration = (Date.now() - startTime) / 1000;
+        const { run } = response.data;
 
         res.json({
-            execution_id,
-            status: 'success',
-            output: `> Running in ${runtimeMap[language?.toLowerCase()] || 'Default Runtime'}...\n> Process started at ${new Date().toLocaleTimeString()}\n\n[OUTPUT]\nWelcome to Sunder Runtime\n-------------------------\nExecution successful.\nMemory: 14.2MB\nCPU: 0.02s\n\n> Process finished with exit code 0`,
-            duration: `${duration}s`,
+            execution_id: `ps-${Math.random().toString(36).substring(7)}`,
+            status: run.stderr ? 'error' : 'success',
+            output: run.output,
+            duration: `${run.stdout ? 'fast' : 'n/a'}`, // Piston doesn't return exact duration in simple execute
             metadata: {
-                runtime: runtimeMap[language?.toLowerCase()],
-                version: '1.0.0'
+                runtime: `${config.language} ${config.version}`,
+                exit_code: run.code,
+                signal: run.signal
             }
         });
     } catch (error) {
-        res.status(500).json({ error: 'Execution failed' });
+        console.error('[Execution Error]', error.response?.data || error.message);
+        res.status(500).json({ error: 'Runtime environment failed to respond' });
     }
 });
 

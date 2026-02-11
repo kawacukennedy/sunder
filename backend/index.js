@@ -64,7 +64,7 @@ app.use('/api/organizations', require('./routes/organizations'));
 app.use('/api/learning', require('./routes/learning'));
 app.use('/api/profiles', require('./routes/profiles'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
-app.use('/api/admin', rateLimiter(1000, 60 * 1000), require('./routes/admin'));
+app.use('/api/admin', rateLimiter(1000, 60 * 1000), require('./routes/admin').router);
 
 // Health check (Enhanced for absolute parity)
 app.get('/health', (req, res) => {

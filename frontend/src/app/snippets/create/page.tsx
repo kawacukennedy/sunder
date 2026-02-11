@@ -63,6 +63,8 @@ export default function SnippetEditor() {
     const { selectedLanguage, setLanguage } = useAIStore();
 
     const [isSaving, setIsSaving] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResults, setAnalysisResults] = useState<any>(null);
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState('');
     const [aiInput, setAiInput] = useState('');
@@ -172,6 +174,27 @@ export default function SnippetEditor() {
         }
     };
 
+    const handleAnalyze = async () => {
+        setIsAnalyzing(true);
+        addToast({ title: "Neural Analysis", message: "Deep scanning code...", type: "info" });
+
+        try {
+            const result = await fetchApi('/ai/analyze', {
+                method: 'POST',
+                body: JSON.stringify({
+                    code: currentSnippet.code,
+                    language: currentSnippet.language
+                })
+            });
+            setAnalysisResults(result);
+            addToast({ title: "Analysis Complete", message: "Intelligence report ready", type: "success" });
+        } catch (error) {
+            addToast({ title: "Analysis Failed", message: "Failed to scan code logic", type: "error" });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     const handleRun = async () => {
         setIsRunning(true);
         setExecutionResult('> Compiling and preparing runtime...\n');
@@ -185,7 +208,11 @@ export default function SnippetEditor() {
                 })
             });
             setExecutionResult(result.output);
-            addToast({ title: "Execution Success", message: "Runtime results received", type: "success" });
+            if (result.status === 'success') {
+                addToast({ title: "Execution Success", message: "Runtime results received", type: "success" });
+            } else {
+                addToast({ title: "Runtime Error", message: "Code exited with errors", type: "warning" });
+            }
         } catch (error) {
             setExecutionResult('> ERROR: Execution environment failed to respond.\n');
             addToast({ title: "Runtime Error", message: "Failed to connect to execution engine", type: "error" });
@@ -413,6 +440,14 @@ export default function SnippetEditor() {
                                     {isRunning ? 'Running...' : 'Run'}
                                 </button>
                                 <button
+                                    onClick={handleAnalyze}
+                                    disabled={isAnalyzing}
+                                    className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest disabled:opacity-50"
+                                >
+                                    <Brain size={12} className={cn(isAnalyzing ? "text-violet-400 animate-pulse" : "text-violet-500")} />
+                                    {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                                </button>
+                                <button
                                     onClick={fetchHistory}
                                     className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest"
                                 >
@@ -597,6 +632,44 @@ export default function SnippetEditor() {
                                     </button>
                                 </div>
                                 <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+                                    {/* Neural Intelligence Report Section */}
+                                    {analysisResults && (
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Neural Intelligence</span>
+                                                <div className="px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 text-[8px] font-bold uppercase tracking-tight">Report v2.0</div>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { label: 'Security', score: analysisResults.score_aggregate?.security || analysisResults.neural_analysis?.security?.score, color: 'text-emerald-400' },
+                                                    { label: 'Perf', score: analysisResults.score_aggregate?.performance || analysisResults.neural_analysis?.performance?.score, color: 'text-blue-400' },
+                                                    { label: 'Clean', score: analysisResults.score_aggregate?.readability || analysisResults.neural_analysis?.readability?.score, color: 'text-violet-400' }
+                                                ].map(s => (
+                                                    <div key={s.label} className="bg-white/5 border border-white/5 rounded-xl p-3 text-center">
+                                                        <div className={cn("text-lg font-black", s.color)}>{s.score || 'N/A'}</div>
+                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">{s.label}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {analysisResults.neural_analysis?.security?.issues?.length > 0 && (
+                                                <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-xl space-y-2">
+                                                    <div className="flex items-center gap-2 text-red-400 text-[10px] font-black uppercase tracking-widest">
+                                                        <AlertCircle size={12} /> {analysisResults.neural_analysis.security.issues.length} Risks Detected
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {analysisResults.neural_analysis.security.issues.map((i: any, idx: number) => (
+                                                            <div key={idx} className="text-[9px] text-slate-400 flex items-start gap-1.5">
+                                                                <span className="text-red-500/50 mt-0.5">•</span> {i.title}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className={cn(
                                         "flex-1 bg-slate-950 rounded-2xl border flex flex-col items-center justify-center p-8 text-center transition-all duration-500",
                                         executionResult ? "border-emerald-500/20 bg-emerald-500/5" : "border-white/5"

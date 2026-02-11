@@ -43,9 +43,9 @@ const calculateCost = (input, output, model) => {
 };
 
 /**
- * Performs functional code analysis (Complexity & Security).
+ * Performs functional code analysis (Complexity & Security) using internal rules.
  */
-const analyzeCode = (code) => {
+const analyzeCodeStatic = (code) => {
     // 1. Complexity Analysis (Simplified Halstead/Cyclomatic)
     const lines = code.split('\n').length;
     const tokens = code.match(/[\w$]+/g) || [];
@@ -78,6 +78,60 @@ const analyzeCode = (code) => {
             loc: lines
         }
     };
+};
+
+/**
+ * Performs deep neural code analysis using Gemini.
+ */
+const analyzeCodeAI = async (code, language = 'JavaScript') => {
+    const prompt = `
+        Analyze the following ${language} code for security, performance, and readability.
+        Provide a JSON response with the following schema:
+        {
+            "security": { "score": 0-100, "description": "short summary", "issues": [{ "title": "title", "severity": "low|medium|high|critical", "description": "detail" }] },
+            "performance": { "score": 0-100, "description": "short summary", "bottlenecks": ["bottleneck 1"] },
+            "readability": { "score": 0-100, "description": "short summary", "suggestions": ["suggestion 1"] }
+        }
+
+        Code:
+        \`\`\`${language.toLowerCase()}
+        ${code}
+        \`\`\`
+    `;
+
+    try {
+        const result = await callGemini(prompt, { temperature: 0.2 });
+        // Clean JSON from markdown if present
+        const cleaned = result.text.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (error) {
+        console.error('[AI Analysis Failure]', error.message);
+        return null;
+    }
+};
+
+/**
+ * Orchestrates code analysis, combining static and AI if enabled.
+ */
+const analyzeCode = async (code, options = {}) => {
+    const staticResults = analyzeCodeStatic(code);
+
+    if (options.useAI) {
+        const aiResults = await analyzeCodeAI(code, options.language);
+        if (aiResults) {
+            return {
+                ...staticResults,
+                neural_analysis: aiResults,
+                score_aggregate: {
+                    security: aiResults.security?.score || 100,
+                    performance: aiResults.performance?.score || 100,
+                    readability: aiResults.readability?.score || 100
+                }
+            };
+        }
+    }
+
+    return staticResults;
 };
 
 const axios = require('axios');
@@ -115,13 +169,12 @@ const getBestAvailableModel = async (apiKey) => {
             }
         }
 
-        // Fallback to whatever is available first if no priority matches
         if (modelNames.length > 0) {
             cachedModel = modelNames[0];
             return cachedModel;
         }
 
-        return 'models/gemini-1.5-flash'; // Last resort
+        return 'models/gemini-1.5-flash';
     } catch (error) {
         console.error('[AI] Model detection failed, using fallback:', error.message);
         return 'models/gemini-1.5-flash';
@@ -129,7 +182,7 @@ const getBestAvailableModel = async (apiKey) => {
 };
 
 /**
- * Real Gemini API call with auto-model detection.
+ * Real Gemini API call with auto-model detection and system instruction support.
  */
 const callGemini = async (prompt, options = {}, modelOverride = null) => {
     const start = Date.now();
@@ -139,23 +192,26 @@ const callGemini = async (prompt, options = {}, modelOverride = null) => {
         throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // Auto-detect model if not provided or if we want to follow user's request to "remove specific model"
     const model = modelOverride || await getBestAvailableModel(apiKey);
 
     try {
         const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`,
             {
-                contents: [
+                contents: options.history ? [...options.history, { role: 'user', parts: [{ text: prompt }] }] : [
                     {
                         parts: [
                             { text: prompt }
                         ]
                     }
                 ],
+                systemInstruction: options.systemInstruction ? {
+                    parts: [{ text: options.systemInstruction }]
+                } : undefined,
                 generationConfig: {
                     temperature: options.temperature || 0.7,
                     maxOutputTokens: options.max_tokens || 4096,
+                    responseMimeType: options.jsonResponse ? 'application/json' : 'text/plain'
                 }
             },
             {
@@ -173,7 +229,7 @@ const callGemini = async (prompt, options = {}, modelOverride = null) => {
 
         return {
             text: aiResponse,
-            input_tokens: Math.floor(prompt.length / 4),
+            input_tokens: Math.floor(prompt.length / 4), // Rough estimate for tokens
             output_tokens: Math.floor(aiResponse.length / 4),
             duration: Date.now() - start,
             model_used: model
@@ -184,4 +240,5 @@ const callGemini = async (prompt, options = {}, modelOverride = null) => {
     }
 };
 
-module.exports = { logAIUsage, callGemini, analyzeCode, calculateCost };
+module.exports = { logAIUsage, callGemini, analyzeCode, analyzeCodeStatic, calculateCost };
+

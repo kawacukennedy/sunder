@@ -75,24 +75,34 @@ router.patch('/progress/:pathId', authenticate, async (req, res) => {
     }
 });
 
+const { logAudit } = require('../lib/audit');
+
 // Skill Assessment (Absolute Spec Parity)
 router.post('/assess', authenticate, async (req, res) => {
     try {
-        // Real logic: analyze the user's snippets to determine skill distribution
         const { data: snippets } = await supabase
             .from('snippets')
-            .select('language')
+            .select('language, code')
             .eq('author_id', req.user.id);
 
-        const languageCounts = {};
+        const { analyzeCodeStatic } = require('../lib/ai');
+
+        const languageStats = {};
         snippets?.forEach(s => {
-            languageCounts[s.language] = (languageCounts[s.language] || 0) + 1;
+            const analysis = analyzeCodeStatic(s.code);
+            if (!languageStats[s.language]) {
+                languageStats[s.language] = { count: 0, totalComplexity: 0 };
+            }
+            languageStats[s.language].count++;
+            languageStats[s.language].totalComplexity += analysis.complexity_score;
         });
 
         const skills = {};
-        Object.entries(languageCounts).forEach(([lang, count]) => {
-            if (count > 10) skills[lang] = 'expert';
-            else if (count > 5) skills[lang] = 'advanced';
+        Object.entries(languageStats).forEach(([lang, stats]) => {
+            const avgComplexity = stats.totalComplexity / stats.count;
+
+            if (stats.count > 10 && avgComplexity > 70) skills[lang] = 'expert';
+            else if (stats.count > 5 || avgComplexity > 50) skills[lang] = 'advanced';
             else skills[lang] = 'intermediate';
         });
 
@@ -112,6 +122,7 @@ router.post('/assess', authenticate, async (req, res) => {
 
         res.json({ success: true, skills });
     } catch (error) {
+        console.error('[Skill Assessment Error]', error);
         res.status(500).json({ error: error.message });
     }
 });

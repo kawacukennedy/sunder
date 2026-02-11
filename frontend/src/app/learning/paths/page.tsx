@@ -32,27 +32,39 @@ import { motion, AnimatePresence } from 'framer-motion';
 const paths = [
     {
         id: '1',
-        title: 'Neural Architect',
-        description: 'Master the art of building AI-resilient software systems and high-fidelity interfaces.',
+        title: 'Neural Architect Expedition',
+        description: 'Master the art of building AI-resilient software systems and high-fidelity neural interfaces.',
         level: 'Pro',
+        category: 'ai',
         modules: 12,
         duration: '24h',
-        xp: 1200,
-        progress: 65,
+        xp_reward: 1200,
         color: 'text-violet-400',
         bgColor: 'bg-violet-500/10'
     },
     {
-        id: '4',
+        id: '2',
         title: 'Rust Core Master',
-        description: 'Go beyond the basics of memory safety and systems programming with Rust.',
+        description: 'Go beyond the basics of memory safety and systems programming with production Rust.',
         level: 'Advanced',
+        category: 'systems',
         modules: 20,
         duration: '40h',
-        xp: 2000,
-        progress: 10,
+        xp_reward: 2000,
         color: 'text-orange-400',
         bgColor: 'bg-orange-500/10'
+    },
+    {
+        id: '3',
+        title: 'Advanced Web Orchestration',
+        description: 'Orchestrate complex cloud-native web applications with Next.js and secure APIs.',
+        level: 'Intermediate',
+        category: 'web',
+        modules: 15,
+        duration: '30h',
+        xp_reward: 1500,
+        color: 'text-blue-400',
+        bgColor: 'bg-blue-500/10'
     }
 ];
 

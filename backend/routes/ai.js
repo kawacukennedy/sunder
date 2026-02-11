@@ -114,30 +114,21 @@ router.post('/pair', authenticate, async (req, res) => {
     }
 });
 
-// AI Explain
-router.post('/explain', authenticate, async (req, res) => {
-    const { code } = req.body;
+// AI Analyze (Neural Code Intelligence)
+const { adminOnly } = require('./admin');
+router.post('/analyze', (req, res, next) => {
+    if (req.headers['x-admin-secret']) return adminOnly(req, res, next);
+    authenticate(req, res, next);
+}, async (req, res) => {
+    const { code, language } = req.body;
     try {
-        const platformContext = 'You are Sunder AI, the integrated neural co-pilot for the Sunder developer platform.';
-        const prompt = `${platformContext}\n\nExplain the logic and complexity of this code in a clear, professional manner:\n\n${code}`;
-        const aiResponse = await callGemini(prompt);
+        const { analyzeCode } = require('../lib/ai');
+        const analysis = await analyzeCode(code, { useAI: true, language });
 
-        await logAIUsage({
-            user_id: req.user.id,
-            ai_feature: 'explain',
-            input_tokens: aiResponse.input_tokens,
-            output_tokens: aiResponse.output_tokens,
-            model_used: aiResponse.model_used,
-            request_duration_ms: aiResponse.duration
-        });
-
-        res.json({
-            explanation: aiResponse.text,
-            complexity: "O(n)",
-            logical_soundness: 0.95
-        });
+        res.json(analysis);
     } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Explanation failed' });
+        console.error('[AI Analysis Error]', error);
+        res.status(500).json({ status: 'error', message: 'Neural analysis failed' });
     }
 });
 
