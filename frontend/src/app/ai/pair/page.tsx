@@ -17,13 +17,24 @@ import {
     Command,
     ArrowUpRight,
     Maximize2,
-    Loader2
+    Loader2,
+    ChevronDown,
+    Save
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { useAIStore } from '@/store/aiStore';
 import { useAuthStore } from '@/store/authStore';
 import { Markdown } from '@/components/Markdown';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-bash';
 
 export default function AIPairPage() {
     const { user } = useAuthStore();
@@ -46,11 +57,35 @@ export default function AIPairPage() {
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const languages = [
-        { id: 'typescript', name: 'TypeScript', icon: 'TS', boilerplate: '// TypeScript Neural Workspace\n\nfunction main() {\n  console.log("Hello, Sunder!");\n}\n\nmain();' },
-        { id: 'rust', name: 'Rust', icon: 'RS', boilerplate: '// Rust Neural Workspace\n\nfn main() {\n    println!("Hello, Sunder!");\n}' },
-        { id: 'python', name: 'Python', icon: 'PY', boilerplate: '# Python Neural Workspace\n\ndef main():\n    print("Hello, Sunder!")\n\nif __name__ == "__main__":\n    main()' },
-        { id: 'go', name: 'Go', icon: 'GO', boilerplate: '// Go Neural Workspace\n\npackage main\n\nimport "fmt"\n\nfunction main() {\n    fmt.Println("Hello, Sunder!")\n}' }
+        { id: 'typescript', name: 'TypeScript', ext: 'ts', file: 'main.ts', boilerplate: '// TypeScript Neural Workspace\n\nfunction main() {\n  console.log("Hello, Sunder!");\n}\n\nmain();' },
+        { id: 'rust', name: 'Rust', ext: 'rs', file: 'main.rs', boilerplate: '// Rust Neural Workspace\n\nfn main() {\n    println!("Hello, Sunder!");\n}' },
+        { id: 'python', name: 'Python', ext: 'py', file: 'app.py', boilerplate: '# Python Neural Workspace\n\ndef main():\n    print("Hello, Sunder!")\n\nif __name__ == "__main__":\n    main()' },
+        { id: 'go', name: 'Go', ext: 'go', file: 'main.go', boilerplate: '// Go Neural Workspace\n\npackage main\n\nimport "fmt"\n\nfunction main() {\n    fmt.Println("Hello, Sunder!")\n}' },
+        { id: 'ruby', name: 'Ruby', ext: 'rb', file: 'app.rb', boilerplate: '# Ruby Neural Workspace\n\ndef main\n  puts "Hello, Sunder!"\nend\n\nmain' }
     ];
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const highlightRef = useRef<HTMLPreElement>(null);
+
+    useEffect(() => {
+        if (highlightRef.current) {
+            Prism.highlightElement(highlightRef.current.querySelector('code')!);
+        }
+    }, [currentCode, selectedLanguage, pendingSuggestion]);
+
+    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+        if (highlightRef.current) {
+            highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+            highlightRef.current.scrollLeft = e.currentTarget.scrollLeft;
+        }
+    };
+
+    const handleLanguageChange = (langId: string) => {
+        setLanguage(langId);
+        const lang = languages.find(l => l.id === langId) || languages[0];
+        setCurrentCode(lang.boilerplate);
+        setPendingSuggestion(null);
+    };
 
     useEffect(() => {
         if (!currentCode) {
@@ -137,7 +172,7 @@ export default function AIPairPage() {
                         <div className="flex items-center p-1 bg-slate-900/50 border border-white/5 rounded-2xl shrink-0 ml-2">
                             <select
                                 value={selectedLanguage}
-                                onChange={(e) => setLanguage(e.target.value)}
+                                onChange={(e) => handleLanguageChange(e.target.value)}
                                 className="bg-transparent border-none text-[8px] md:text-[9px] font-black uppercase tracking-widest text-violet-400 outline-none px-2 cursor-pointer"
                             >
                                 {languages.map(lang => (
@@ -214,7 +249,9 @@ export default function AIPairPage() {
                                 <div className="flex items-center justify-between mb-4 md:mb-6">
                                     <div className="flex items-center gap-2 text-slate-500">
                                         <FileCode size={16} className="md:w-[18px] md:h-[18px]" />
-                                        <span className="text-[10px] md:text-xs font-mono">neural_workspace.rs</span>
+                                        <span className="text-[10px] md:text-xs font-mono">
+                                            {languages.find(l => l.id === selectedLanguage)?.file || 'neural_workspace.rs'}
+                                        </span>
                                     </div>
                                     {pendingSuggestion && (
                                         <div className="flex items-center gap-2 px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full animate-pulse">
@@ -224,21 +261,33 @@ export default function AIPairPage() {
                                     )}
                                 </div>
 
-                                <div className="flex-1 relative min-h-0">
+                                <div className="flex-1 relative min-h-0 overflow-hidden rounded-xl border border-white/5 bg-black/20">
+                                    <pre
+                                        ref={highlightRef}
+                                        aria-hidden="true"
+                                        className={cn(
+                                            `language-${selectedLanguage} absolute inset-0 w-full h-full m-0 p-4 pointer-events-none overflow-hidden bg-transparent font-mono text-xs md:text-sm leading-relaxed whitespace-pre-wrap break-all`,
+                                            pendingSuggestion && "opacity-40"
+                                        )}
+                                    >
+                                        <code className={`language-${selectedLanguage}`}>
+                                            {(pendingSuggestion || currentCode)}
+                                        </code>
+                                    </pre>
                                     <textarea
+                                        ref={textareaRef}
                                         value={pendingSuggestion || currentCode}
+                                        onScroll={handleScroll}
                                         onChange={(e) => {
                                             if (pendingSuggestion) {
-                                                // If they type while suggestion is active, we discard suggestion or merge. 
-                                                // For simplicity, let's say they're editing the suggestion if they type.
                                                 setPendingSuggestion(null);
                                             }
                                             setCurrentCode(e.target.value);
                                         }}
                                         spellCheck={false}
                                         className={cn(
-                                            "w-full h-full bg-transparent font-mono text-xs md:text-sm text-slate-300 outline-none resize-none custom-scrollbar leading-relaxed selection:bg-violet-500/30",
-                                            pendingSuggestion && "text-violet-300/60 italic"
+                                            "absolute inset-0 w-full h-full bg-transparent font-mono text-xs md:text-sm text-transparent caret-violet-400 outline-none resize-none custom-scrollbar leading-relaxed p-4 selection:bg-violet-500/30 overflow-auto whitespace-pre-wrap break-all",
+                                            pendingSuggestion && "italic"
                                         )}
                                     />
                                     {pendingSuggestion && (
