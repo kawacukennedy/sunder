@@ -34,6 +34,12 @@ export const useEditorStore = create<EditorState>((set) => ({
         language: 'javascript',
         tags: [],
     },
+    isDirty: false,
+    panes: {
+        left: true,
+        right: true,
+        bottom: false,
+    },
     executionResult: null,
     isRunning: false,
     updateCode: (code: string) => set((state) => ({
@@ -64,6 +70,11 @@ export const useEditorStore = create<EditorState>((set) => ({
         },
         executionResult: null,
         isRunning: false,
-        isDirty: false
+        isDirty: false,
+        panes: {
+            left: true,
+            right: true,
+            bottom: false,
+        },
     }),
 }));
