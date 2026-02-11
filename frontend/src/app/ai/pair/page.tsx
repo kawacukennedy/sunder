@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { useAIStore } from '@/store/aiStore';
 import { useAuthStore } from '@/store/authStore';
+import { Markdown } from '@/components/Markdown';
 
 export default function AIPairPage() {
     const { user } = useAuthStore();
@@ -231,14 +232,15 @@ export default function AIPairPage() {
                                 )}
                                 {history.map((msg, i) => (
                                     <div key={i} className="space-y-1 md:space-y-2">
-                                        <div className={cn(
-                                            "p-3 md:p-4 rounded-xl md:rounded-2xl text-[11px] md:text-xs font-medium leading-relaxed whitespace-pre-wrap",
-                                            msg.role === 'user'
-                                                ? "bg-white/5 border border-white/10 text-white rounded-br-none"
-                                                : "bg-violet-600/10 border border-violet-500/20 text-slate-300 rounded-tl-none font-sans"
-                                        )}>
-                                            {msg.content}
-                                        </div>
+                                        {msg.role === 'user' ? (
+                                            <div className="p-3 md:p-4 rounded-xl md:rounded-2xl text-[11px] md:text-xs font-medium leading-relaxed bg-white/5 border border-white/10 text-white rounded-br-none whitespace-pre-wrap">
+                                                {msg.content}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-violet-600/10 border border-violet-500/20 rounded-xl md:rounded-2xl rounded-tl-none p-3 md:p-4">
+                                                <Markdown content={msg.content} />
+                                            </div>
+                                        )}
                                         <span className={cn(
                                             "text-[7px] md:text-[8px] font-black uppercase tracking-widest italic ml-1",
                                             msg.role === 'user' ? "text-slate-500" : "text-violet-400"

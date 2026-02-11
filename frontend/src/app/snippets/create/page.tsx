@@ -40,6 +40,7 @@ import { cn, fetchApi, formatRelativeTime } from '@/lib/utils';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
+import { Markdown } from '@/components/Markdown';
 
 export default function SnippetEditor() {
     const router = useRouter();
@@ -63,7 +64,7 @@ export default function SnippetEditor() {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState('');
     const [aiInput, setAiInput] = useState('');
-    const [aiResponse, setAiResponse] = useState<{ text: string, code?: string } | null>(null);
+    const [aiResponse, setAiResponse] = useState<{ fullContent: string, code?: string } | null>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
 
@@ -147,10 +148,10 @@ export default function SnippetEditor() {
             const content = result.response || result.explanation || '';
             setExecutionResult(`${executionResult || ''}\n\n> NEURAL ENGINE:\n${content}`);
 
-            // Extract code block if present
-            const codeMatch = content.match(/```[\w]*\n([\s\S]*?)```/);
+            // Extract code block if present for the "Apply" button
+            const codeMatch = content.match(/```[\s\S]*?\n([\s\S]*?)```/);
             setAiResponse({
-                text: content.replace(/```[\s\S]*?```/g, '').trim(),
+                fullContent: content,
                 code: codeMatch ? codeMatch[1].trim() : (result.suggested_code || undefined)
             });
 
@@ -464,10 +465,8 @@ export default function SnippetEditor() {
                                         <div className="flex-1 space-y-1">
                                             <p className="text-xs text-white font-bold">Sunder Engine</p>
                                             {aiResponse ? (
-                                                <div className="space-y-3">
-                                                    <p className="text-xs text-slate-400 leading-relaxed italic whitespace-pre-wrap">
-                                                        {aiResponse.text}
-                                                    </p>
+                                                <div className="space-y-4">
+                                                    <Markdown content={aiResponse.fullContent} className="!text-slate-400" />
                                                     {aiResponse.code && (
                                                         <div className="space-y-2">
                                                             <div className="p-3 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-violet-300 overflow-x-auto whitespace-pre">
