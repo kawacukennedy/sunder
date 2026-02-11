@@ -295,13 +295,13 @@ export default function SnippetEditor() {
                         <div className="flex-1 relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-12 h-full bg-white/[0.01] pointer-events-none border-r border-white/5 z-10" />
                             <div className="h-full overflow-auto custom-scrollbar">
-                                <div className="relative min-h-full font-mono text-sm leading-relaxed p-6 pl-16">
+                                <div className="relative min-h-full">
                                     <pre
-                                        className={cn(`language-${currentSnippet.language.toLowerCase()} !bg-transparent !m-0 !p-0 pointer-events-none absolute inset-0 p-6 pl-16 z-0`)}
+                                        className={cn(`language-${currentSnippet.language.toLowerCase()} !bg-transparent !m-0 pointer-events-none absolute inset-0 p-6 pl-16 z-0 font-mono text-sm leading-relaxed`)}
                                         aria-hidden="true"
-                                        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+                                        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}
                                     >
-                                        <code className={`language-${currentSnippet.language.toLowerCase()} !bg-transparent`}>
+                                        <code className={`language-${currentSnippet.language.toLowerCase()} !bg-transparent !p-0`}>
                                             {currentSnippet.code + (currentSnippet.code.endsWith('\n') ? ' ' : '')}
                                         </code>
                                     </pre>
@@ -310,7 +310,7 @@ export default function SnippetEditor() {
                                         value={currentSnippet.code}
                                         onChange={(e) => updateCode(e.target.value)}
                                         spellCheck={false}
-                                        style={{ height: '100%', minHeight: '100%' }}
+                                        style={{ height: '100%', minHeight: '100%', WebkitTextFillColor: 'transparent' }}
                                     />
                                 </div>
                             </div>
