@@ -12,11 +12,17 @@ const PORT = process.env.PORT || 5001;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true
+    origin: [
+        'http://localhost:3000',
+        'https://sundercode.vercel.app',
+        process.env.CORS_ORIGIN
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.use(helmet());
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
