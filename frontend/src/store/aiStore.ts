@@ -19,6 +19,7 @@ interface AIState {
     translate: (code: string, sourceLang: string, targetLang: string) => Promise<any>;
     generateCode: (prompt: string, language: string, framework: string) => Promise<any>;
     explainCode: (code: string, detailLevel: string) => Promise<any>;
+    pairWithAI: (task: string, code?: string, options?: any) => Promise<any>;
 }
 
 export const useAIStore = create<AIState>((set) => ({
@@ -75,6 +76,34 @@ export const useAIStore = create<AIState>((set) => ({
                 body: JSON.stringify({ code, detail_level: detailLevel }),
             });
             set({ isProcessing: false });
+            return data;
+        } catch (error) {
+            set({ isProcessing: false });
+            throw error;
+        }
+    },
+    pairWithAI: async (task: string, code?: string, options?: any) => {
+        set({ isProcessing: true });
+        try {
+            const state = useAIStore.getState();
+            const data = await fetchApi('/ai/pair', {
+                method: 'POST',
+                body: JSON.stringify({
+                    task,
+                    code: code || '',
+                    conversation_history: state.history,
+                    personality: state.personality,
+                    options: {
+                        suggest_improvements: true,
+                        explain_changes: true,
+                        ...options
+                    }
+                }),
+            });
+            set({ isProcessing: false });
+            if (data.tokens_used) {
+                state.updateUsageStats(data.tokens_used);
+            }
             return data;
         } catch (error) {
             set({ isProcessing: false });
