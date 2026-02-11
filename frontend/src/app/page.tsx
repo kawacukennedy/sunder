@@ -68,7 +68,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 selection:bg-violet-500/30">
       {/* Navigation Overlay */}
       <nav className={cn(
-        "fixed top-0 left-0 w-full z-50 transition-all duration-300 px-8 py-6",
+        "fixed top-0 left-0 w-full z-50 transition-all duration-300 px-4 md:px-8 py-4 md:py-6",
         scrolled ? "bg-slate-950/80 backdrop-blur-md border-b border-white/5 py-4" : "bg-transparent"
       )}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -102,7 +102,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-400 text-[10px] font-black uppercase tracking-widest animate-fade-in">
               <Zap size={12} fill="currentColor" /> Next Gen Intelligence v2.0 is Live
             </div>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tighter uppercase italic leading-[0.9] animate-slide-up">
+            <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tighter uppercase italic leading-[0.9] animate-slide-up">
               Code at the <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-blue-400 to-emerald-400">Speed of AI.</span>
             </h1>
@@ -120,8 +120,8 @@ export default function Home() {
           </div>
 
           {/* AI Demo Section */}
-          <div className="mt-24 max-w-5xl mx-auto glass p-3 rounded-[48px] border border-white/10 shadow-3xl transform hover:scale-[1.02] transition-all group">
-            <div className="bg-slate-900 rounded-[40px] overflow-hidden border border-white/5 aspect-video md:aspect-[21/9] flex flex-col">
+          <div className="mt-16 md:mt-24 max-w-5xl mx-auto glass p-2 md:p-3 rounded-3xl md:rounded-[48px] border border-white/10 shadow-3xl transform hover:scale-[1.02] transition-all group">
+            <div className="bg-slate-900 rounded-2xl md:rounded-[40px] overflow-hidden border border-white/5 aspect-video md:aspect-[21/9] flex flex-col">
               <div className="px-6 py-4 bg-slate-950/50 border-b border-white/5 flex items-center justify-between">
                 <div className="flex gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500/20" />

@@ -64,11 +64,11 @@ export default function Dashboard() {
         <DashboardLayout>
             <div className="space-y-10 pb-20">
                 {/* Welcome Banner */}
-                <div className="relative glass p-6 md:p-10 rounded-[32px] md:rounded-[48px] border border-white/5 overflow-hidden group">
+                <div className="relative glass p-5 md:p-10 rounded-3xl md:rounded-[48px] border border-white/5 overflow-hidden group">
                     <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-violet-600/10 to-transparent pointer-events-none" />
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
                         <div className="space-y-4">
-                            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight italic">
+                            <h1 className="text-2xl md:text-5xl font-black text-white uppercase tracking-tight italic">
                                 Welcome Back, <span className="text-violet-400">{user?.display_name || user?.username}</span>
                             </h1>
                             <p className="text-slate-400 max-w-xl font-medium">
@@ -96,7 +96,7 @@ export default function Dashboard() {
                     {/* Quick Stats Widget */}
                     <div className="md:col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                         {stats.map((stat, i) => (
-                            <div key={i} className="glass p-4 md:p-6 rounded-[24px] md:rounded-[32px] border border-white/5 flex flex-col items-center text-center gap-3 md:gap-4 hover:border-white/10 transition-all">
+                            <div key={i} className="glass p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-white/5 flex flex-col items-center text-center gap-3 md:gap-4 hover:border-white/10 transition-all">
                                 <div className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center", stat.color.replace('text', 'bg').replace('400', '500/10'))}>
                                     <stat.icon size={20} className={stat.color} />
                                 </div>
@@ -109,7 +109,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* AI Suggestions Widget */}
-                    <div className="md:col-span-12 lg:col-span-4 glass p-8 rounded-[40px] border border-white/5 bg-gradient-to-br from-violet-600/[0.03] to-transparent">
+                    <div className="md:col-span-12 lg:col-span-4 glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-white/5 bg-gradient-to-br from-violet-600/[0.03] to-transparent">
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 italic">
                                 <BrainCircuit size={18} className="text-violet-400" /> AI Insights

@@ -128,7 +128,7 @@ export default function AIPairPage() {
 
     return (
         <DashboardLayout>
-            <div className="h-[calc(100vh-12rem)] flex flex-col gap-4 md:gap-6 max-w-[100rem] mx-auto">
+            <div className="flex-1 min-h-0 flex flex-col gap-4 md:gap-6 max-w-[100rem] mx-auto w-full px-2 md:px-0">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
                     <div className="flex items-center gap-3 md:gap-4">
@@ -202,10 +202,10 @@ export default function AIPairPage() {
                 </div>
 
                 {/* Main Workspace Grid */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 overflow-y-auto lg:overflow-hidden md:pr-2 custom-scrollbar">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-0">
                     {/* Left Sidebar: Context & Files - Hidden on mobile, shown on lg+ */}
-                    <div className="hidden lg:flex lg:col-span-2 flex-col gap-4">
-                        <div className="flex-1 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col gap-4 md:gap-6">
+                    <div className="hidden lg:flex lg:col-span-2 flex-col gap-4 min-h-0">
+                        <div className="flex-1 p-4 md:p-6 rounded-3xl md:rounded-[2.5rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col gap-4 md:gap-6 min-h-0">
                             <h3 className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Knowledge Base</h3>
                             <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar">
                                 {[
@@ -242,7 +242,7 @@ export default function AIPairPage() {
 
                     {/* Middle: Code Editor Placeholder - Takes full width on mobile */}
                     <div className="col-span-1 lg:col-span-7 flex flex-col gap-4 md:gap-6 h-full min-h-[500px] lg:min-h-0">
-                        <div className="flex-1 p-4 sm:p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-slate-900/60 border border-white/5 backdrop-blur-3xl relative group overflow-hidden flex flex-col">
+                        <div className="flex-1 p-4 sm:p-6 md:p-8 rounded-3xl md:rounded-[3rem] bg-slate-900/60 border border-white/5 backdrop-blur-3xl relative group overflow-hidden flex flex-col">
                             <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
                             <div className="relative z-10 flex-1 flex flex-col min-h-0">
@@ -338,8 +338,8 @@ export default function AIPairPage() {
                     </div>
 
                     {/* Right: Neural Chat Interface - Full width on mobile, sidebar on lg+ */}
-                    <div className="col-span-1 lg:col-span-3 flex flex-col gap-4 md:gap-6 min-h-[500px] lg:min-h-0">
-                        <div className="flex-1 p-4 md:p-6 rounded-[2rem] md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col relative group overflow-hidden">
+                    <div className="col-span-1 lg:col-span-3 flex flex-col gap-4 md:gap-6 min-h-[600px] lg:min-h-0">
+                        <div className="flex-1 p-4 md:p-6 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col relative group overflow-hidden">
                             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-24 md:pb-32">
                                 {history.length === 0 && (
                                     <div className="h-full flex flex-col items-center justify-center text-center p-6 md:p-8 space-y-3 md:space-y-4 opacity-40">

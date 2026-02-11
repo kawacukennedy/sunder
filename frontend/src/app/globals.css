@@ -39,6 +39,16 @@ body {
   }
 }
 
+/* Hide scrollbars globally but keep functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
 .custom-scrollbar {
   -webkit-overflow-scrolling: touch;
 }

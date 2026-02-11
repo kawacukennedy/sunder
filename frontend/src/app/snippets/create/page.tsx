@@ -248,7 +248,7 @@ export default function SnippetEditor() {
     };
 
     return (
-        <div className="h-screen bg-slate-950 flex flex-col overflow-hidden text-slate-300 transition-all duration-500">
+        <div className="h-screen bg-slate-950 flex flex-col min-h-0 overflow-hidden text-slate-300 transition-all duration-500">
             <style jsx global>{`
                 pre[class*="language-"] {
                     padding: 0 !important;
@@ -266,18 +266,18 @@ export default function SnippetEditor() {
             {/* Header */}
             <header className="h-14 border-b border-white/5 px-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-xl z-50">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => router.back()} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                    <button onClick={() => router.back()} className="p-1.5 md:p-2 hover:bg-white/5 rounded-lg transition-colors">
                         <ChevronLeft size={18} />
                     </button>
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg shadow-violet-600/20">
-                            <FileCode size={16} className="text-white" />
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg shadow-violet-600/20 shrink-0">
+                            <FileCode size={14} className="text-white" />
                         </div>
                         <input
                             type="text"
                             value={currentSnippet.title}
                             onChange={(e) => updateTitle(e.target.value)}
-                            className="bg-transparent border-none text-sm font-bold text-white focus:outline-none placeholder:text-slate-600 w-48 lg:w-64"
+                            className="bg-transparent border-none text-[12px] md:text-sm font-bold text-white focus:outline-none placeholder:text-slate-600 w-24 sm:w-48 lg:w-64"
                             placeholder="Untilted Snippet"
                         />
                     </div>
@@ -348,7 +348,7 @@ export default function SnippetEditor() {
                                 exit={{ x: -256 }}
                                 transition={{ type: 'spring', damping: 20, stiffness: 200 }}
                                 style={{ width: leftWidth }}
-                                className="fixed md:relative inset-y-0 left-0 z-40 border-r border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
+                                className="fixed md:relative inset-y-0 left-0 z-40 border-r border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0 min-h-0"
                             >
                                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Explorer</span>
@@ -586,7 +586,7 @@ export default function SnippetEditor() {
                                 exit={{ x: 320 }}
                                 transition={{ type: 'spring', damping: 20, stiffness: 200 }}
                                 style={{ width: rightWidth }}
-                                className="fixed md:relative inset-y-0 right-0 z-40 border-l border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
+                                className="fixed md:relative inset-y-0 right-0 z-40 border-l border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0 min-h-0"
                             >
                                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic flex items-center gap-2">
