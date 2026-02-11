@@ -63,8 +63,52 @@ export default function SnippetEditor() {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState('');
     const [aiInput, setAiInput] = useState('');
+    const [aiResponse, setAiResponse] = useState<{ text: string, code?: string } | null>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
+
+    const [leftWidth, setLeftWidth] = useState(280);
+    const [rightWidth, setRightWidth] = useState(320);
+    const [bottomHeight, setBottomHeight] = useState(256);
+    const [isResizingLeft, setIsResizingLeft] = useState(false);
+    const [isResizingRight, setIsResizingRight] = useState(false);
+    const [isResizingBottom, setIsResizingBottom] = useState(false);
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (isResizingLeft) {
+                const newWidth = Math.max(160, Math.min(480, e.clientX));
+                setLeftWidth(newWidth);
+            }
+            if (isResizingRight) {
+                const newWidth = Math.max(240, Math.min(600, window.innerWidth - e.clientX));
+                setRightWidth(newWidth);
+            }
+            if (isResizingBottom) {
+                const newHeight = Math.max(120, Math.min(600, window.innerHeight - e.clientY));
+                setBottomHeight(newHeight);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsResizingLeft(false);
+            setIsResizingRight(false);
+            setIsResizingBottom(false);
+        };
+
+        if (isResizingLeft || isResizingRight || isResizingBottom) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = isResizingBottom ? 'row-resize' : 'col-resize';
+        } else {
+            document.body.style.cursor = 'default';
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizingLeft, isResizingRight, isResizingBottom]);
 
     useEffect(() => {
         Prism.highlightAll();
@@ -88,7 +132,15 @@ export default function SnippetEditor() {
             });
 
             setExecutionResult(`${executionResult || ''}\n\n> NEURAL ENGINE:\n${result.explanation}`);
-            addToast({ title: "Analysis Complete", message: "Check the console for insights.", type: "success" });
+
+            // Extract code block if present
+            const codeMatch = result.explanation.match(/```[\w]*\n([\s\S]*?)```/);
+            setAiResponse({
+                text: result.explanation.replace(/```[\s\S]*?```/g, '').trim(),
+                code: codeMatch ? codeMatch[1].trim() : undefined
+            });
+
+            addToast({ title: "Analysis Complete", message: "Check the companion for insights.", type: "success" });
         } catch (error) {
             addToast({ title: "AI Error", message: "Failed to reach neural engine", type: "error" });
         }
@@ -155,6 +207,20 @@ export default function SnippetEditor() {
 
     return (
         <div className="h-screen bg-slate-950 flex flex-col overflow-hidden text-slate-300 transition-all duration-500">
+            <style jsx global>{`
+                pre[class*="language-"] {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    background: transparent !important;
+                }
+                code[class*="language-"] {
+                    padding: 0 !important;
+                    background: transparent !important;
+                    font-family: inherit !important;
+                    font-size: inherit !important;
+                    line-height: inherit !important;
+                }
+            `}</style>
             {/* Header */}
             <header className="h-14 border-b border-white/5 px-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-xl z-50">
                 <div className="flex items-center gap-4">
@@ -228,7 +294,8 @@ export default function SnippetEditor() {
                                 animate={{ x: 0 }}
                                 exit={{ x: -256 }}
                                 transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-                                className="fixed md:relative inset-y-0 left-0 z-40 w-72 sm:w-64 border-r border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
+                                style={{ width: leftWidth }}
+                                className="fixed md:relative inset-y-0 left-0 z-40 border-r border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
                             >
                                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Explorer</span>
@@ -268,9 +335,17 @@ export default function SnippetEditor() {
                     )}
                 </AnimatePresence>
 
+                {/* Left Resizer */}
+                {panes.left && (
+                    <div
+                        onMouseDown={() => setIsResizingLeft(true)}
+                        className="hidden md:block w-1 hover:w-1.5 h-full bg-white/5 hover:bg-violet-500/50 cursor-col-resize z-50 transition-all active:bg-violet-500"
+                    />
+                )}
+
                 {/* Editor Area */}
-                <div className="flex-1 flex flex-col min-w-0">
-                    <main className="flex-1 flex flex-col bg-slate-950 min-w-0">
+                <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
+                    <main className="flex-1 flex flex-col min-w-0">
                         <div className="h-10 border-b border-white/5 px-4 flex items-center justify-between bg-black/20">
                             <div className="flex gap-4">
                                 <button
@@ -295,33 +370,53 @@ export default function SnippetEditor() {
                         <div className="flex-1 relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-12 h-full bg-white/[0.01] pointer-events-none border-r border-white/5 z-10" />
                             <div className="h-full overflow-auto custom-scrollbar">
-                                <div className="relative min-h-full">
-                                    <pre
-                                        className={cn(`language-${currentSnippet.language.toLowerCase()} !bg-transparent !m-0 pointer-events-none absolute inset-0 p-6 pl-16 z-0 font-mono text-sm leading-relaxed`)}
-                                        aria-hidden="true"
-                                        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}
-                                    >
-                                        <code className={`language-${currentSnippet.language.toLowerCase()} !bg-transparent !p-0`}>
-                                            {currentSnippet.code + (currentSnippet.code.endsWith('\n') ? ' ' : '')}
-                                        </code>
-                                    </pre>
-                                    <textarea
-                                        className="absolute inset-0 w-full h-full bg-transparent p-6 pl-16 font-mono text-sm leading-relaxed text-transparent caret-white resize-none focus:outline-none selection:bg-violet-500/30 whitespace-pre-wrap border-none outline-none z-10"
-                                        value={currentSnippet.code}
-                                        onChange={(e) => updateCode(e.target.value)}
-                                        spellCheck={false}
-                                        style={{ height: '100%', minHeight: '100%', WebkitTextFillColor: 'transparent' }}
-                                    />
+                                <div className="relative min-h-full p-6 pl-16">
+                                    <div className="relative w-full h-full font-mono text-sm leading-relaxed">
+                                        <pre
+                                            className={cn(`language-${currentSnippet.language.toLowerCase()} !bg-transparent !m-0 !p-0 pointer-events-none absolute inset-0 z-0 whitespace-pre-wrap break-all`)}
+                                            aria-hidden="true"
+                                            style={{ margin: 0, padding: 0, border: 'none' }}
+                                        >
+                                            <code
+                                                className={`language-${currentSnippet.language.toLowerCase()} !bg-transparent !p-0 !m-0 font-mono text-sm leading-relaxed`}
+                                                style={{ fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}
+                                            >
+                                                {currentSnippet.code + (currentSnippet.code.endsWith('\n') ? ' ' : '')}
+                                            </code>
+                                        </pre>
+                                        <textarea
+                                            className="absolute inset-0 w-full h-full bg-transparent m-0 p-0 font-mono text-sm leading-relaxed text-transparent caret-white resize-none focus:outline-none selection:bg-violet-500/30 whitespace-pre-wrap border-none outline-none z-10"
+                                            value={currentSnippet.code}
+                                            onChange={(e) => updateCode(e.target.value)}
+                                            spellCheck={false}
+                                            style={{
+                                                height: '100%',
+                                                minHeight: '100%',
+                                                WebkitTextFillColor: 'transparent',
+                                                fontFamily: 'inherit',
+                                                fontSize: 'inherit',
+                                                lineHeight: 'inherit'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </main>
 
+                    {/* Bottom Resizer */}
+                    {panes.bottom && (
+                        <div
+                            onMouseDown={() => setIsResizingBottom(true)}
+                            className="h-1 hover:h-1.5 w-full bg-white/5 hover:bg-violet-500/50 cursor-row-resize z-50 transition-all active:bg-violet-500"
+                        />
+                    )}
+
                     {/* Bottom Pane Toggle */}
                     <footer className={cn(
                         "border-t border-white/5 transition-all duration-300 ease-in-out",
-                        panes.bottom ? "h-64" : "h-10"
-                    )}>
+                        panes.bottom ? "" : "h-10"
+                    )} style={{ height: panes.bottom ? bottomHeight : 40 }}>
                         {!panes.bottom ? (
                             <div className="h-full flex items-center justify-between px-6 bg-slate-900/50">
                                 <button onClick={() => togglePane('bottom')} className="text-[10px] font-black text-slate-500 hover:text-violet-400 transition-colors uppercase tracking-[0.2em] flex items-center gap-2">
@@ -343,11 +438,35 @@ export default function SnippetEditor() {
                                         <div className="w-8 h-8 rounded-lg bg-violet-600/10 flex items-center justify-center shrink-0">
                                             <Sparkles size={16} className="text-violet-400" />
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="flex-1 space-y-1">
                                             <p className="text-xs text-white font-bold">Sunder Engine</p>
-                                            <p className="text-xs text-slate-400 leading-relaxed italic">
-                                                Ask me to optimize your {currentSnippet.language} code.
-                                            </p>
+                                            {aiResponse ? (
+                                                <div className="space-y-3">
+                                                    <p className="text-xs text-slate-400 leading-relaxed italic whitespace-pre-wrap">
+                                                        {aiResponse.text}
+                                                    </p>
+                                                    {aiResponse.code && (
+                                                        <div className="space-y-2">
+                                                            <div className="p-3 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-violet-300 overflow-x-auto whitespace-pre">
+                                                                {aiResponse.code}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    updateCode(aiResponse.code!);
+                                                                    addToast({ title: "Injected", message: "AI code applied to editor", type: "success" });
+                                                                }}
+                                                                className="flex items-center gap-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-550 text-white text-[10px] font-black rounded-lg transition-all uppercase tracking-widest"
+                                                            >
+                                                                <CheckCircle2 size={12} /> Apply Changes
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-slate-400 leading-relaxed italic">
+                                                    Ask me to optimize your {currentSnippet.language} code.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
@@ -388,6 +507,14 @@ export default function SnippetEditor() {
                     </footer>
                 </div>
 
+                {/* Right Resizer */}
+                {panes.right && (
+                    <div
+                        onMouseDown={() => setIsResizingRight(true)}
+                        className="hidden md:block w-1 hover:w-1.5 h-full bg-white/5 hover:bg-blue-500/50 cursor-col-resize z-50 transition-all active:bg-blue-500"
+                    />
+                )}
+
                 {/* Right Sidebar */}
                 <AnimatePresence>
                     {panes.right && (
@@ -404,7 +531,8 @@ export default function SnippetEditor() {
                                 animate={{ x: 0 }}
                                 exit={{ x: 320 }}
                                 transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-                                className="fixed md:relative inset-y-0 right-0 z-40 w-72 sm:w-80 border-l border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
+                                style={{ width: rightWidth }}
+                                className="fixed md:relative inset-y-0 right-0 z-40 border-l border-white/5 bg-slate-900 md:bg-slate-900/30 backdrop-blur-3xl md:backdrop-blur-none flex flex-col shrink-0"
                             >
                                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic flex items-center gap-2">
