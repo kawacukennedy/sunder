@@ -3,7 +3,11 @@ const router = express.Router();
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAudit } = require('../lib/audit');
 
-// Get all snippets (Public with Advanced Filtering/Pagination)
+/**
+ * @route GET /snippets
+ * @desc Fetches all public snippets with filtering, search, and pagination.
+ * @access Public
+ */
 router.get('/', async (req, res) => {
     try {
         const {
@@ -71,7 +75,11 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Create snippet (with template support and AI response parity)
+/**
+ * @route POST /snippets
+ * @desc Creates a new code snippet with optional AI analysis.
+ * @access Private
+ */
 router.post('/', authenticate, async (req, res) => {
     const {
         title,
@@ -134,7 +142,11 @@ router.post('/', authenticate, async (req, res) => {
     }
 });
 
-// Update snippet (Partial/Auto-save support)
+/**
+ * @route PATCH /snippets/:id
+ * @desc Updates an existing snippet (author only).
+ * @access Private
+ */
 router.patch('/:id', authenticate, async (req, res) => {
     const updates = req.body;
     try {
@@ -162,7 +174,11 @@ router.patch('/:id', authenticate, async (req, res) => {
     }
 });
 
-// Fork snippet
+/**
+ * @route POST /snippets/:id/fork
+ * @desc Forks an existing snippet for the current user.
+ * @access Private
+ */
 router.post('/:id/fork', authenticate, async (req, res) => {
     try {
         const { data: original, error: fetchError } = await supabase
@@ -248,8 +264,11 @@ router.post('/:id/comments', authenticate, async (req, res) => {
 
 const axios = require('axios');
 
-// Run snippet (Piston API Integration)
-const { adminOnly } = require('./admin');
+/**
+ * @route POST /snippets/run
+ * @desc Executes code in a secure sandbox using the Piston API.
+ * @access Private (or Admin with secret)
+ */
 router.post('/run', (req, res, next) => {
     if (req.headers['x-admin-secret']) return adminOnly(req, res, next);
     authenticate(req, res, next);

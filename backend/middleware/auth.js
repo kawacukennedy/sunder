@@ -9,6 +9,10 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/**
+ * Middleware to authenticate requests using either Supabase Auth (Email) 
+ * or local JWT (Security PIN).
+ */
 const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -52,6 +56,10 @@ const authenticate = async (req, res, next) => {
     }
 };
 
+/**
+ * Middleware to authorize requests based on user roles.
+ * @param {string|string[]} roles - The required role or an array of allowed roles.
+ */
 const authorizeRole = (roles) => {
     return (req, res, next) => {
         if (!req.user) {

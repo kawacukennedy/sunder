@@ -5,6 +5,12 @@ const { authenticate, supabase } = require('../middleware/auth');
 // CSRF Protection Stub (Spec Requirement)
 const generateCsrfToken = () => Math.random().toString(36).substring(2, 15);
 
+/**
+ * Sets authentication and security cookies on the response object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {string} accessToken - JWT access token.
+ * @param {string} refreshToken - Supabase/Custom refresh token.
+ */
 const setAuthCookies = (res, accessToken, refreshToken) => {
     const cookieOptions = {
         httpOnly: true,
@@ -24,7 +30,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret';
 const registrationAttempts = new Map();
 const COOLDOWN_MS = 60000;
 
-// Register
+/**
+ * @route POST /auth/register
+ * @desc Registers a new user with email, password, and security PIN.
+ * @access Public
+ */
 router.post('/register', async (req, res) => {
     const { email, password, username, displayName, preferences, pin } = req.body;
     const bcrypt = require('bcryptjs');
@@ -118,7 +128,11 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Verify Email (Real Supabase OTP)
+/**
+ * @route POST /auth/verify
+ * @desc Verifies user's email using OTP code.
+ * @access Public
+ */
 router.post('/verify', async (req, res) => {
     const { email, code } = req.body;
     try {
@@ -144,7 +158,11 @@ router.post('/verify', async (req, res) => {
     }
 });
 
-// Login (PIN-Based)
+/**
+ * @route POST /auth/login
+ * @desc Authenticates user using email and PIN.
+ * @access Public
+ */
 router.post('/login', async (req, res) => {
     const { email, pin } = req.body;
     const bcrypt = require('bcryptjs');
@@ -210,7 +228,11 @@ router.post('/2fa/verify', async (req, res) => {
     }
 });
 
-// Refresh Token (Spec Requirement)
+/**
+ * @route POST /auth/refresh
+ * @desc Refreshes access token using a valid refresh token.
+ * @access Public
+ */
 router.post('/refresh', async (req, res) => {
     const { refresh_token } = req.body;
     try {
@@ -273,7 +295,11 @@ router.post('/reset-pin', async (req, res) => {
     }
 });
 
-// Logout
+/**
+ * @route POST /auth/logout
+ * @desc Logs out the current user and clears session tokens.
+ * @access Public
+ */
 router.post('/logout', async (req, res) => {
     try {
         const { error } = await supabase.auth.signOut();

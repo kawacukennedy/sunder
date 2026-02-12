@@ -3,7 +3,11 @@ const router = express.Router();
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAIUsage, callGemini } = require('../lib/ai');
 
-// AI Generate
+/**
+ * @route POST /ai/generate
+ * @desc Generates code snippets based on a natural language prompt.
+ * @access Private
+ */
 router.post('/generate', authenticate, async (req, res) => {
     const { prompt, language, framework } = req.body;
     try {
@@ -31,6 +35,11 @@ router.post('/generate', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * @route POST /ai/translate
+ * @desc Translates code from one programming language to another.
+ * @access Private
+ */
 router.post('/translate', authenticate, async (req, res) => {
     const { code, source_language, target_language, options } = req.body;
     try {
@@ -64,7 +73,11 @@ router.post('/translate', authenticate, async (req, res) => {
     }
 });
 
-// AI Pair Programming
+/**
+ * @route POST /ai/pair
+ * @desc Interactive AI pair programming session with custom personalities.
+ * @access Private
+ */
 router.post('/pair', authenticate, async (req, res) => {
     const { code, task, language, conversation_history, personality, options } = req.body;
     try {
@@ -114,8 +127,11 @@ router.post('/pair', authenticate, async (req, res) => {
     }
 });
 
-// AI Analyze (Neural Code Intelligence)
-const { adminOnly } = require('./admin');
+/**
+ * @route POST /ai/analyze
+ * @desc Performs deep neural analysis of code for security and performance.
+ * @access Private/Admin
+ */
 router.post('/analyze', (req, res, next) => {
     if (req.headers['x-admin-secret']) return adminOnly(req, res, next);
     authenticate(req, res, next);

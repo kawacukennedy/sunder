@@ -3,7 +3,11 @@ const router = express.Router();
 const { authenticate, supabase } = require('../middleware/auth');
 const { logAudit } = require('../lib/audit');
 
-// Start peer matchmaking (Spec Parity)
+/**
+ * @route POST /collaboration/match
+ * @desc Initiates peer review matchmaking based on snippet context.
+ * @access Private
+ */
 router.post('/match', authenticate, async (req, res) => {
     const { snippet_id, topic, preferences } = req.body;
     try {
@@ -35,7 +39,11 @@ router.post('/match', authenticate, async (req, res) => {
     }
 });
 
-// Create Session (Spec name change from /match/accept to satisfy /api/collaboration/sessions endpoint)
+/**
+ * @route POST /collaboration/sessions
+ * @desc Creates a new real-time collaboration session.
+ * @access Private
+ */
 router.post('/sessions', authenticate, async (req, res) => {
     const { snippet_id, settings } = req.body;
     try {
@@ -73,7 +81,11 @@ router.post('/sessions', authenticate, async (req, res) => {
     }
 });
 
-// Get Session Updates (Spec requirement)
+/**
+ * @route GET /collaboration/sessions/:token/updates
+ * @desc Polling endpoint for session updates (messages, cursors).
+ * @access Private
+ */
 router.get('/sessions/:token/updates', authenticate, async (req, res) => {
     const { since } = req.query;
     try {

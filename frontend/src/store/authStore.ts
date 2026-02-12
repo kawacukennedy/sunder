@@ -1,15 +1,27 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+/**
+ * State and actions for user authentication and session management.
+ */
 interface AuthState {
+    /** The currently authenticated user object. */
     user: any | null;
+    /** JWT access token for API requests. */
     token: string | null;
+    /** Indicates if an auth-related request is in progress. */
     isLoading: boolean;
+    /** Holds error messages from auth operations. */
     error: string | null;
+    /** Updates the current user object. */
     setUser: (user: any) => void;
+    /** Updates the access token. */
     setToken: (token: string | null) => void;
+    /** Performs login request and updates store state. */
     login: (credentials: Record<string, any>) => Promise<void>;
+    /** Performs registration request and updates store state. */
     register: (userData: Record<string, any>) => Promise<void>;
+    /** Clears user and token, effectively logging the user out of the client. */
     logout: () => void;
 }
 

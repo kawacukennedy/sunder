@@ -1,12 +1,24 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+/**
+ * Merges class names using clsx and tailwind-merge.
+ * Useful for handling conditional classes in Tailwind.
+ */
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
+/**
+ * Standardized fetch wrapper for Sunder API requests.
+ * Automatically injects auth token from localStorage.
+ * @param {string} endpoint - API path (e.g., '/auth/login').
+ * @param {RequestInit} [options={}] - Standard fetch options.
+ * @returns {Promise<any>} Parsed JSON response.
+ * @throws {Error} if response is not ok.
+ */
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     const authStorage = localStorage.getItem('sunder-auth');
     const token = authStorage ? JSON.parse(authStorage).state.token : null;
@@ -32,6 +44,11 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     return response.json();
 }
 
+/**
+ * Formats a date into a human-readable relative string (e.g., "2m", "1h", "3d").
+ * @param {Date|string|number} date - The date to format.
+ * @returns {string} Relative time string.
+ */
 export function formatRelativeTime(date: Date | string | number) {
     const now = new Date();
     const then = new Date(date);

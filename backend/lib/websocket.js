@@ -14,7 +14,9 @@ function initWebSocket(server) {
     server.on('upgrade', (request, socket, head) => {
         const pathname = url.parse(request.url).pathname;
 
-        // Pattern: /collaboration/[session_token]
+        /**
+         * Real-time collaboration endpoint pattern: /collaboration/[session_token]
+         */
         const match = pathname.match(/^\/collaboration\/([^/]+)$/);
 
         if (match) {
@@ -40,7 +42,10 @@ function initWebSocket(server) {
             try {
                 const message = JSON.parse(data);
 
-                // Broadcast to everyone else in the same room
+                /**
+                 * Broadcasts incoming messages to all other clients joined in the same session room.
+                 * Includes a server-side timestamp for synchronization.
+                 */
                 const room = rooms.get(token);
                 if (room) {
                     const broadcastData = JSON.stringify({

@@ -82,6 +82,9 @@ const analyzeCodeStatic = (code) => {
 
 /**
  * Performs deep neural code analysis using Gemini.
+ * @param {string} code - The code to analyze.
+ * @param {string} [language='JavaScript'] - The programming language of the code.
+ * @returns {Promise<Object|null>} Analysis results including security, performance, and readability scores.
  */
 const analyzeCodeAI = async (code, language = 'JavaScript') => {
     const prompt = `
@@ -111,7 +114,12 @@ const analyzeCodeAI = async (code, language = 'JavaScript') => {
 };
 
 /**
- * Orchestrates code analysis, combining static and AI if enabled.
+ * Orchestrates code analysis, combining static and AI results if enabled.
+ * @param {string} code - The code to analyze.
+ * @param {Object} [options={}] - Analysis options.
+ * @param {boolean} [options.useAI] - Whether to use neural analysis.
+ * @param {string} [options.language] - Code language.
+ * @returns {Promise<Object>} Combined analysis results.
  */
 const analyzeCode = async (code, options = {}) => {
     const staticResults = analyzeCodeStatic(code);
@@ -182,7 +190,12 @@ const getBestAvailableModel = async (apiKey) => {
 };
 
 /**
- * Real Gemini API call with auto-model detection and system instruction support.
+ * Core function to interact with the Google Gemini API.
+ * Supports system instructions, conversation history, and JSON response mode.
+ * @param {string} prompt - The primary user prompt.
+ * @param {Object} [options={}] - Request configuration.
+ * @param {string} [modelOverride] - Force use of a specific Gemini model.
+ * @returns {Promise<Object>} AI response including text and token usage.
  */
 const callGemini = async (prompt, options = {}, modelOverride = null) => {
     const start = Date.now();

@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 
+/**
+ * State and actions for the primary code editor and execution environment.
+ */
 interface EditorState {
+    /** The snippet currently being edited. */
     currentSnippet: {
         id: string | null;
         title: string;
@@ -8,21 +12,31 @@ interface EditorState {
         language: string;
         tags: string[];
     };
+    /** Indicates if there are unsaved changes. */
     isDirty: boolean;
+    /** Visibility state of the editor's side and bottom panes. */
     panes: {
         left: boolean;
         right: boolean;
         bottom: boolean;
     };
+    /** Output from the last code execution (Piston API). */
     executionResult: string | null;
+    /** Indicates if code execution is in progress. */
     isRunning: boolean;
+    /** Updates the code content of the current snippet. */
     updateCode: (code: string) => void;
+    /** Updates the title of the current snippet. */
     updateTitle: (title: string) => void;
+    /** Updates the language of the current snippet. */
     updateLanguage: (language: string) => void;
+    /** Toggles a specific pane (left, right, bottom). */
     togglePane: (pane: 'left' | 'right' | 'bottom') => void;
     setExecutionResult: (result: string | null) => void;
     setIsRunning: (isRunning: boolean) => void;
+    /** Loads a snippet into the editor and clears the dirty flag. */
     setSnippet: (snippet: any) => void;
+    /** Resets the editor to a clean, untitled state. */
     resetEditor: () => void;
 }
 

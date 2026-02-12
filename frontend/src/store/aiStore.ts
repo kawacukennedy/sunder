@@ -2,25 +2,42 @@ import { create } from 'zustand';
 import { fetchApi } from '@/lib/utils';
 
 // ... (interface stays same)
+/**
+ * State and actions for AI-powered features and history.
+ */
 interface AIState {
+    /** Indicates if an AI generation or analysis task is processing. */
     isProcessing: boolean;
+    /** Conversation history for the AI pair programmer. */
     history: any[];
+    /** List of AI-generated suggestions for the current code. */
     suggestions: any[];
+    /** The active personality of the AI assistant. */
     personality: 'helpful' | 'critical' | 'concise' | 'educational';
+    /** The language currently selected for AI context. */
     selectedLanguage: string;
+    /** AI token usage statistics and estimated costs. */
     usageStats: {
         tokensUsed: number;
         costToday: number;
     };
+    /** Adds a message to the AI conversation history. */
     addMessage: (role: string, content: string) => void;
     setProcessing: (isProcessing: boolean) => void;
     setSuggestions: (suggestions: any[]) => void;
+    /** Updates the personality of the AI. */
     setPersonality: (personality: 'helpful' | 'critical' | 'concise' | 'educational') => void;
+    /** Updates the current target language for AI operations. */
     setLanguage: (language: string) => void;
+    /** Manually updates usage statistics. */
     updateUsageStats: (tokens: number) => void;
+    /** Translates input code to a target language via backend AI. */
     translate: (code: string, sourceLang: string, targetLang: string) => Promise<any>;
+    /** Generates code from a prompt via backend AI. */
     generateCode: (prompt: string, language: string, framework: string) => Promise<any>;
+    /** Gets a natural language explanation of the provided code. */
     explainCode: (code: string, detailLevel: string) => Promise<any>;
+    /** Sends task and context to the AI for interactive pairing. */
     pairWithAI: (task: string, code?: string, options?: any) => Promise<any>;
 }
 
