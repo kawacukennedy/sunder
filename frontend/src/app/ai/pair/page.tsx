@@ -26,15 +26,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAIStore } from '@/store/aiStore';
 import { useAuthStore } from '@/store/authStore';
 import { Markdown } from '@/components/Markdown';
-import Prism from 'prismjs';
-import 'prismjs/themes/prism-tomorrow.css';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-bash';
+import CodeEditor from '@/components/CodeEditor';
 
 export default function AIPairPage() {
     const { user } = useAuthStore();
@@ -64,21 +56,7 @@ export default function AIPairPage() {
         { id: 'ruby', name: 'Ruby', ext: 'rb', file: 'app.rb', boilerplate: '# Ruby Neural Workspace\n\ndef main\n  puts "Hello, Sunder!"\nend\n\nmain' }
     ];
 
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const highlightRef = useRef<HTMLPreElement>(null);
 
-    useEffect(() => {
-        if (highlightRef.current) {
-            Prism.highlightElement(highlightRef.current.querySelector('code')!);
-        }
-    }, [currentCode, selectedLanguage, pendingSuggestion]);
-
-    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-        if (highlightRef.current) {
-            highlightRef.current.scrollTop = e.currentTarget.scrollTop;
-            highlightRef.current.scrollLeft = e.currentTarget.scrollLeft;
-        }
-    };
 
     const handleLanguageChange = (langId: string) => {
         setLanguage(langId);
@@ -262,33 +240,17 @@ export default function AIPairPage() {
                                 </div>
 
                                 <div className="flex-1 relative min-h-0 overflow-hidden rounded-xl border border-white/5 bg-black/20">
-                                    <pre
-                                        ref={highlightRef}
-                                        aria-hidden="true"
-                                        className={cn(
-                                            `language-${selectedLanguage} absolute inset-0 w-full h-full m-0 p-4 pointer-events-none overflow-hidden bg-transparent font-mono text-xs md:text-sm leading-relaxed whitespace-pre-wrap break-all`,
-                                            pendingSuggestion && "opacity-40"
-                                        )}
-                                    >
-                                        <code className={`language-${selectedLanguage}`}>
-                                            {(pendingSuggestion || currentCode)}
-                                        </code>
-                                    </pre>
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={pendingSuggestion || currentCode}
-                                        onScroll={handleScroll}
-                                        onChange={(e) => {
+                                    <CodeEditor
+                                        code={pendingSuggestion || currentCode}
+                                        language={selectedLanguage}
+                                        onChange={(val) => {
                                             if (pendingSuggestion) {
                                                 setPendingSuggestion(null);
                                             }
-                                            setCurrentCode(e.target.value);
+                                            setCurrentCode(val);
                                         }}
-                                        spellCheck={false}
-                                        className={cn(
-                                            "absolute inset-0 w-full h-full bg-transparent font-mono text-xs md:text-sm text-transparent caret-violet-400 outline-none resize-none custom-scrollbar leading-relaxed p-4 selection:bg-violet-500/30 overflow-auto whitespace-pre-wrap break-all",
-                                            pendingSuggestion && "italic"
-                                        )}
+                                        dimmed={!!pendingSuggestion}
+                                        placeholder="// Start coding..."
                                     />
                                     {pendingSuggestion && (
                                         <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">

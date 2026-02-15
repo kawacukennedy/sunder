@@ -18,6 +18,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAIStore } from '@/store/aiStore';
+import CodeEditor from '@/components/CodeEditor';
 
 export default function AICodeExplainer() {
     const [code, setCode] = useState('');
@@ -66,12 +67,14 @@ export default function AICodeExplainer() {
                                 <RotateCcw size={16} />
                             </button>
                         </div>
-                        <textarea
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            placeholder="Paste the code block you want to analyze..."
-                            className="flex-1 bg-transparent p-10 font-mono text-sm leading-relaxed text-slate-300 resize-none focus:outline-none custom-scrollbar placeholder-slate-700"
-                        />
+                        <div className="flex-1 min-h-0">
+                            <CodeEditor
+                                code={code}
+                                language="typescript"
+                                onChange={(val) => setCode(val)}
+                                placeholder="Paste the code block you want to analyze..."
+                            />
+                        </div>
                         <div className="p-8 border-t border-white/5 bg-black/20">
                             <button
                                 onClick={handleExplain}

@@ -39,13 +39,13 @@ body {
   }
 }
 
-/* Hide scrollbars globally but keep functionality */
-* {
+/* Hide scrollbars on most elements but keep code editors visible */
+*:not(.code-editor-scrollable) {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
 }
 
-*::-webkit-scrollbar {
+*:not(.code-editor-scrollable)::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
 

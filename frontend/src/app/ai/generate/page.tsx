@@ -18,6 +18,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAIStore } from '@/store/aiStore';
+import CodeEditor from '@/components/CodeEditor';
 
 export default function AICodeGenerator() {
     const [prompt, setPrompt] = useState('');
@@ -174,9 +175,11 @@ export default function AICodeGenerator() {
                                     <p className="text-sm text-slate-600 font-medium max-w-xs mt-2">Submit architectural parameters to begin materialization</p>
                                 </div>
                             ) : (
-                                <pre className="p-10 font-mono text-sm leading-relaxed text-slate-300 custom-scrollbar overflow-auto h-full">
-                                    <code>{generatedCode}</code>
-                                </pre>
+                                <CodeEditor
+                                    code={generatedCode}
+                                    language={language}
+                                    readOnly
+                                />
                             )}
                         </div>
 

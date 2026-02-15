@@ -28,14 +28,7 @@ import {
     X,
     Activity
 } from 'lucide-react';
-import Prism from 'prismjs';
-import 'prismjs/themes/prism-tomorrow.css';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-ruby';
+import CodeEditor from '@/components/CodeEditor';
 import { cn, fetchApi, formatRelativeTime } from '@/lib/utils';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuthStore } from '@/store/authStore';
@@ -79,21 +72,7 @@ export default function SnippetEditor() {
     const [isResizingRight, setIsResizingRight] = useState(false);
     const [isResizingBottom, setIsResizingBottom] = useState(false);
 
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const highlightRef = useRef<HTMLPreElement>(null);
 
-    useEffect(() => {
-        if (highlightRef.current) {
-            Prism.highlightElement(highlightRef.current.querySelector('code')!);
-        }
-    }, [currentSnippet.code, currentSnippet.language]);
-
-    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-        if (highlightRef.current) {
-            highlightRef.current.scrollTop = e.currentTarget.scrollTop;
-            highlightRef.current.scrollLeft = e.currentTarget.scrollLeft;
-        }
-    };
 
     useEffect(() => {
         // Hide sidebars on mobile by default
@@ -276,20 +255,7 @@ export default function SnippetEditor() {
 
     return (
         <div className="h-screen bg-slate-950 flex flex-col min-h-0 overflow-hidden text-slate-300 transition-all duration-500">
-            <style jsx global>{`
-                pre[class*="language-"] {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    background: transparent !important;
-                }
-                code[class*="language-"] {
-                    padding: 0 !important;
-                    background: transparent !important;
-                    font-family: inherit !important;
-                    font-size: inherit !important;
-                    line-height: inherit !important;
-                }
-            `}</style>
+
             {/* Header */}
             <header className="h-14 border-b border-white/5 px-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-xl z-50">
                 <div className="flex items-center gap-4">
@@ -460,33 +426,13 @@ export default function SnippetEditor() {
                         </div>
                         <div className="flex-1 relative overflow-hidden group bg-black/20">
                             <div className="absolute top-0 left-0 w-12 h-full bg-white/[0.01] pointer-events-none border-r border-white/5 z-20" />
-
-                            <div className="absolute inset-0 overflow-hidden custom-scrollbar">
-                                <div className="relative min-h-full p-6 pl-16">
-                                    <pre
-                                        ref={highlightRef}
-                                        aria-hidden="true"
-                                        className={cn(
-                                            `language-${currentSnippet.language.toLowerCase()} absolute inset-0 w-full h-full m-0 p-6 pl-16 pointer-events-none overflow-hidden bg-transparent font-mono text-xs md:text-sm leading-relaxed whitespace-pre`,
-                                        )}
-                                    >
-                                        <code className={`language-${currentSnippet.language.toLowerCase()}`}>
-                                            {currentSnippet.code + (currentSnippet.code.endsWith('\n') ? ' ' : '')}
-                                        </code>
-                                    </pre>
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={currentSnippet.code}
-                                        onScroll={handleScroll}
-                                        onChange={(e) => updateCode(e.target.value)}
-                                        spellCheck={false}
-                                        className="absolute inset-0 w-full h-full bg-transparent p-6 pl-16 font-mono text-xs md:text-sm leading-relaxed text-transparent caret-violet-400 focus:outline-none selection:bg-violet-500/30 whitespace-pre border-none outline-none z-10 overflow-auto custom-scrollbar"
-                                        style={{
-                                            WebkitTextFillColor: 'transparent',
-                                        }}
-                                    />
-                                </div>
-                            </div>
+                            <CodeEditor
+                                code={currentSnippet.code}
+                                language={currentSnippet.language}
+                                onChange={(val) => updateCode(val)}
+                                className="pl-12"
+                                placeholder="// Start writing code..."
+                            />
                         </div>
                     </main>
 

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAIStore } from '@/store/aiStore';
+import CodeEditor from '@/components/CodeEditor';
 
 export default function CodeTranslator() {
     const [sourceLang, setSourceLang] = useState('Python');
@@ -65,12 +66,14 @@ export default function CodeTranslator() {
                             </select>
                             <span className="text-[10px] text-slate-500 font-mono">SOURCE CODE</span>
                         </div>
-                        <textarea
-                            className="flex-1 bg-slate-950/50 p-8 text-slate-300 font-mono text-sm resize-none focus:outline-none custom-scrollbar"
-                            placeholder="Paste your source code here..."
-                            value={sourceCode}
-                            onChange={(e) => setSourceCode(e.target.value)}
-                        />
+                        <div className="flex-1 bg-slate-950/50 min-h-0">
+                            <CodeEditor
+                                code={sourceCode}
+                                language={sourceLang}
+                                onChange={(val) => setSourceCode(val)}
+                                placeholder="Paste your source code here..."
+                            />
+                        </div>
                     </div>
 
                     {/* Translation Button (Floated) */}
@@ -99,19 +102,20 @@ export default function CodeTranslator() {
                                 <span className="text-[10px] text-slate-500 font-mono uppercase">Target ({targetLang})</span>
                             </div>
                         </div>
-                        <div className="flex-1 bg-slate-950/20 p-8 font-mono text-sm text-violet-400 relative">
+                        <div className="flex-1 bg-slate-950/20 relative min-h-0">
                             {isProcessing ? (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm z-10">
                                     <div className="text-center group">
                                         <Zap className="text-amber-400 mx-auto mb-4 animate-bounce" size={48} />
                                         <p className="text-white font-bold animate-pulse">Sunder AI is thinking...</p>
                                     </div>
                                 </div>
-                            ) : (
-                                <pre className="custom-scrollbar h-full overflow-auto">
-                                    {translatedCode || '// Translated code will appear here...'}
-                                </pre>
-                            )}
+                            ) : null}
+                            <CodeEditor
+                                code={translatedCode || '// Translated code will appear here...'}
+                                language={targetLang}
+                                readOnly
+                            />
                         </div>
                     </div>
                 </div>

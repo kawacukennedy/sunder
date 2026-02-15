@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { cn, fetchApi, formatRelativeTime } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
+import CodeEditor from '@/components/CodeEditor';
 
 export default function SnippetPage() {
     const params = useParams();
@@ -130,11 +131,13 @@ export default function SnippetPage() {
                         <span className="text-[10px] font-bold text-slate-600 bg-white/5 px-2 py-1 rounded">TYPESCRIPT</span>
                     </div>
 
-                    <div className="p-10 font-mono text-sm leading-relaxed text-slate-300 relative group">
-                        <pre className="custom-scrollbar overflow-x-auto whitespace-pre">
-                            {snippet.code}
-                        </pre>
-                        <button className="absolute top-6 right-6 p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/10 opacity-0 group-hover:opacity-100">
+                    <div className="p-0 font-mono text-sm leading-relaxed text-slate-300 relative group h-[500px]">
+                        <CodeEditor
+                            code={snippet.code}
+                            language={snippet.language}
+                            readOnly
+                        />
+                        <button className="absolute top-6 right-6 p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/10 opacity-0 group-hover:opacity-100 z-10">
                             <Copy size={20} />
                         </button>
                     </div>
