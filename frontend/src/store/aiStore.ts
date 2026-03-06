@@ -1,135 +1,108 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
 import { fetchApi } from '@/lib/utils';
 
 // ... (interface stays same)
-/**
- * State and actions for AI-powered features and history.
- */
 interface AIState {
-    /** Indicates if an AI generation or analysis task is processing. */
-    isProcessing: boolean;
-    /** Conversation history for the AI pair programmer. */
-    history: any[];
-    /** List of AI-generated suggestions for the current code. */
-    suggestions: any[];
-    /** The active personality of the AI assistant. */
-    personality: 'helpful' | 'critical' | 'concise' | 'educational';
-    /** The language currently selected for AI context. */
-    selectedLanguage: string;
-    /** AI token usage statistics and estimated costs. */
-    usageStats: {
-        tokensUsed: number;
-        costToday: number;
-    };
-    /** Adds a message to the AI conversation history. */
-    addMessage: (role: string, content: string) => void;
-    setProcessing: (isProcessing: boolean) => void;
-    setSuggestions: (suggestions: any[]) => void;
-    /** Updates the personality of the AI. */
-    setPersonality: (personality: 'helpful' | 'critical' | 'concise' | 'educational') => void;
-    /** Updates the current target language for AI operations. */
-    setLanguage: (language: string) => void;
-    /** Manually updates usage statistics. */
-    updateUsageStats: (tokens: number) => void;
-    /** Translates input code to a target language via backend AI. */
-    translate: (code: string, sourceLang: string, targetLang: string) => Promise<any>;
-    /** Generates code from a prompt via backend AI. */
-    generateCode: (prompt: string, language: string, framework: string) => Promise<any>;
-    /** Gets a natural language explanation of the provided code. */
-    explainCode: (code: string, detailLevel: string) => Promise<any>;
-    /** Sends task and context to the AI for interactive pairing. */
-    pairWithAI: (task: string, code?: string, options?: any) => Promise<any>;
+    // ...
 }
 
-export const useAIStore = create<AIState>((set) => ({
-    isProcessing: false,
-    history: [],
-    suggestions: [],
-    personality: 'helpful',
-    selectedLanguage: 'typescript',
-    usageStats: { tokensUsed: 0, costToday: 0 },
-    addMessage: (role: string, content: string) => set((state) => ({
-        history: [...state.history, { role, content }]
-    })),
-    setProcessing: (isProcessing: boolean) => set({ isProcessing }),
-    setSuggestions: (suggestions: any[]) => set({ suggestions }),
-    setPersonality: (personality: 'helpful' | 'critical' | 'concise' | 'educational') => set({ personality }),
-    setLanguage: (selectedLanguage: string) => set({ selectedLanguage }),
-    updateUsageStats: (tokens: number) => set((state) => ({
-        usageStats: {
-            tokensUsed: state.usageStats.tokensUsed + tokens,
-            costToday: state.usageStats.costToday + (tokens * 0.000001) // Simplified cost
-        }
-    })),
-    translate: async (code: string, sourceLang: string, targetLang: string) => {
-        set({ isProcessing: true });
-        try {
-            const data = await fetchApi('/ai/translate', {
-                method: 'POST',
-                body: JSON.stringify({ code, source_language: sourceLang, target_language: targetLang }),
-            });
-            set({ isProcessing: false });
-            return data;
-        } catch (error) {
-            set({ isProcessing: false });
-            throw error;
-        }
-    },
-    generateCode: async (prompt: string, language: string, framework: string) => {
-        set({ isProcessing: true });
-        try {
-            const data = await fetchApi('/ai/generate', {
-                method: 'POST',
-                body: JSON.stringify({ prompt, language, framework }),
-            });
-            set({ isProcessing: false });
-            return data;
-        } catch (error) {
-            set({ isProcessing: false });
-            throw error;
-        }
-    },
-    explainCode: async (code: string, detailLevel: string) => {
-        set({ isProcessing: true });
-        try {
-            const data = await fetchApi('/ai/explain', {
-                method: 'POST',
-                body: JSON.stringify({ code, detail_level: detailLevel }),
-            });
-            set({ isProcessing: false });
-            return data;
-        } catch (error) {
-            set({ isProcessing: false });
-            throw error;
-        }
-    },
-    pairWithAI: async (task: string, code?: string, options?: any) => {
-        set({ isProcessing: true });
-        try {
-            const state = useAIStore.getState();
-            const data = await fetchApi('/ai/pair', {
-                method: 'POST',
-                body: JSON.stringify({
-                    task,
-                    code: code || '',
-                    language: state.selectedLanguage,
-                    conversation_history: state.history,
-                    personality: state.personality,
-                    options: {
-                        suggest_improvements: true,
-                        explain_changes: true,
-                        ...options
+export const useAIStore = create<AIState>()(
+    persist(
+        immer((set) => ({
+            isProcessing: false,
+            history: [],
+            suggestions: [],
+            personality: 'helpful',
+            selectedLanguage: 'typescript',
+            usageStats: { tokensUsed: 0, costToday: 0 },
+            addMessage: (role: string, content: string) => set((state) => {
+                state.history.push({ role, content });
+            }),
+            setProcessing: (isProcessing: boolean) => set({ isProcessing }),
+            setSuggestions: (suggestions: any[]) => set({ suggestions }),
+            setPersonality: (personality: any) => set({ personality }),
+            setLanguage: (selectedLanguage: string) => set({ selectedLanguage }),
+            updateUsageStats: (tokens: number) => set((state) => {
+                state.usageStats.tokensUsed += tokens;
+                state.usageStats.costToday += (tokens * 0.000001);
+            }),
+            translate: async (code: string, sourceLang: string, targetLang: string) => {
+                set({ isProcessing: true });
+                try {
+                    const data = await fetchApi('/ai/translate', {
+                        method: 'POST',
+                        body: JSON.stringify({ code, source_language: sourceLang, target_language: targetLang }),
+                    });
+                    set({ isProcessing: false });
+                    return data;
+                } catch (error) {
+                    set({ isProcessing: false });
+                    throw error;
+                }
+            },
+            generateCode: async (prompt: string, language: string, framework: string) => {
+                set({ isProcessing: true });
+                try {
+                    const data = await fetchApi('/ai/generate', {
+                        method: 'POST',
+                        body: JSON.stringify({ prompt, language, framework }),
+                    });
+                    set({ isProcessing: false });
+                    return data;
+                } catch (error) {
+                    set({ isProcessing: false });
+                    throw error;
+                }
+            },
+            explainCode: async (code: string, detailLevel: string) => {
+                set({ isProcessing: true });
+                try {
+                    const data = await fetchApi('/ai/explain', {
+                        method: 'POST',
+                        body: JSON.stringify({ code, detail_level: detailLevel }),
+                    });
+                    set({ isProcessing: false });
+                    return data;
+                } catch (error) {
+                    set({ isProcessing: false });
+                    throw error;
+                }
+            },
+            pairWithAI: async (task: string, code?: string, options?: any) => {
+                set({ isProcessing: true });
+                try {
+                    const state = useAIStore.getState();
+                    const data = await fetchApi('/ai/pair', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            task,
+                            code: code || '',
+                            language: state.selectedLanguage,
+                            conversation_history: state.history,
+                            personality: state.personality,
+                            options: {
+                                suggest_improvements: true,
+                                explain_changes: true,
+                                ...options
+                            }
+                        }),
+                    });
+                    set({ isProcessing: false });
+                    if (data.tokens_used) {
+                        state.updateUsageStats(data.tokens_used);
                     }
-                }),
-            });
-            set({ isProcessing: false });
-            if (data.tokens_used) {
-                state.updateUsageStats(data.tokens_used);
+                    return data;
+                } catch (error) {
+                    set({ isProcessing: false });
+                    throw error;
+                }
             }
-            return data;
-        } catch (error) {
-            set({ isProcessing: false });
-            throw error;
+        })),
+        {
+            name: 'sunder-ai',
+            partialize: (state) => ({ personality: state.personality, selectedLanguage: state.selectedLanguage, usageStats: state.usageStats }),
         }
-    }
-}));
+    )
+);

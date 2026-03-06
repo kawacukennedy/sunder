@@ -421,4 +421,73 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * @route GET /snippets/:id/comments
+ * @desc Fetches comments for a snippet with pagination.
+ * @access Public
+ */
+router.get('/:id/comments', async (req, res) => {
+    const { page = 1, limit = 20 } = req.query;
+    const from = (page - 1) * parseInt(limit);
+    const to = from + parseInt(limit) - 1;
+
+    try {
+        const { data, count, error } = await supabase
+            .from('snippet_comments')
+            .select('*, user:user_id(username, avatar_url)', { count: 'exact' })
+            .eq('snippet_id', req.params.id)
+            .order('created_at', { ascending: true })
+            .range(from, to);
+
+        if (error) throw error;
+        res.json({
+            comments: data || [],
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: count || 0,
+                pages: Math.ceil((count || 0) / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @route POST /snippets/:id/flag
+ * @desc Reports/flags a snippet for moderation review.
+ * @access Private
+ */
+router.post('/:id/flag', authenticate, async (req, res) => {
+    const { reason, description } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('content_flags')
+            .insert({
+                snippet_id: req.params.id,
+                reporter_id: req.user.id,
+                reason: reason || 'inappropriate',
+                description: description || '',
+                status: 'pending'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        await logAudit({
+            actor_id: req.user.id,
+            action_type: 'flag_content',
+            entity_type: 'snippet',
+            entity_id: req.params.id,
+            new_values: { reason, description }
+        });
+
+        res.status(201).json({ success: true, flag_id: data.id });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
