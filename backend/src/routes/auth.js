@@ -167,6 +167,8 @@ router.post('/login', async (req, res) => {
     const { email, pin, password } = req.body;
     const bcrypt = require('bcryptjs');
 
+    console.log('[Login] Attempt for:', email, '| pin:', !!pin, '| password:', !!password);
+
     try {
         if (!email || (!pin && !password)) {
             return res.status(400).json({ error: 'Email and PIN or password are required' });
@@ -174,6 +176,7 @@ router.post('/login', async (req, res) => {
 
         // First try Supabase Auth (for email/password login)
         if (password) {
+            console.log('[Login] Trying Supabase Auth with password...');
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -192,6 +195,7 @@ router.post('/login', async (req, res) => {
                     { expiresIn: '7d' }
                 );
 
+                console.log('[Login] Supabase Auth success for:', email);
                 return res.json({
                     success: true,
                     token,
@@ -199,9 +203,11 @@ router.post('/login', async (req, res) => {
                     message: 'Login successful'
                 });
             }
+            console.log('[Login] Supabase Auth failed:', authError?.message);
         }
 
         // Fallback: Try PIN-based login from public.users
+        console.log('[Login] Checking public.users for:', email);
         const { data: user, error: fetchError } = await supabase
             .from('users')
             .select('*')
@@ -209,16 +215,19 @@ router.post('/login', async (req, res) => {
             .single();
 
         if (fetchError || !user) {
-            return res.status(401).json({ error: 'Invalid email or credentials' });
+            console.log('[Login] No user found in public.users');
+            return res.status(401).json({ error: 'Invalid email or credentials. Please check your email/password.' });
         }
 
         // Check PIN if provided
         if (pin && user.login_pin_hash) {
             const isMatch = await bcrypt.compare(pin, user.login_pin_hash);
             if (!isMatch) {
+                console.log('[Login] PIN mismatch');
                 return res.status(401).json({ error: 'Invalid email or PIN' });
             }
         } else if (!user.login_pin_hash && !password) {
+            console.log('[Login] No credentials found');
             return res.status(401).json({ error: 'No credentials found for this account' });
         }
 
