@@ -4,9 +4,7 @@ import {
     Activity,
     Users,
     FileCode,
-    Cpu,
-    ArrowUpRight,
-    ArrowDownRight
+    Cpu
 } from 'lucide-react';
 import { cn, fetchApi } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -97,7 +95,7 @@ export default function AdminOverview() {
                             <div
                                 key={i}
                                 className="flex-1 bg-violet-600/20 rounded-t-sm group-hover:bg-violet-600/40 transition-all duration-500 cursor-pointer hover:bg-violet-500"
-                                style={{ height: `${Math.random() * (metrics?.system?.cpu_usage || 50) + 10}%` }}
+                                style={{ height: `${((i * 7 + 20) % 70) + 20}%` }}
                             />
                         ))}
                     </div>
