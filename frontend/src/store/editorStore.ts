@@ -6,7 +6,43 @@ import { immer } from 'zustand/middleware/immer';
  * State and actions for the primary code editor and execution environment.
  */
 interface EditorState {
-    // ... (rest of interface remains same)
+    currentSnippet: {
+        id: string | null;
+        title: string;
+        code: string;
+        language: string;
+        tags: string[];
+        description: string;
+        visibility: 'public' | 'private' | 'organization';
+    };
+    isDirty: boolean;
+    lastSaved: string | null;
+    autoSaveInterval: number;
+    aiSuggestions: string[];
+    errors: string[];
+    warnings: string[];
+    panes: {
+        left: boolean;
+        right: boolean;
+        bottom: boolean;
+    };
+    executionResult: any;
+    isRunning: boolean;
+    updateCode: (code: string) => void;
+    updateTitle: (title: string) => void;
+    updateLanguage: (language: string) => void;
+    updateTags: (tags: string[]) => void;
+    updateVisibility: (visibility: any) => void;
+    updateDescription: (description: string) => void;
+    markDirty: () => void;
+    markSaved: () => void;
+    togglePane: (pane: 'left' | 'right' | 'bottom') => void;
+    setExecutionResult: (result: any) => void;
+    setIsRunning: (isRunning: boolean) => void;
+    addAiSuggestion: (suggestion: string) => void;
+    clearAiSuggestions: () => void;
+    setSnippet: (snippet: any) => void;
+    resetEditor: () => void;
 }
 
 export const useEditorStore = create<EditorState>()(
