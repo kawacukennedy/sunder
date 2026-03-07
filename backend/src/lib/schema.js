@@ -91,15 +91,19 @@ async function getCurrentVersion() {
  * Get all migration files
  */
 function getMigrationFiles() {
-    const migrationsDir = path.join(__dirname, 'migrations');
+    // Migrations are in backend/src/migrations, not backend/src/lib/migrations
+    const migrationsDir = path.join(__dirname, '../migrations');
     
     if (!fs.existsSync(migrationsDir)) {
+        console.log('⚠️ Migrations directory not found:', migrationsDir);
         return [];
     }
     
     const files = fs.readdirSync(migrationsDir)
         .filter(f => f.endsWith('.js') && f.startsWith('migration_'))
         .sort();
+    
+    console.log(`📁 Found ${files.length} migration files in ${migrationsDir}`);
     
     return files.map(f => ({
         name: f,

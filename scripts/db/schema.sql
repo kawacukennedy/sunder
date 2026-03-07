@@ -293,6 +293,17 @@ CREATE TABLE user_followers (
     PRIMARY KEY (follower_id, following_id)
 );
 
+-- Rate Limits (For registration/login rate limiting)
+CREATE TABLE rate_limits (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    key varchar(255) NOT NULL UNIQUE,
+    count integer DEFAULT 1,
+    last_attempt_at timestamptz DEFAULT NOW(),
+    created_at timestamptz DEFAULT NOW()
+);
+
+CREATE INDEX idx_rate_limits_key ON rate_limits(key);
+
 -- System Backups (Compliance)
 CREATE TABLE system_backups (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
