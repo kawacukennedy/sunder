@@ -20,7 +20,7 @@ interface AIState {
     personality: 'helpful' | 'educational' | 'critical' | 'concise';
     selectedLanguage: string;
     usageStats: UsageStats;
-    addMessage: (role: string, content: string) => void;
+    addMessage: (role: 'user' | 'assistant', content: string) => void;
     setProcessing: (isProcessing: boolean) => void;
     setSuggestions: (suggestions: any[]) => void;
     setPersonality: (personality: 'helpful' | 'educational' | 'critical' | 'concise') => void;
@@ -41,12 +41,12 @@ export const useAIStore = create<AIState>()(
             personality: 'helpful',
             selectedLanguage: 'typescript',
             usageStats: { tokensUsed: 0, costToday: 0 },
-            addMessage: (role: string, content: string) => set((state) => {
+            addMessage: (role: 'user' | 'assistant', content: string) => set((state) => {
                 state.history.push({ role, content });
             }),
             setProcessing: (isProcessing: boolean) => set({ isProcessing }),
             setSuggestions: (suggestions: any[]) => set({ suggestions }),
-            setPersonality: (personality: any) => set({ personality }),
+            setPersonality: (personality: 'helpful' | 'educational' | 'critical' | 'concise') => set({ personality }),
             setLanguage: (selectedLanguage: string) => set({ selectedLanguage }),
             updateUsageStats: (tokens: number) => set((state) => {
                 state.usageStats.tokensUsed += tokens;
