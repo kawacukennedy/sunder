@@ -18,19 +18,115 @@ import {
     Code2,
     Sparkles,
     ChevronRight,
-    ArrowRight
+    ArrowRight,
+    Eye,
+    Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { cn, fetchApi } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
 
 export default function ProfileEditPage() {
+    const router = useRouter();
+    const { user, updateUser } = useAuthStore();
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('personal');
+    const [successMessage, setSuccessMessage] = useState('');
+    
+    const [formData, setFormData] = useState({
+        display_name: '',
+        bio: '',
+        organization: '',
+        location: '',
+        github: '',
+        twitter: '',
+        website: ''
+    });
 
-    const handleSave = () => {
-        setIsSaving(true);
-        setTimeout(() => setIsSaving(false), 2000);
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                display_name: user.display_name || user.username || '',
+                bio: user.bio || '',
+                organization: user.organization || '',
+                location: user.location || '',
+                github: user.github || '',
+                twitter: user.twitter || '',
+                website: user.website || ''
+            });
+        }
+        setIsLoading(false);
+    }, [user]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSuccessMessage('');
+        try {
+            await fetchApi('/profiles/update', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    display_name: formData.display_name,
+                    bio: formData.bio,
+                    preferences: {
+                        ...user?.preferences,
+                        organization: formData.organization,
+                        location: formData.location,
+                        github: formData.github,
+                        twitter: formData.twitter,
+                        website: formData.website
+                    }
+                })
+            });
+            updateUser({
+                display_name: formData.display_name,
+                bio: formData.bio,
+                preferences: {
+                    ...user?.preferences,
+                    organization: formData.organization,
+                    location: formData.location,
+                    github: formData.github,
+                    twitter: formData.twitter,
+                    website: formData.website
+                }
+            });
+            setSuccessMessage('Profile updated successfully!');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDiscard = () => {
+        if (user) {
+            setFormData({
+                display_name: user.display_name || user.username || '',
+                bio: user.bio || '',
+                organization: user.preferences?.organization || '',
+                location: user.preferences?.location || '',
+                github: user.preferences?.github || '',
+                twitter: user.preferences?.twitter || '',
+                website: user.preferences?.website || ''
+            });
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center h-[60vh]">
+                    <Loader2 className="animate-spin text-violet-500" size={32} />
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout>
@@ -49,16 +145,19 @@ export default function ProfileEditPage() {
                         <p className="text-slate-400 font-medium tracking-tight">Refine your digital identity and coding signature.</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="px-6 py-2.5 rounded-xl bg-white/5 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                        <button 
+                            onClick={handleDiscard}
+                            className="px-6 py-2.5 rounded-xl bg-white/5 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                        >
                             Discard Changes
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="px-8 py-2.5 rounded-xl bg-violet-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
+                            className="px-8 py-2.5 rounded-xl bg-violet-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
                         >
                             {isSaving ? (
-                                <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                <Loader2 size={16} className="animate-spin" />
                             ) : (
                                 <Save size={16} />
                             )}
@@ -66,6 +165,13 @@ export default function ProfileEditPage() {
                         </button>
                     </div>
                 </div>
+
+                {successMessage && (
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                        <CheckCircle2 size={18} />
+                        {successMessage}
+                    </div>
+                )}
 
                 {/* Profile Tabs */}
                 <div className="flex items-center gap-8 border-b border-white/5 px-2">
@@ -99,7 +205,7 @@ export default function ProfileEditPage() {
                         <div className="p-8 rounded-[2.5rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl flex flex-col items-center text-center group">
                             <div className="relative mb-6">
                                 <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-4xl font-black text-white italic shadow-2xl overflow-hidden relative">
-                                    A
+                                    {(formData.display_name || user?.username || 'U').charAt(0).toUpperCase()}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                                         <Camera className="text-white" size={32} />
                                     </div>
@@ -108,7 +214,7 @@ export default function ProfileEditPage() {
                                     <Sparkles size={14} className="fill-white" />
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold text-white italic tracking-tight uppercase mb-1">Alex Rivera</h3>
+                            <h3 className="text-xl font-bold text-white italic tracking-tight uppercase mb-1">{formData.display_name || user?.username}</h3>
                             <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-4">Neural Architect</p>
                             <button className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors">
                                 Update Neural ID
@@ -138,7 +244,9 @@ export default function ProfileEditPage() {
                                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Display Name</label>
                                             <input
                                                 type="text"
-                                                defaultValue="Alex Rivera"
+                                                name="display_name"
+                                                value={formData.display_name}
+                                                onChange={handleChange}
                                                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium"
                                             />
                                         </div>
@@ -148,9 +256,9 @@ export default function ProfileEditPage() {
                                                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                                                 <input
                                                     type="email"
-                                                    defaultValue="alex@sunder.app"
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium italic"
+                                                    value={user?.email || ''}
                                                     disabled
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium italic"
                                                 />
                                             </div>
                                         </div>
@@ -159,9 +267,12 @@ export default function ProfileEditPage() {
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Developer Bio</label>
                                         <textarea
+                                            name="bio"
                                             rows={4}
-                                            defaultValue="Building the future of AI-assisted collaboration at Sunder. Focused on Rust, TypeScript, and Generative UI patterns."
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium leading-relaxed"
+                                            value={formData.bio}
+                                            onChange={handleChange}
+                                            placeholder="Tell us about yourself..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium leading-relaxed placeholder:text-slate-700"
                                         />
                                     </div>
 
@@ -172,7 +283,9 @@ export default function ProfileEditPage() {
                                                 <Briefcase size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                                                 <input
                                                     type="text"
-                                                    defaultValue="Sunder Core Team"
+                                                    name="organization"
+                                                    value={formData.organization}
+                                                    onChange={handleChange}
                                                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium"
                                                 />
                                             </div>
@@ -183,7 +296,9 @@ export default function ProfileEditPage() {
                                                 <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                                                 <input
                                                     type="text"
-                                                    defaultValue="Digital Nomad / SF"
+                                                    name="location"
+                                                    value={formData.location}
+                                                    onChange={handleChange}
                                                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium"
                                                 />
                                             </div>
@@ -208,9 +323,9 @@ export default function ProfileEditPage() {
                             {activeTab === 'social' && (
                                 <div className="space-y-6">
                                     {[
-                                        { label: 'GitHub Profile', icon: Github, value: 'github.com/arivera' },
-                                        { label: 'Neural Link (Twitter/X)', icon: Twitter, value: '@alex_neuro' },
-                                        { label: 'Personal Matrix (Web)', icon: Globe, value: 'arivera.dev' }
+                                        { label: 'GitHub Profile', icon: Github, name: 'github', value: formData.github, placeholder: 'github.com/username' },
+                                        { label: 'Neural Link (Twitter/X)', icon: Twitter, name: 'twitter', value: formData.twitter, placeholder: '@username' },
+                                        { label: 'Personal Matrix (Web)', icon: Globe, name: 'website', value: formData.website, placeholder: 'yourdomain.com' }
                                     ].map((social) => (
                                         <div key={social.label} className="space-y-2">
                                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{social.label}</label>
@@ -218,12 +333,34 @@ export default function ProfileEditPage() {
                                                 <social.icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                                 <input
                                                     type="text"
-                                                    defaultValue={social.value}
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium"
+                                                    name={social.name}
+                                                    value={social.value}
+                                                    onChange={handleChange}
+                                                    placeholder={social.placeholder}
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium placeholder:text-slate-700"
                                                 />
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {activeTab === 'security' && (
+                                <div className="space-y-6">
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                                        <h4 className="text-sm font-bold text-white uppercase tracking-tight mb-4">Change Security PIN</h4>
+                                        <p className="text-xs text-slate-500 mb-4">Your PIN is used for quick access to your dashboard.</p>
+                                        <button className="px-6 py-2 bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">
+                                            Update PIN
+                                        </button>
+                                    </div>
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                                        <h4 className="text-sm font-bold text-white uppercase tracking-tight mb-4">Two-Factor Authentication</h4>
+                                        <p className="text-xs text-slate-500 mb-4">Add an extra layer of security to your account.</p>
+                                        <button className="px-6 py-2 bg-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/20">
+                                            Enable 2FA
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -232,7 +369,7 @@ export default function ProfileEditPage() {
                         <div className="p-6 rounded-[2rem] bg-gradient-to-r from-violet-600/10 to-transparent border border-white/5 flex items-center justify-between group">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
-                                    <ParallaxScroll size={20} />
+                                    <Eye size={20} />
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-white uppercase tracking-widest">Public Visibility</p>
@@ -246,23 +383,4 @@ export default function ProfileEditPage() {
             </div>
         </DashboardLayout>
     );
-}
-
-function ParallaxScroll({ size }: { size: number }) {
-    return (
-        <svg
-            width={size}
-            height={size}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-    )
 }
