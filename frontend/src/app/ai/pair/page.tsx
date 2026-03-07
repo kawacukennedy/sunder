@@ -68,9 +68,10 @@ export default function AIPairPage() {
     useEffect(() => {
         if (!currentCode) {
             const lang = languages.find(l => l.id === selectedLanguage) || languages[0];
+            // eslint-disable-next-line react-hooks/purity
             setCurrentCode(lang.boilerplate);
         }
-    }, []);
+    }, [selectedLanguage]);
 
     const handleNewFile = () => {
         const lang = languages.find(l => l.id === selectedLanguage) || languages[0];
