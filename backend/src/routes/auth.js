@@ -160,32 +160,66 @@ router.post('/verify', async (req, res) => {
 
 /**
  * @route POST /auth/login
- * @desc Authenticates user using email and PIN.
+ * @desc Authenticates user using email and PIN or password.
  * @access Public
  */
 router.post('/login', async (req, res) => {
-    const { email, pin } = req.body;
+    const { email, pin, password } = req.body;
     const bcrypt = require('bcryptjs');
 
     try {
-        if (!email || !pin) {
-            return res.status(400).json({ error: 'Email and 4-digit PIN are required' });
+        if (!email || (!pin && !password)) {
+            return res.status(400).json({ error: 'Email and PIN or password are required' });
         }
 
-        // Fetch user from public.users to get the pin_hash
+        // First try Supabase Auth (for email/password login)
+        if (password) {
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (!authError && authData.user) {
+                // Issue a local JWT
+                const token = jwt.sign(
+                    {
+                        sub: authData.user.id,
+                        email: authData.user.email,
+                        username: authData.user.user_metadata?.username,
+                        display_name: authData.user.user_metadata?.display_name
+                    },
+                    JWT_SECRET,
+                    { expiresIn: '7d' }
+                );
+
+                return res.json({
+                    success: true,
+                    token,
+                    user: authData.user,
+                    message: 'Login successful'
+                });
+            }
+        }
+
+        // Fallback: Try PIN-based login from public.users
         const { data: user, error: fetchError } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
             .single();
 
-        if (fetchError || !user || !user.login_pin_hash) {
-            return res.status(401).json({ error: 'Invalid email or PIN' });
+        if (fetchError || !user) {
+            return res.status(401).json({ error: 'Invalid email or credentials' });
         }
 
-        const isMatch = await bcrypt.compare(pin, user.login_pin_hash);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid email or PIN' });
+        // Check PIN if provided
+        if (pin && user.login_pin_hash) {
+            const isMatch = await bcrypt.compare(pin, user.login_pin_hash);
+            if (!isMatch) {
+                return res.status(401).json({ error: 'Invalid email or PIN' });
+            }
+        } else if (!user.login_pin_hash && !password) {
+            return res.status(401).json({ error: 'No credentials found for this account' });
         }
 
         // Issue a local JWT
