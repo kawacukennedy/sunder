@@ -126,7 +126,14 @@ async function runPendingMigrations(migrations, currentVersion) {
     console.log(`🚀 Running ${pending.length} pending migrations...`);
     
     for (const migration of pending) {
-        await runMigration(migration);
+        try {
+            await runMigration(migration);
+        } catch (error) {
+            console.error(`⚠️ Migration ${migration.name} failed:`, error.message);
+            console.log('⚠️ Continuing without migration - schema may need manual setup');
+            // Don't throw - allow server to start anyway
+            break;
+        }
     }
 }
 
