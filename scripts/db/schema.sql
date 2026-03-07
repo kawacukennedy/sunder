@@ -382,10 +382,10 @@ CREATE TRIGGER on_auth_user_created
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE snippets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE code_reviews ENABLE ROW LEVEL SECURITY;
 
 -- Standard Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON users FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert new users (registration)" ON users FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY "Public snippets are viewable by everyone" ON snippets FOR SELECT USING (visibility = 'public');
