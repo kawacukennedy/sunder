@@ -3,9 +3,33 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { fetchApi } from '@/lib/utils';
 
-// ... (interface stays same)
+interface Message {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+interface UsageStats {
+    tokensUsed: number;
+    costToday: number;
+}
+
 interface AIState {
-    // ...
+    isProcessing: boolean;
+    history: Message[];
+    suggestions: any[];
+    personality: 'helpful' | 'educational' | 'critical' | 'concise';
+    selectedLanguage: string;
+    usageStats: UsageStats;
+    addMessage: (role: string, content: string) => void;
+    setProcessing: (isProcessing: boolean) => void;
+    setSuggestions: (suggestions: any[]) => void;
+    setPersonality: (personality: 'helpful' | 'educational' | 'critical' | 'concise') => void;
+    setLanguage: (selectedLanguage: string) => void;
+    updateUsageStats: (tokens: number) => void;
+    translate: (code: string, sourceLang: string, targetLang: string) => Promise<any>;
+    generateCode: (prompt: string, language: string, framework: string) => Promise<any>;
+    explainCode: (code: string, detailLevel: string) => Promise<any>;
+    pairWithAI: (task: string, code?: string, options?: any) => Promise<any>;
 }
 
 export const useAIStore = create<AIState>()(
