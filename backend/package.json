@@ -9,6 +9,8 @@
     "migrate": "node scripts/migrate.js",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:rollback": "node scripts/migrate.js rollback",
+    "db:setup": "node scripts/setup-db.js",
+    "db:reset": "node scripts/setup-db.js reset",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
