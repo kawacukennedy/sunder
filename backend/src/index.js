@@ -105,6 +105,25 @@ const { initWebSocket } = require('./lib/websocket');
 
 initWebSocket(server);
 
-server.listen(PORT, () => {
-    console.log(`Sunder Backend listening on port ${PORT}`);
-});
+// Initialize ORM Schema Manager
+const { initSchemaManager, getMigrationStatus } = require('./lib/schema');
+
+async function startServer() {
+    try {
+        // Initialize database schema (Hibernate-like)
+        await initSchemaManager();
+        
+        // Get migration status
+        const status = await getMigrationStatus();
+        console.log(`📊 Migration Status: ${status.applied}/${status.totalMigrations} applied`);
+        
+        server.listen(PORT, () => {
+            console.log(`Sunder Backend listening on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
