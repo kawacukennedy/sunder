@@ -94,7 +94,7 @@ export default function AdminAI() {
                             <div
                                 key={i}
                                 className="flex-1 bg-violet-500/20 border-t border-violet-500/30 rounded-t-sm"
-                                style={{ height: `${20 + Math.random() * 60}%` }}
+                                style={{ height: `${((i * 13 + 20) % 60) + 20}%` }}
                             />
                         ))}
                     </div>
