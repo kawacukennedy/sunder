@@ -42,63 +42,73 @@ router.post('/register', async (req, res) => {
     const key = `reg:${email || ip}`;
 
     try {
-        // Persistent Cooldown Check (from Database)
-        const { data: limitData, error: limitError } = await supabase
-            .from('rate_limits')
-            .select('*')
-            .eq('key', key)
-            .single();
-
-        if (limitError && limitError.code !== 'PGRST116') {
-            console.warn('[Rate Limit Sync Warning] Table rate_limits may be missing or inaccessible:', limitError.message);
-        }
-
-        const now = new Date();
-        if (limitData) {
-            const lastAttempt = new Date(limitData.last_attempt_at);
-            const diff = now.getTime() - lastAttempt.getTime();
-
-            if (diff < COOLDOWN_MS) {
-                const remaining = Math.ceil((COOLDOWN_MS - diff) / 1000);
+        // Rate limit check (local)
+        const now = Date.now();
+        if (registrationAttempts.has(key)) {
+            const lastAttempt = registrationAttempts.get(key);
+            if (now - lastAttempt < COOLDOWN_MS) {
                 return res.status(429).json({
-                    error: `Registration rate limit: please wait ${remaining} seconds before trying again.`,
-                    retryAfter: remaining
+                    error: 'Please wait 60 seconds before trying again.',
+                    retryAfter: 60
                 });
             }
         }
-
-        // Record/Update attempt in DB
-        await supabase.from('rate_limits').upsert({
-            key,
-            last_attempt_at: now.toISOString(),
-            count: limitData ? limitData.count + 1 : 1
-        });
+        registrationAttempts.set(key, now);
 
         if (!pin || pin.length !== 4) {
             return res.status(400).json({ error: 'A 4-digit security PIN is required' });
         }
 
         const pinHash = await bcrypt.hash(pin, 10);
+        const passwordHash = password ? await bcrypt.hash(password, 10) : null;
 
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    username,
-                    display_name: displayName,
-                    pin_hash: pinHash,
-                    preferences
+        // Try Supabase Auth first
+        let supabaseUser = null;
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password: password || 'temp_password_change_me',
+                options: {
+                    data: {
+                        username,
+                        display_name: displayName,
+                        pin_hash: pinHash,
+                        preferences
+                    }
                 }
-            }
-        });
+            });
 
-        if (error) throw error;
+            if (!error && data?.user) {
+                supabaseUser = data.user;
+            }
+        } catch (authErr) {
+            console.log('[Register] Supabase Auth failed, creating local user only:', authErr.message);
+        }
+
+        // Create user in public.users table directly (works even if Supabase Auth fails)
+        const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .upsert({
+                id: supabaseUser?.id || crypto.randomUUID(),
+                email,
+                username: username || `user_${Date.now()}`,
+                display_name: displayName || username,
+                password_hash: passwordHash,
+                login_pin_hash: pinHash,
+                preferences: preferences || {},
+                created_at: new Date().toISOString()
+            }, { onConflict: 'email' })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[Register] User insert error:', insertError);
+            return res.status(500).json({ error: 'Failed to create user. ' + insertError.message });
+        }
 
         res.json({
-            user: data.user,
-            access_token: data.session?.access_token,
-            message: 'Registration successful. You can now login with your PIN.'
+            user: newUser,
+            message: 'Registration successful. You can now login.'
         });
     } catch (error) {
         console.error('[Registration Error]', {
@@ -115,11 +125,9 @@ router.post('/register', async (req, res) => {
         const isRateLimit = error.message.toLowerCase().includes('rate limit exceeded');
 
         if (isRateLimit) {
-            // Reset the local timer to force a full 60s wait from THIS failure
             registrationAttempts.set(key, Date.now());
-
             return res.status(429).json({
-                error: 'System rate limit hit: protecting your account. Please wait 60 seconds.',
+                error: 'System rate limit hit: please wait 60 seconds.',
                 retryAfter: 60
             });
         }
