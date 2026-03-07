@@ -134,7 +134,7 @@ export default function SnippetEditor() {
         if (!message.trim() || isAIResponding) return;
         
         setIsAIResponding(true);
-        const newHistory = [...aiHistory, { role: 'user', content: message }];
+        const newHistory: { role: 'user' | 'assistant'; content: string }[] = [...aiHistory, { role: 'user' as const, content: message }];
         setAIHistory(newHistory);
         setAIMessage('');
 
@@ -151,9 +151,9 @@ export default function SnippetEditor() {
             });
 
             const aiResponse = response.response || response.text || 'I apologize, but I could not generate a response.';
-            setAIHistory([...newHistory, { role: 'assistant', content: aiResponse }]);
+            setAIHistory([...newHistory, { role: 'assistant' as const, content: aiResponse }]);
         } catch (error: any) {
-            setAIHistory([...newHistory, { role: 'assistant', content: `Error: ${error.message}` }]);
+            setAIHistory([...newHistory, { role: 'assistant' as const, content: `Error: ${error.message}` }]);
         } finally {
             setIsAIResponding(false);
         }
