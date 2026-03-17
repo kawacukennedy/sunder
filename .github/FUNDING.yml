@@ -1,0 +1,5 @@
+custom:
+  - url: "https://etherscan.io/address/0x5af56A1C0117e85cEd46c485A960f854A615e68f"
+    label: "USDC (Ethereum)"
+  - url: "0x5af56A1C0117e85cEd46c485A960f854A615e68f"
+    label: "USDC Wallet Address"
